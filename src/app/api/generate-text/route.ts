@@ -130,6 +130,16 @@ export async function POST(request: Request) {
 
   let creditReserved = true;
   try {
+    // Temporary, opt-in production test: only the exact test phrase triggers
+    // a controlled failure after reserving one credit. Disable the Vercel
+    // environment flag immediately after the test.
+    if (
+      process.env.CREDIT_REFUND_TEST_ENABLED === "true" &&
+      topic.trim() === "IJOD_AI_REFUND_TEST"
+    ) {
+      throw new Error("INTENTIONAL_CREDIT_REFUND_TEST");
+    }
+
     const response = await openai.responses.create({
       model: "gpt-6-luna",
       instructions:
