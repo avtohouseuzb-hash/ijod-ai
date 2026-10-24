@@ -190,7 +190,15 @@ export default function Home() {
 
             <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {filteredTools.map((tool) => (
-                <button key={tool.title} onClick={() => { if (tool.title === "AI Matn") window.location.href = "/tools/text"; else alert(`${tool.title} tez orada ishga tushadi!`); }} className="group rounded-2xl border border-gray-200/80 bg-white p-5 text-left transition duration-200 hover:-translate-y-1 hover:border-violet-200 hover:shadow-xl hover:shadow-violet-100/50">
+                <button key={tool.title} onClick={() => {
+                  const routes: Record<string, string> = {
+                    "AI Matn": "/tools/text",
+                    "AI Tarjima": "/tools/translate",
+                  };
+                  const route = routes[tool.title];
+                  if (route) window.location.href = route;
+                  else alert(`${tool.title} tez orada ishga tushadi!`);
+                }} className="group rounded-2xl border border-gray-200/80 bg-white p-5 text-left transition duration-200 hover:-translate-y-1 hover:border-violet-200 hover:shadow-xl hover:shadow-violet-100/50">
                   <div className="flex items-start justify-between">
                     <div className={`flex h-12 w-12 items-center justify-center rounded-2xl text-xl font-bold ${tool.color}`}>{tool.icon}</div>
                     {tool.tag && <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${tool.tag === "Yangi" ? "bg-pink-50 text-pink-600" : "bg-violet-50 text-violet-600"}`}>{tool.tag}</span>}
