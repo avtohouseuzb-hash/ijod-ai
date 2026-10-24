@@ -39,9 +39,18 @@ export default function TextToolPage() {
     setCopied(false);
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setSignedIn(false);
+        throw new Error("AI matn yaratish uchun avval hisobingizga kiring.");
+      }
+
       const response = await fetch("/api/generate-text", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({ type: kind, topic: topic.trim(), tone }),
       });
 
@@ -75,6 +84,24 @@ export default function TextToolPage() {
     } catch {
       setError("Nusxalash imkoni bo‘lmadi. Matnni belgilab nusxalang.");
     }
+  }
+
+  if (authChecking) {
+    return <main className="flex min-h-screen items-center justify-center bg-[#f7f7fb] px-4 text-[#191923]"><p className="text-sm text-gray-500">Hisobingiz tekshirilmoqda...</p></main>;
+  }
+
+  if (!signedIn) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#f7f7fb] px-4 py-10 text-[#191923]">
+        <section className="w-full max-w-md rounded-3xl border border-gray-200 bg-white p-8 text-center shadow-xl shadow-violet-100/40">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-100 text-2xl text-violet-700">✳</div>
+          <h1 className="mt-5 text-2xl font-black">IJOD AI’ga xush kelibsiz</h1>
+          <p className="mt-3 text-sm leading-6 text-gray-500">AI Matn vositasidan foydalanish uchun avval hisobingizga kiring yoki yangi hisob yarating.</p>
+          <Link href="/login" className="mt-6 block rounded-xl bg-violet-600 px-4 py-3.5 text-sm font-bold text-white hover:bg-violet-700">Kirish yoki ro‘yxatdan o‘tish →</Link>
+          <Link href="/" className="mt-4 block text-sm font-semibold text-gray-500 hover:text-violet-700">← Bosh sahifa</Link>
+        </section>
+      </main>
+    );
   }
 
   return (
