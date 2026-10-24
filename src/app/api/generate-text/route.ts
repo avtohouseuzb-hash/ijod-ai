@@ -104,9 +104,10 @@ export async function POST(request: Request) {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
+  const requestId = crypto.randomUUID();
   const { data: remainingCredits, error: reserveError } = await serviceClient.rpc(
     "reserve_credit_for_user",
-    { p_user_id: user.id },
+    { p_user_id: user.id, p_request_id: requestId },
   );
 
   if (reserveError) {
@@ -160,6 +161,7 @@ export async function POST(request: Request) {
     if (!text) {
       await serviceClient.rpc("refund_credit", {
         p_user_id: user.id,
+        p_request_id: requestId,
         p_reason: "ai_text_empty_response",
       });
       creditReserved = false;
@@ -175,6 +177,7 @@ export async function POST(request: Request) {
     if (creditReserved) {
       const { error: refundError } = await serviceClient.rpc("refund_credit", {
         p_user_id: user.id,
+        p_request_id: requestId,
         p_reason: "ai_text_generation_failed",
       });
       if (refundError) {
