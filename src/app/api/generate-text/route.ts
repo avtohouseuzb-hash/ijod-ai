@@ -100,28 +100,35 @@ export async function POST(request: Request) {
   const safeTone =
     typeof tone === "string" && allowedTones.has(tone) ? tone : "Professional";
 
-  const serviceClient = createClient(supabaseUrl, supabaseSecretKey, {
+  const userClient = createClient(supabaseUrl, supabaseKey, {
+    global: { headers: { Authorization: `Bearer ${accessToken}` } },
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const { data: remainingCredits, error: reserveError } = await serviceClient.rpc(
-    "reserve_credit_for_user",
-    { p_user_id: user.id },
-  );
+  const { data: remainingCredits, error: reserveError } = await userClient.rpc("reserve_credit");
 
   if (reserveError) {
+    console.error("Credit reservation failed:", {
+      message: reserveError.message,
+      code: reserveError.code,
+      details: reserveError.details,
+      hint: reserveError.hint,
+    });
     if (reserveError.message.includes("Insufficient credits")) {
       return NextResponse.json(
         { error: "Kreditingiz tugagan. Keyinroq kredit xarid qilish imkoniyatini qo‘shamiz." },
         { status: 402 },
       );
     }
-    console.error("Credit reservation failed:", reserveError.message);
     return NextResponse.json(
       { error: "Kreditni tekshirishda xatolik. Qayta urinib ko‘ring." },
       { status: 500 },
     );
   }
+
+  const serviceClient = createClient(supabaseUrl, supabaseSecretKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 
   let creditReserved = true;
   try {
