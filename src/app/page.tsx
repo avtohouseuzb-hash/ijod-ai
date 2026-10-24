@@ -2,7 +2,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 const tools = [
   { icon: "✳", title: "AI Rasm", desc: "G‘oyangizdan ajoyib rasmlar yarating", color: "bg-violet-100 text-violet-700", tag: "Mashhur" },
@@ -16,6 +17,28 @@ const tools = [
 export default function Home() {
   const [active, setActive] = useState("Bosh sahifa");
   const [query, setQuery] = useState("");
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (mounted) {
+        setUserEmail(data.session?.user.email ?? null);
+        setAuthLoading(false);
+      }
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserEmail(session?.user.email ?? null);
+      setAuthLoading(false);
+    });
+    return () => { mounted = false; subscription.unsubscribe(); };
+  }, []);
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    setUserEmail(null);
+  }
 
   const filteredTools = tools.filter((tool) =>
     `${tool.title} ${tool.desc}`.toLowerCase().includes(query.toLowerCase())
@@ -90,7 +113,14 @@ export default function Home() {
             <div className="hidden items-center gap-2 rounded-full border border-gray-200 px-3 py-2 text-xs text-gray-500 sm:flex">
               <span className="text-amber-500">✦</span> 0 kredit
             </div>
-            <Link href="/login" className="rounded-xl bg-[#191923] px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-violet-700">Kirish ↗</Link>
+            {userEmail ? (
+              <div className="flex items-center gap-2">
+                <span className="hidden max-w-[180px] truncate text-xs text-gray-500 sm:block">{userEmail}</span>
+                <button onClick={handleSignOut} className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-semibold text-gray-700 transition hover:border-violet-300 hover:text-violet-700">Chiqish</button>
+              </div>
+            ) : (
+              <Link href="/login" className="rounded-xl bg-[#191923] px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-violet-700">{authLoading ? "Tekshirilmoqda..." : "Kirish ↗"}</Link>
+            )}
           </div>
         </header>
 
