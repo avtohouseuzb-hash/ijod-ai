@@ -136,3 +136,9 @@ revoke all on function public.reserve_credit_for_user(uuid, uuid) from public, a
 grant execute on function public.reserve_credit_for_user(uuid, uuid) to service_role;
 revoke all on function public.refund_credit(uuid, uuid, text) from public, anon, authenticated;
 grant execute on function public.refund_credit(uuid, uuid, text) to service_role;
+
+-- Lock down the legacy overloads too; otherwise an older signature may remain callable.
+revoke all on function public.reserve_credit_for_user(uuid) from public, anon, authenticated;
+grant execute on function public.reserve_credit_for_user(uuid) to service_role;
+revoke all on function public.refund_credit(uuid, text) from public, anon, authenticated;
+grant execute on function public.refund_credit(uuid, text) to service_role;
