@@ -1,6 +1,7 @@
 
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 const tools = [
@@ -89,7 +90,7 @@ export default function Home() {
             <div className="hidden items-center gap-2 rounded-full border border-gray-200 px-3 py-2 text-xs text-gray-500 sm:flex">
               <span className="text-amber-500">✦</span> 0 kredit
             </div>
-            <button className="rounded-xl bg-[#191923] px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-violet-700">Kirish ↗</button>
+            <Link href="/login" className="rounded-xl bg-[#191923] px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-violet-700">Kirish ↗</Link>
           </div>
         </header>
 
