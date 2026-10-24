@@ -79,7 +79,8 @@ export default function TextToolPage() {
         throw new Error("AI javobi bo‘sh qaytdi. Qayta urinib ko‘ring.");
       }
 
-      setResult(data.text);\n      if (typeof data.remainingCredits === "number") setCredits(data.remainingCredits);
+      setResult(data.text);
+      if (typeof data.remainingCredits === "number") setCredits(data.remainingCredits);
     } catch (err) {
       setError(
         err instanceof Error
