@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 export default function TextToolPage() {
   const [kind, setKind] = useState("Instagram posti");
@@ -11,6 +12,23 @@ export default function TextToolPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true);
+  const [signedIn, setSignedIn] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (mounted) {
+        setSignedIn(Boolean(data.session));
+        setAuthChecking(false);
+      }
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSignedIn(Boolean(session));
+      setAuthChecking(false);
+    });
+    return () => { mounted = false; subscription.unsubscribe(); };
+  }, []);
 
   async function generateText() {
     if (!topic.trim()) return;
