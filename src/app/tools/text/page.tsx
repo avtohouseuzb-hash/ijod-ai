@@ -69,7 +69,7 @@ export default function TextToolPage() {
         body: JSON.stringify({ type: kind, topic: topic.trim(), tone }),
       });
 
-      const data: { text?: string; error?: string } = await response.json();
+      const data: { text?: string; error?: string; remainingCredits?: number } = await response.json();
 
       if (!response.ok) {
         throw new Error(data.error || "Matn yaratishda xatolik yuz berdi.");
@@ -133,6 +133,9 @@ export default function TextToolPage() {
           <h1 className="mt-3 text-3xl font-black">AI Matn</h1>
           <p className="mt-3 text-sm text-white/75">
             Post, reklama va Reels ssenariysi uchun tayyor matn yarating.
+          </p>
+          <p className="mt-4 inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white">
+            ✦ {credits === null ? "Kredit tekshirilmoqda..." : `${credits} kredit`}
           </p>
         </header>
 
@@ -215,8 +218,7 @@ export default function TextToolPage() {
           )}
 
           <p className="mt-4 text-xs leading-5 text-gray-400">
-            Matn OpenAI API orqali yaratiladi. API so‘rovlari balansdagi kreditdan
-            foydalanadi.
+            Har bir AI matn so‘rovi 1 kredit ishlatadi. Xatolik yuz bersa, kreditni qaytarishga harakat qilamiz.
           </p>
         </section>
       </div>
