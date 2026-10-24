@@ -135,6 +135,8 @@ export async function POST(request: Request) {
     // environment flag immediately after the test.
     if (
       process.env.CREDIT_REFUND_TEST_ENABLED === "true" &&
+      Boolean(user.email) &&
+      user.email === process.env.CREDIT_REFUND_TEST_EMAIL &&
       topic.trim() === "IJOD_AI_REFUND_TEST"
     ) {
       throw new Error("INTENTIONAL_CREDIT_REFUND_TEST");
