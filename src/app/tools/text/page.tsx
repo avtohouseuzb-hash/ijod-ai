@@ -14,6 +14,7 @@ export default function TextToolPage() {
   const [copied, setCopied] = useState(false);
   const [authChecking, setAuthChecking] = useState(true);
   const [signedIn, setSignedIn] = useState(false);
+  const [credits, setCredits] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -21,14 +22,28 @@ export default function TextToolPage() {
       if (mounted) {
         setSignedIn(Boolean(data.session));
         setAuthChecking(false);
+        if (data.session) void loadCredits();
       }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSignedIn(Boolean(session));
       setAuthChecking(false);
+      if (session) void loadCredits();
+      else setCredits(null);
     });
     return () => { mounted = false; subscription.unsubscribe(); };
   }, []);
+
+  async function loadCredits() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const { data } = await supabase
+      .from("profiles")
+      .select("credits")
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+    if (typeof data?.credits === "number") setCredits(data.credits);
+  }
 
   async function generateText() {
     if (!topic.trim()) return;
@@ -64,7 +79,7 @@ export default function TextToolPage() {
         throw new Error("AI javobi bo‘sh qaytdi. Qayta urinib ko‘ring.");
       }
 
-      setResult(data.text);
+      setResult(data.text);\n      if (typeof data.remainingCredits === "number") setCredits(data.remainingCredits);
     } catch (err) {
       setError(
         err instanceof Error
