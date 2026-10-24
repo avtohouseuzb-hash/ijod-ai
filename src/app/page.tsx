@@ -18,6 +18,7 @@ export default function Home() {
   const [active, setActive] = useState("Bosh sahifa");
   const [query, setQuery] = useState("");
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [credits, setCredits] = useState<number | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
@@ -26,14 +27,28 @@ export default function Home() {
       if (mounted) {
         setUserEmail(data.session?.user.email ?? null);
         setAuthLoading(false);
+        if (data.session) void loadCredits();
       }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUserEmail(session?.user.email ?? null);
       setAuthLoading(false);
+      if (session) void loadCredits();
+      else setCredits(null);
     });
     return () => { mounted = false; subscription.unsubscribe(); };
   }, []);
+
+  async function loadCredits() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("credits")
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+    if (!error && typeof data?.credits === "number") setCredits(data.credits);
+  }
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -111,7 +126,7 @@ export default function Home() {
           <div className="hidden text-sm text-gray-400 lg:block">Ijod qiling <span className="mx-2">/</span> <span className="font-semibold text-gray-800">{active}</span></div>
           <div className="flex items-center gap-3">
             <div className="hidden items-center gap-2 rounded-full border border-gray-200 px-3 py-2 text-xs text-gray-500 sm:flex">
-              <span className="text-amber-500">✦</span> 0 kredit
+              <span className="text-amber-500">✦</span> {credits === null ? "— kredit" : `${credits} kredit`}
             </div>
             {userEmail ? (
               <div className="flex items-center gap-2">
