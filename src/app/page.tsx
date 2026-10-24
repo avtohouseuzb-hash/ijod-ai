@@ -192,6 +192,7 @@ export default function Home() {
               {filteredTools.map((tool) => (
                 <button key={tool.title} onClick={() => {
                   const routes: Record<string, string> = {
+                    "AI Rasm": "/tools/image",
                     "AI Matn": "/tools/text",
                     "AI Tarjima": "/tools/translate",
                   };
