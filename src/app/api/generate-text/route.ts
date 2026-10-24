@@ -100,12 +100,14 @@ export async function POST(request: Request) {
   const safeTone =
     typeof tone === "string" && allowedTones.has(tone) ? tone : "Professional";
 
-  const userClient = createClient(supabaseUrl, supabaseKey, {
-    global: { headers: { Authorization: `Bearer ${accessToken}` } },
+  const serviceClient = createClient(supabaseUrl, supabaseSecretKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const serviceClient = createClient(supabaseUrl, supabaseSecretKey, {\n    auth: { persistSession: false, autoRefreshToken: false },\n  });\n\n  const { data: remainingCredits, error: reserveError } = await serviceClient.rpc("reserve_credit_for_user", {\n    p_user_id: user.id,\n  });
+  const { data: remainingCredits, error: reserveError } = await serviceClient.rpc(
+    "reserve_credit_for_user",
+    { p_user_id: user.id },
+  );
 
   if (reserveError) {
     if (reserveError.message.includes("Insufficient credits")) {
@@ -120,10 +122,6 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
-
-  const serviceClient = createClient(supabaseUrl, supabaseSecretKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
 
   let creditReserved = true;
   try {
