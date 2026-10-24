@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
 const openai = new OpenAI({
@@ -6,20 +7,17 @@ const openai = new OpenAI({
 });
 
 const allowedTypes = new Set([
-  "Instagram post",
-  "Instagram Reels",
-  "Reklama",
+  "Instagram posti",
+  "Reklama matni",
+  "Reels ssenariysi",
   "Mahsulot tavsifi",
-  "Blog maqolasi",
-  "Boshqa",
+  "Kontent g‘oyalari",
 ]);
 
 const allowedTones = new Set([
+  "Samimiy",
   "Professional",
-  "Do‘stona",
-  "Sotuvga yo‘naltirilgan",
-  "Ijodiy",
-  "Rasmiy",
+  "Ijodiy va qiziqarli",
 ]);
 
 export async function POST(request: Request) {
@@ -27,6 +25,41 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "OPENAI_API_KEY serverda sozlanmagan." },
       { status: 500 },
+    );
+  }
+
+  const authHeader = request.headers.get("authorization");
+  const accessToken = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice("Bearer ".length)
+    : "";
+
+  if (!accessToken) {
+    return NextResponse.json(
+      { error: "Davom etish uchun avval hisobingizga kiring." },
+      { status: 401 },
+    );
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    return NextResponse.json(
+      { error: "Kirish xizmati serverda sozlanmagan." },
+      { status: 500 },
+    );
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken);
+
+  if (authError || !user) {
+    return NextResponse.json(
+      { error: "Sessiya tugagan. Qayta kiring." },
+      { status: 401 },
     );
   }
 
