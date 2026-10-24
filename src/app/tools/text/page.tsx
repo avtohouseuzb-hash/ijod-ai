@@ -69,10 +69,10 @@ export default function TextToolPage() {
         body: JSON.stringify({ type: kind, topic: topic.trim(), tone }),
       });
 
-      const data: { text?: string; error?: string; remainingCredits?: number } = await response.json();
+      const data: { text?: string; error?: string; code?: string; remainingCredits?: number } = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Matn yaratishda xatolik yuz berdi.");
+        throw new Error(`${data.error || "Matn yaratishda xatolik yuz berdi."}${data.code ? ` (Kod: ${data.code})` : ""}`);
       }
 
       if (!data.text) {
