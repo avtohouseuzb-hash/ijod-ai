@@ -159,14 +159,23 @@ export async function POST(request: Request) {
     const text = response.output_text?.trim();
 
     if (!text) {
-      await serviceClient.rpc("refund_credit", {
+      const { error: refundError } = await serviceClient.rpc("refund_credit", {
         p_user_id: user.id,
         p_request_id: requestId,
         p_reason: "ai_text_empty_response",
       });
       creditReserved = false;
+
+      if (refundError) {
+        console.error("Credit refund failed after empty AI response:", refundError.code, refundError.message);
+      }
+
       return NextResponse.json(
-        { error: "AI bo‘sh javob qaytardi. Kredit qaytarildi, qayta urinib ko‘ring." },
+        {
+          error: refundError
+            ? "AI bo‘sh javob qaytardi, lekin kreditni qaytarishda xatolik yuz berdi. Qo‘llab-quvvatlashga murojaat qiling."
+            : "AI bo‘sh javob qaytardi. Kredit qaytarildi, qayta urinib ko‘ring.",
+        },
         { status: 502 },
       );
     }
