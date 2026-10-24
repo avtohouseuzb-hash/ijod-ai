@@ -64,8 +64,10 @@ export async function POST(request: Request) {
   const serviceClient = createClient(url, secretKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  const requestId = crypto.randomUUID();
   const { data: remainingCredits, error: reserveError } = await serviceClient.rpc(
-    "reserve_credit_for_user", { p_user_id: user.id },
+    "reserve_credit_for_user",
+    { p_user_id: user.id, p_request_id: requestId },
   );
   if (reserveError) {
     console.error("Translation credit reservation failed:", reserveError.code, reserveError.message);
@@ -90,6 +92,7 @@ export async function POST(request: Request) {
   } catch (error) {
     const { error: refundError } = await serviceClient.rpc("refund_credit", {
       p_user_id: user.id,
+      p_request_id: requestId,
       p_reason: "ai_translation_failed",
     });
     creditReserved = false;
