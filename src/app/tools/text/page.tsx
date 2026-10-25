@@ -251,6 +251,7 @@ export default function TextToolPage() {
         </section>
         <section className="mt-6 rounded-3xl border border-gray-200 bg-white p-6">
           <h2 className="text-xl font-black">Audio → Matn</h2>
+          <p className="mt-1 text-xs font-semibold text-violet-700">Yangi funksiya · 1 kredit / muvaffaqiyatli transkripsiya</p>
           <p className="mt-2 text-sm leading-6 text-gray-500">Ovozli yozuv yoki videofaylni yuklang — undagi nutq matnga aylantiriladi. O‘zbekcha nutq uchun ham ishlatib ko‘rishingiz mumkin.</p>
           <label className="mt-4 block text-sm font-semibold">Audio yoki video fayl (25 MB gacha)
             <input type="file" accept="audio/*,video/mp4,.mp3,.m4a,.wav,.webm,.ogg,.flac,.mp4,.mpeg,.mpga" onChange={(e) => { setAudioFile(e.target.files?.[0] ?? null); setTranscription(""); setAudioError(""); }} className="mt-2 block w-full rounded-xl border border-gray-200 p-3 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-violet-100 file:px-3 file:py-2 file:font-semibold file:text-violet-800" />
