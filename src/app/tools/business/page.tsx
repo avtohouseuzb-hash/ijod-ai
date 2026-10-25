@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 const modes = [
@@ -15,8 +14,7 @@ const modes = [
 ] as const;
 
 export default function BusinessToolsPage() {
-  const searchParams = useSearchParams();
-  const [modeId, setModeId] = useState(searchParams.get("mode") || "product");
+  const [modeId, setModeId] = useState("product");
   const [topic, setTopic] = useState("");
   const [tone, setTone] = useState("Professional");
   const [result, setResult] = useState("");
@@ -29,9 +27,9 @@ export default function BusinessToolsPage() {
   const mode = modes.find((item) => item.id === modeId) ?? modes[0];
 
   useEffect(() => {
-    const next = searchParams.get("mode");
+    const next = new URLSearchParams(window.location.search).get("mode");
     if (next && modes.some((item) => item.id === next)) setModeId(next);
-  }, [searchParams]);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
