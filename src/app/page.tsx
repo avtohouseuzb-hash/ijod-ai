@@ -194,6 +194,7 @@ export default function Home() {
                   const routes: Record<string, string> = {
                     "AI Rasm": "/tools/image",
                     "AI Dizayn": "/tools/design",
+                    "AI Video": "/tools/video",
                     "AI Matn": "/tools/text",
                     "AI Tarjima": "/tools/translate",
                   };
