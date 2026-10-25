@@ -15,6 +15,10 @@ export default function TextToolPage() {
   const [authChecking, setAuthChecking] = useState(true);
   const [signedIn, setSignedIn] = useState(false);
   const [credits, setCredits] = useState<number | null>(null);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [transcribing, setTranscribing] = useState(false);
+  const [transcription, setTranscription] = useState("");
+  const [audioError, setAudioError] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -90,6 +94,29 @@ export default function TextToolPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function transcribeAudio() {
+    if (!audioFile || transcribing) return;
+    setTranscribing(true); setAudioError(""); setTranscription("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Audio matnga aylantirish uchun avval hisobingizga kiring.");
+      const form = new FormData(); form.append("audio", audioFile);
+      const response = await fetch("/api/transcribe-audio", { method: "POST", headers: { Authorization: "Bearer " + session.access_token }, body: form });
+      const data: { text?: string; error?: string; remainingCredits?: number | null } = await response.json();
+      if (!response.ok) throw new Error(data.error || "Audio matnga aylantirilmadi.");
+      if (!data.text?.trim()) throw new Error("Audioda aniqlanadigan nutq topilmadi.");
+      setTranscription(data.text);
+      if (typeof data.remainingCredits === "number") setCredits(data.remainingCredits);
+    } catch (err) { setAudioError(err instanceof Error ? err.message : "Audio transkripsiyasida xatolik yuz berdi."); }
+    finally { setTranscribing(false); }
+  }
+
+  async function copyTranscription() {
+    if (!transcription) return;
+    try { await navigator.clipboard.writeText(transcription); }
+    catch { setAudioError("Nusxalash imkoni bo‘lmadi. Matnni qo‘lda nusxalang."); }
   }
 
   async function copyResult() {
@@ -221,6 +248,18 @@ export default function TextToolPage() {
           <p className="mt-4 text-xs leading-5 text-gray-400">
             Har bir AI matn so‘rovi 1 kredit ishlatadi. Xatolik yuz bersa, kreditni qaytarishga harakat qilamiz.
           </p>
+        </section>
+        <section className="mt-6 rounded-3xl border border-gray-200 bg-white p-6">
+          <h2 className="text-xl font-black">Audio → Matn</h2>
+          <p className="mt-2 text-sm leading-6 text-gray-500">Ovozli yozuv yoki videofaylni yuklang — undagi nutq matnga aylantiriladi. O‘zbekcha nutq uchun ham ishlatib ko‘rishingiz mumkin.</p>
+          <label className="mt-4 block text-sm font-semibold">Audio yoki video fayl (25 MB gacha)
+            <input type="file" accept="audio/*,video/mp4,.mp3,.m4a,.wav,.webm,.ogg,.flac,.mp4,.mpeg,.mpga" onChange={(e) => { setAudioFile(e.target.files?.[0] ?? null); setTranscription(""); setAudioError(""); }} className="mt-2 block w-full rounded-xl border border-gray-200 p-3 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-violet-100 file:px-3 file:py-2 file:font-semibold file:text-violet-800" />
+          </label>
+          {audioFile && <p className="mt-2 text-xs text-gray-500">Tanlandi: {audioFile.name} · {(audioFile.size / (1024 * 1024)).toFixed(1)} MB</p>}
+          <button type="button" disabled={!audioFile || transcribing} onClick={transcribeAudio} className="mt-4 w-full rounded-xl bg-violet-600 p-3.5 text-sm font-bold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40">{transcribing ? "Audio matnga aylantirilmoqda..." : "🎙 Audio-ni matnga aylantirish (1 kredit)"}</button>
+          {audioError && <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{audioError}</p>}
+          {transcription && <div className="mt-5 rounded-2xl border border-violet-100 bg-violet-50/50 p-5"><div className="flex flex-wrap items-center justify-between gap-3"><h3 className="font-bold">Transkripsiya natijasi</h3><button type="button" onClick={copyTranscription} className="rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm font-semibold text-violet-700">Matnni nusxalash</button></div><p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-gray-800">{transcription}</p></div>}
+          <p className="mt-4 text-xs leading-5 text-gray-400">Har bir muvaffaqiyatli transkripsiya 1 kredit ishlatadi. Audio fayl 25 MB dan oshmasin.</p>
         </section>
       </div>
     </main>
