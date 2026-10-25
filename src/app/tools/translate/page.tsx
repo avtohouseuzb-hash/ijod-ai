@@ -45,12 +45,25 @@ export default function TranslateToolPage() {
       if (!session) { setSignedIn(false); throw new Error("Davom etish uchun avval hisobingizga kiring."); }
       let imageDataUrl: string | undefined;
       if (image) {
-        imageDataUrl = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("Rasmni o‘qib bo‘lmadi."));
-          reader.onerror = () => reject(new Error("Rasmni o‘qib bo‘lmadi."));
-          reader.readAsDataURL(image);
-        });
+        const bitmap = await createImageBitmap(image);
+        try {
+          const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+          canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+          const context = canvas.getContext("2d");
+          if (!context) throw new Error("Rasmni qayta ishlash imkoni bo‘lmadi.");
+          context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+          let blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error("Rasmni siqib bo‘lmadi.")), "image/jpeg", 0.8));
+          if (blob.size > 1400000) blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error("Rasmni siqib bo‘lmadi.")), "image/jpeg", 0.58));
+          if (blob.size > 2000000) throw new Error("Rasm juda katta. Iltimos, kichikroq surat yuklang.");
+          imageDataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("Rasmni o‘qib bo‘lmadi."));
+            reader.onerror = () => reject(new Error("Rasmni o‘qib bo‘lmadi."));
+            reader.readAsDataURL(blob);
+          });
+        } finally { bitmap.close(); }
       }
       const response = await fetch("/api/translate", {
         method: "POST",
