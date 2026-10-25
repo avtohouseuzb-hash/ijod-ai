@@ -10,7 +10,7 @@ const tools = [
   { icon: "▶", title: "AI Video", desc: "Matn va rasmlardan video yarating", color: "bg-pink-100 text-pink-700", tag: "Yangi" },
   { icon: "♫", title: "AI Ovoz", desc: "Matnni ovozga va nutqqa aylantiring", color: "bg-amber-100 text-amber-700", tag: "" },
   { icon: "Aa", title: "AI Matn", desc: "Post, reklama va ssenariy yozing", color: "bg-sky-100 text-sky-700", tag: "" },
-  { icon: "◈", title: "AI Dizayn", desc: "Marketing va ijtimoiy tarmoq dizaynlari", color: "bg-emerald-100 text-emerald-700", tag: "" },
+  { icon: "◈", title: "AI Dizayn", desc: "Instagram post, reklama banneri va marketing dizaynlari", color: "bg-emerald-100 text-emerald-700", tag: "Yangi" },
   { icon: "◎", title: "AI Tarjima", desc: "Matn va kontentni boshqa tillarga tarjima qiling", color: "bg-orange-100 text-orange-700", tag: "" },
 ];
 
@@ -193,6 +193,7 @@ export default function Home() {
                 <button key={tool.title} onClick={() => {
                   const routes: Record<string, string> = {
                     "AI Rasm": "/tools/image",
+                    "AI Dizayn": "/tools/design",
                     "AI Matn": "/tools/text",
                     "AI Tarjima": "/tools/translate",
                   };
