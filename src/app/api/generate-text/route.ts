@@ -140,6 +140,68 @@ export async function POST(request: Request) {
   }
   const safeInstagram = typeof instagramHandle === "string" ? instagramHandle.replace(/^@/, "").trim().slice(0,80) : "";
   const safeStoreUrl = typeof storeUrl === "string" ? storeUrl.trim().slice(0,500) : "";
+  // Fetch public page metadata before asking the model to analyze the link.
+  // Only allow Instagram and Uzum hosts to avoid SSRF.
+  let pageContext = "Sahifa havolasidan avtomatik ma’lumot olinmadi.";
+  let pageFetchStatus = "not_requested";
+  const candidateUrl = safeStoreUrl || (safeInstagram ? "https://www.instagram.com/" + safeInstagram + "/" : "");
+  if (candidateUrl) {
+    try {
+      const parsed = new URL(candidateUrl);
+      const host = parsed.hostname.toLowerCase();
+      const allowedHost = host === "instagram.com" || host.endsWith(".instagram.com") || host === "uzum.uz" || host.endsWith(".uzum.uz");
+      if (!["https:", "http:"].includes(parsed.protocol) || !allowedHost) {
+        pageFetchStatus = "unsupported_host";
+        pageContext = "Havola qo‘llab-quvvatlanmaydi. Faqat instagram.com yoki uzum.uz havolasidan foydalaning.";
+      } else {
+        parsed.search = "";
+        const pageResponse = await fetch(parsed.toString(), {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (compatible; IJODAI-PageAnalyzer/1.0)",
+            "Accept": "text/html,application/xhtml+xml",
+            "Accept-Language": "uz,en;q=0.8,ru;q=0.6",
+          },
+          signal: AbortSignal.timeout(7000),
+          redirect: "follow",
+        });
+        const finalUrl = new URL(pageResponse.url);
+        const finalHost = finalUrl.hostname.toLowerCase();
+        const finalAllowed = finalHost === "instagram.com" || finalHost.endsWith(".instagram.com") || finalHost === "uzum.uz" || finalHost.endsWith(".uzum.uz");
+        if (!finalAllowed) {
+          pageFetchStatus = "redirect_blocked";
+          pageContext = "Sahifa boshqa domenga yo‘naltirdi, xavfsizlik uchun ochilmadi.";
+        } else if (!pageResponse.ok) {
+          pageFetchStatus = "http_" + pageResponse.status;
+          pageContext = "Sahifa serveri HTTP " + pageResponse.status + " xatosini qaytardi.";
+        } else {
+          const html = (await pageResponse.text()).slice(0, 1200000);
+          const decode = (s: string) => s.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#x27;|&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+          const metas: string[] = [];
+          const metaRegex = /<meta\b[^>]*(?:property|name)=["'](?:og:title|og:description|og:image|description|twitter:title|twitter:description)["'][^>]*>/gi;
+          for (const match of html.matchAll(metaRegex)) metas.push(match[0]);
+          const extracted = metas.map((tag) => {
+            const key = tag.match(/(?:property|name)=["']([^"']+)/i)?.[1] || "";
+            const value = tag.match(/content=["']([^"']*)["']/i)?.[1] || "";
+            return key + ": " + decode(value);
+          });
+          const title = decode(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || "").replace(/<[^>]+>/g, " ").trim();
+          const jsonLd = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)].slice(0, 3).map((m) => m[1].replace(/<[^>]+>/g, " ").slice(0, 3000));
+          const cleanMeta = [...new Set([title ? "title: " + title : "", ...extracted, ...jsonLd])].filter(Boolean);
+          if (cleanMeta.length) {
+            pageContext = "OCHILGAN SAHIFADAN OLINGAN MA’LUMOTLAR (to‘liq sahifa bo‘lmasligi mumkin):\n" + cleanMeta.join("\n").slice(0, 9000);
+            pageFetchStatus = "metadata_extracted";
+          } else {
+            pageContext = "Havola serverdan ochildi, ammo o‘qiladigan profil/do‘kon metama’lumoti olinmadi. Sahifa login devori yoki JavaScript bilan yuklanishi mumkin.";
+            pageFetchStatus = "no_metadata";
+          }
+        }
+      }
+    } catch (error) {
+      pageFetchStatus = error instanceof Error && error.name === "TimeoutError" ? "timeout" : "fetch_failed";
+      pageContext = pageFetchStatus === "timeout" ? "Sahifa 7 soniyada javob bermadi (timeout)." : "Sahifani serverdan ochib bo‘lmadi. Platforma avtomatik so‘rovni bloklagan yoki tarmoq xatosi yuz bergan bo‘lishi mumkin.";
+    }
+  }
+
 
   const safeType =
     typeof type === "string" && allowedTypes.has(type) ? type : "Boshqa";
@@ -185,7 +247,7 @@ export async function POST(request: Request) {
         {
           role: "user",
           content: [
-            { type: "input_text", text: `Matn turi: ${safeType}\nOhang: ${safeTone}\nMavzu/topshiriq: ${topic.trim() || "Yuklangan hujjatni tahlil qil."}\n\nBiriktirilgan hujjat bo‘lsa, uning mazmuniga tayangan holda topshiriqni bajar. Muhim faktlarni o‘zgartirma va hujjatda yo‘q ma’lumotlarni to‘qima. Hujjatni qisqartirish, tushuntirish, xatolarini topish yoki qayta yozish topshirig‘iga mos javob ber.` },
+            { type: "input_text", text: `Matn turi: ${safeType}\nOhang: ${safeTone}\nMavzu/topshiriq: ${topic.trim() || "Yuklangan hujjatni tahlil qil."}\nHavolani ochish holati: ${pageFetchStatus}\nSahifadan olingan kontekst:\n${pageContext}\n\nBiriktirilgan hujjat bo‘lsa, uning mazmuniga tayangan holda topshiriqni bajar. Muhim faktlarni o‘zgartirma va hujjatda yo‘q ma’lumotlarni to‘qima. Hujjatni qisqartirish, tushuntirish, xatolarini topish yoki qayta yozish topshirig‘iga mos javob ber.` },
             ...(attachedFile ? [{ type: "input_file" as const, filename: attachedFile.name, file_data: attachedFile.data }] : []),
             ...(analysisImage ? [{ type: "input_image" as const, image_url: analysisImage.data, detail: "high" as const }] : []),
           ],
