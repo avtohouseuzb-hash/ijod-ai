@@ -4,9 +4,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
-type DesignKind = "instagram" | "story" | "banner" | "poster";
+type DesignKind = "marketplace" | "instagram" | "story" | "banner" | "poster";
 
 const formats: { id: DesignKind; title: string; size: string; description: string }[] = [
+  { id: "marketplace", title: "Marketplace mahsulot kartasi", size: "1024x1536", description: "Vertikal mahsulot banneri" },
   { id: "instagram", title: "Instagram post", size: "1024x1024", description: "Kvadrat post" },
   { id: "story", title: "Story / Reels", size: "1024x1536", description: "Tik format" },
   { id: "banner", title: "Reklama banneri", size: "1536x1024", description: "Gorizontal format" },
@@ -22,7 +23,10 @@ const ideas = [
 
 export default function DesignToolPage() {
   const [prompt, setPrompt] = useState("");
-  const [format, setFormat] = useState<DesignKind>("instagram");
+  const [format, setFormat] = useState<DesignKind>("marketplace");
+  const [marketplace, setMarketplace] = useState("Uzum Market");
+  const [productName, setProductName] = useState("");
+  const [benefits, setBenefits] = useState("");
   const [image, setImage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
