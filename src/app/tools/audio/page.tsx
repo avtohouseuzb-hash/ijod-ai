@@ -109,7 +109,7 @@ export default function AudioToolPage() {
         <header className="mt-6 rounded-3xl bg-gradient-to-br from-[#191326] to-violet-900 p-8 text-white">
           <p className="text-xs font-bold tracking-widest text-violet-200">IJOD LABORATORIYASI</p>
           <h1 className="mt-3 text-3xl font-black">AI Ovoz</h1>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-white/75">Matningizni tabiiy nutqqa aylantiring, tinglang va MP3 faylini yuklab oling.</p>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-white/75">Matningizni AI yaratgan nutqqa aylantiring, tinglang va MP3 faylini yuklab oling.</p>
           <p className="mt-4 inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold">✦ {credits === null ? "Kredit tekshirilmoqda..." : `${credits} kredit`}</p>
         </header>
 
@@ -141,7 +141,7 @@ export default function AudioToolPage() {
             </section>
           )}
 
-          <p className="mt-4 text-xs leading-5 text-gray-400">Har bir muvaffaqiyatli ovoz yaratish so‘rovi 1 IJOD AI kreditidan foydalanadi. OpenAI API sarfi IJOD AI kreditlaridan alohida hisoblanadi. O‘zbekcha talaffuz sifati matn va tanlangan ovozga qarab farq qilishi mumkin.</p>
+          <p className="mt-4 text-xs leading-5 text-gray-400">Bu audio sun’iy intellekt tomonidan yaratiladi, inson ovozi emas. Har bir muvaffaqiyatli so‘rov 1 IJOD AI kreditidan foydalanadi; OpenAI API sarfi alohida hisoblanadi. O‘zbekcha talaffuz sifati farq qilishi mumkin.</p>
         </section>
       </div>
     </main>
