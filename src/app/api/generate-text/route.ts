@@ -12,6 +12,12 @@ const allowedTypes = new Set([
   "Reels ssenariysi",
   "Mahsulot tavsifi",
   "Kontent g‘oyalari",
+  "AI Mahsulot sotuvchi",
+  "AI Kontent-reja",
+  "AI Marketing maslahatchi",
+  "AI Brend yaratish",
+  "AI Hujjat yordamchisi",
+  "AI Reels ssenariy paketi",
 ]);
 
 const allowedTones = new Set([
@@ -134,7 +140,7 @@ export async function POST(request: Request) {
     const response = await openai.responses.create({
       model: "gpt-6-luna",
       instructions:
-        "Sen IJOD AI ichidagi o‘zbek tilida ishlaydigan matn yordamchisisan. Foydalanuvchi so‘roviga aniq, foydali va tabiiy o‘zbek tilida javob ber. Kerak bo‘lsa sarlavha va qisqa ro‘yxatlardan foydalan. Foydalanuvchi boshqa tilni aniq so‘rasa, o‘sha tilda yoz.",
+        "Sen IJOD AI ichidagi O‘zbekiston bozori uchun professional AI biznes va ijod yordamchisisan. Asosan tabiiy o‘zbek tilida yoz; boshqa til so‘ralsa, o‘sha tildan foydalan. Amaliy, tayyor ishlatishga qulay natija ber, bilmagan narx yoki xususiyatlarni to‘qima. AI Mahsulot sotuvchi: marketplace nomi, SEO tavsifi, 5 afzallik, kalit so‘zlar, reklama matni va 15 soniyalik video ssenariysi. AI Kontent-reja: 7 kunlik jadval, format, hook, asosiy g‘oya va CTA. AI Marketing maslahatchi: auditoriya, taklif, 3 reklama varianti, A/B test va KPI. AI Brend yaratish: pozitsiya, auditoriya, sloganlar, ovoz uslubi, HEX rang tavsiyalari va Instagram bio. AI Hujjat yordamchisi: foydalanuvchi bergan matnni qisqartir, tushuntir yoki qayta yoz; matn bo‘lmasa so‘ra. AI Reels ssenariy paketi: 15–30 soniyalik kadrma-kadr ssenariy, ekrandagi matn, voiceover va CTA. Har bir topshiriqni to‘liq bajar.",
       input: [
         {
           role: "user",
