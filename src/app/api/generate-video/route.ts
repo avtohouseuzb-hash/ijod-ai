@@ -47,6 +47,7 @@ export async function POST(request: Request) {
   const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
   const images = Array.isArray(body?.images) ? body.images : [];
   const audioData = typeof body?.audio === "string" ? body.audio : "";
+  const duration = body?.duration === "10" ? 10 : 6;
   if (!["text", "images", "lipsync"].includes(mode)) return jsonError("Video rejimi noto‘g‘ri.");
   if (mode !== "lipsync" && prompt.length < 5) return jsonError("Video tavsifini yozing.");
   if (mode === "images" && !images.length) return jsonError("Kamida bitta rasm qo‘shing.");
@@ -68,9 +69,11 @@ export async function POST(request: Request) {
     const firstImageUrl = images.length ? await uploadFile(token, decode(images[0], ["image/"])) : undefined;
     let prediction;
     if (mode === "text" || mode === "images") {
-      prediction = await startPrediction(token, "minimax/video-01", {
+      prediction = await startPrediction(token, "minimax/hailuo-2.3", {
         prompt: prompt || "Animate the provided image naturally with subtle cinematic camera movement.",
         ...(firstImageUrl ? { first_frame_image: firstImageUrl } : {}),
+        duration,
+        resolution: "768p",
         prompt_optimizer: true,
       });
     } else {
