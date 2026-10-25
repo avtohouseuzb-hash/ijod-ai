@@ -71,16 +71,16 @@ export async function POST(request: Request) {
     const modelName = mode === "tryon" ? "tryon-max" : "product-to-model";
     const inputs: Record<string, unknown> = {
       product_image: productImage,
-      resolution,
-      generation_mode: generationMode,
       output_format: "png",
       num_images: 1,
+      return_base64: true,
     };
+    if (mode === "tryon") {
+      inputs.resolution = resolution;
+      inputs.generation_mode = generationMode;
+    }
     if (mode === "tryon" && modelImage) inputs.model_image = modelImage;
     if (prompt) inputs.prompt = prompt;
-    if (mode === "product" && body.aspectRatio && ["1:1", "3:4", "4:3", "9:16", "16:9", "2:3", "3:2", "4:5", "5:4"].includes(String(body.aspectRatio))) {
-      inputs.aspect_ratio = body.aspectRatio;
-    }
 
     const startResponse = await fashnRequest("run", {
       method: "POST",
@@ -102,6 +102,7 @@ export async function POST(request: Request) {
         outputUrl = statusData.output[0];
         break;
       }
+      if (statusData.status === "starting" || statusData.status === "in_queue" || statusData.status === "processing") continue;
       if (statusData.status === "failed") {
         const detail = typeof statusData.error?.message === "string" ? statusData.error.message : "AI rasmni yarata olmadi.";
         throw new Error(detail);
