@@ -29,6 +29,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "So‘rov formati noto‘g‘ri." }, { status: 400 });
   }
   const prompt = body && typeof body === "object" ? (body as { prompt?: unknown }).prompt : undefined;
+  const requestedSize = body && typeof body === "object" ? (body as { size?: unknown }).size : undefined;
+  const size = requestedSize === "1024x1536" || requestedSize === "1536x1024" ? requestedSize : "1024x1024";
   if (typeof prompt !== "string" || prompt.trim().length < 3) {
     return NextResponse.json({ error: "Rasm tavsifini kamida 3 ta belgi bilan kiriting." }, { status: 400 });
   }
@@ -51,7 +53,7 @@ export async function POST(request: Request) {
     const result = await openai.images.generate({
       model: "gpt-image-2.5-sunburst",
       prompt: prompt.trim(),
-      size: "1024x1024",
+      size,
     });
     const b64 = result.data?.[0]?.b64_json;
     if (!b64) throw new Error("Image API bo‘sh natija qaytardi.");
