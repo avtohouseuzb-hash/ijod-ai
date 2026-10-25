@@ -2,6 +2,11 @@ import OpenAI from "openai";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
+const accentInstructions: Record<string, string> = {
+  "uz-neutral": "Speak Uzbek naturally and clearly, with neutral standard Uzbek pronunciation.",
+  "uz-tashkent": "Speak Uzbek naturally, with a subtle Tashkent-style Uzbek accent. Do not switch to Russian or translate.",
+  "uz-turkic": "Speak clearly with a gentle Central Asian Turkic cadence close to natural Uzbek speech.",
+};
 const allowedVoices = new Set([
   "alloy", "ash", "ballad", "coral", "echo", "fable", "marin",
   "cedar", "nova", "onyx", "sage", "shimmer", "verse",
@@ -27,6 +32,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "So‘rov formati noto‘g‘ri." }, { status: 400 });
   }
   const requested = body && typeof body === "object" ? (body as { voice?: unknown }).voice : undefined;
+  const requestedAccent = body && typeof body === "object" ? (body as { accent?: unknown }).accent : undefined;
+  const accent = typeof requestedAccent === "string" && accentInstructions[requestedAccent] ? requestedAccent : "uz-neutral";
   const voice = typeof requested === "string" && allowedVoices.has(requested) ? requested : "alloy";
 
   try {
@@ -36,7 +43,7 @@ export async function POST(request: Request) {
       voice,
       input: "Assalomu alaykum! Bu IJOD AI ovoz namunasidir.",
       response_format: "mp3",
-      instructions: "Speak clearly and naturally in Uzbek. This is a short voice preview.",
+      instructions: accentInstructions[accent] + " This is a short Uzbek voice preview.",
     });
     return new Response(Buffer.from(await speech.arrayBuffer()), {
       status: 200,
