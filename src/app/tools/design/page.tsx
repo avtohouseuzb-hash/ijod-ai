@@ -92,7 +92,7 @@ export default function DesignToolPage() {
         <header className="mt-6 rounded-3xl bg-gradient-to-br from-[#153b31] to-emerald-800 p-7 text-white sm:p-9">
           <p className="text-xs font-bold tracking-widest text-emerald-100">IJOD LABORATORIYASI</p>
           <h1 className="mt-3 text-3xl font-black">AI Dizayn</h1>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-white/80">Instagram postlari, Story, reklama bannerlari va posterlarni g‘oyangiz asosida yarating.</p>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-white/80">Uzum Market, Yandex Market, Wildberries va Ozon uchun mahsulot kartalari hamda reklama bannerlari yarating.</p>
           <p className="mt-4 inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold">✦ {credits === null ? "Kredit tekshirilmoqda..." : `${credits} kredit`}</p>
         </header>
 
