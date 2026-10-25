@@ -16,6 +16,8 @@ export default function VirtualTryOnPage() {
   const [generationMode, setGenerationMode] = useState("balanced");
   const [aspectRatio, setAspectRatio] = useState("3:4");
   const [result, setResult] = useState("");
+  const [downloadError, setDownloadError] = useState("");
+  const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [credits, setCredits] = useState<number | null>(null);
@@ -69,6 +71,35 @@ export default function VirtualTryOnPage() {
       reader.onerror = () => reject(new Error("Rasmni o‘qib bo‘lmadi."));
       reader.readAsDataURL(file);
     });
+  }
+
+  async function downloadResult() {
+    if (!result || downloading) return;
+    setDownloading(true);
+    setDownloadError("");
+    try {
+      let blob: Blob;
+      if (result.startsWith("data:")) {
+        const response = await fetch(result);
+        blob = await response.blob();
+      } else {
+        const response = await fetch(result);
+        if (!response.ok) throw new Error("Rasmni olish imkoni bo‘lmadi. Yangi oynada ochib saqlab ko‘ring.");
+        blob = await response.blob();
+      }
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = "ijod-ai-virtual-kiyintirish.png";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
+    } catch {
+      setDownloadError("Avtomatik yuklab olish bloklandi. «Rasmni yangi oynada ochish» tugmasini bosing, keyin rasm ustiga bosib turib «Rasmni yuklab olish»ni tanlang.");
+    } finally {
+      setDownloading(false);
+    }
   }
 
   async function generate() {
@@ -148,7 +179,7 @@ export default function VirtualTryOnPage() {
           <button disabled={!product || (mode === "tryon" && !person) || loading} onClick={generate} className="mt-6 w-full rounded-xl bg-violet-600 p-3.5 text-sm font-bold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40">{loading ? "AI rasm tayyorlayapti... (bu 10–60 soniya olishi mumkin)" : "✦ Rasm yaratish (1 kredit)"}</button>
           {loading && <p className="mt-3 text-center text-xs text-gray-500">Rasmlaringiz AI model tomonidan qayta ishlanmoqda. Iltimos, sahifani yopmang.</p>}
           {error && <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-          {result && <section className="mt-7 rounded-2xl border border-violet-100 bg-violet-50/50 p-5"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold">Natija tayyor</h2><a href={result} target="_blank" rel="noreferrer" className="rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm font-semibold text-violet-700">Rasmni yangi oynada ochish ↗</a></div><img src={result} alt="AI Virtual Kiyintirish natijasi" className="mx-auto mt-4 max-h-[900px] w-full rounded-xl object-contain" /><p className="mt-3 text-xs leading-5 text-gray-500">Natija OpenAI orqali yaratilgan natijani yuklab olib saqlang.</p></section>}
+          {result && <section className="mt-7 rounded-2xl border border-violet-100 bg-violet-50/50 p-5"><h2 className="text-lg font-bold">Natija tayyor</h2><div className="mt-4 grid gap-3 sm:grid-cols-2"><button type="button" onClick={downloadResult} disabled={downloading} className="rounded-xl bg-violet-600 px-4 py-3 text-sm font-bold text-white disabled:opacity-50">{downloading ? "Yuklanmoqda..." : "⬇ Rasmni yuklab olish"}</button><a href={result} target="_blank" rel="noreferrer" className="rounded-xl border border-violet-200 bg-white px-4 py-3 text-center text-sm font-semibold text-violet-700">Rasmni yangi oynada ochish ↗</a></div>{downloadError && <p role="alert" className="mt-3 rounded-xl bg-amber-50 p-3 text-sm leading-5 text-amber-800">{downloadError}</p>}<img src={result} alt="AI Virtual Kiyintirish natijasi" className="mx-auto mt-4 max-h-[900px] w-full rounded-xl object-contain" /><p className="mt-3 text-xs leading-5 text-gray-500">Telefonda yuklangan rasm odatda «Downloads / Yuklamalar» papkasiga tushadi.</p></section>}
           <p className="mt-5 text-xs leading-5 text-gray-400">Kiritilgan suratlar OpenAI API orqali qayta ishlanadi. Yuklashdan oldin suratdan foydalanishga ruxsatingiz borligiga ishonch hosil qiling. Har bir muvaffaqiyatli generatsiya IJOD AI hisobidan 1 kredit ishlatadi; API xatoligida kredit qaytariladi.</p>
         </section>
       </div>
