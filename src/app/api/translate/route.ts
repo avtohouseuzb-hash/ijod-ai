@@ -50,6 +50,9 @@ export async function POST(request: Request) {
   };
   const imageDataUrl = typeof (body as { imageDataUrl?: unknown }).imageDataUrl === "string" ? (body as { imageDataUrl: string }).imageDataUrl : "";
   const hasImage = imageDataUrl.length > 0;
+  if (hasImage && (!(imageDataUrl.startsWith("data:image/jpeg;base64,") || imageDataUrl.startsWith("data:image/png;base64,") || imageDataUrl.startsWith("data:image/webp;base64,")) || imageDataUrl.length > 3000000)) {
+    return NextResponse.json({ error: "Rasm formati yoki hajmi noto‘g‘ri. JPG, PNG yoki WEBP rasm yuklang." }, { status: 400 });
+  }
   if ((!hasImage && (typeof text !== "string" || text.trim().length < 2)) || (hasImage && typeof text !== "string")) {
     return NextResponse.json({ error: "Tarjima uchun matn kiriting yoki matnli rasm yuklang." }, { status: 400 });
   }
