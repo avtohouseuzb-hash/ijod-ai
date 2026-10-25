@@ -15,10 +15,10 @@ const formats: { id: DesignKind; title: string; size: string; description: strin
 ];
 
 const ideas = [
-  "Minimalistik uslubdagi zamonaviy kafe uchun Instagram reklama posti",
-  "Ayollar kiyim do‘koni uchun nafis, premium uslubdagi yangi kolleksiya reklamasi",
-  "Bolalar o‘quv markazi uchun rang-barang, quvnoq va e’tibor tortuvchi reklama",
-  "Onlayn do‘kon uchun mahsulotni markazga qo‘ygan professional reklama dizayni",
+  "Marketplace uchun ayollar ko‘ylagi mahsulot kartasi: och fon, mahsulot aniq va markazda",
+  "Uzum Market uchun oshxona gadjeti banneri: toza fon, mahsulot asosiy fokusda",
+  "Wildberries yoki Ozon uchun sumka mahsulot kartasi: zamonaviy premium uslub",
+  "Yandex Market uchun bolalar krossovkasi banneri: mahsulot katta va aniq ko‘rinsin",
 ];
 
 export default function DesignToolPage() {
