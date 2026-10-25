@@ -115,19 +115,24 @@ export default function DesignToolPage() {
               ))}
             </div>
 
-            <section className="mt-6 rounded-2xl border border-dashed border-emerald-300 bg-emerald-50/50 p-4">
-              <h3 className="font-bold">Rasm yuklash (ixtiyoriy)</h3>
-              <p className="mt-1 text-xs leading-5 text-gray-500">Mahsulotingizning asl rasmini yuklang. AI mahsulot ko‘rinishini saqlab, fon va reklama dizaynini o‘zgartiradi. JPG, PNG yoki WEBP, 10 MB gacha.</p>
-              <input type="file" accept="image/png,image/jpeg,image/webp" className="mt-3 block w-full text-sm" onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (!file) { setProductImage(""); setProductImageName(""); return; }
-                if (file.size > 10 * 1024 * 1024) { setError("Rasm hajmi 10 MB dan oshmasin."); e.target.value = ""; return; }
-                const reader = new FileReader();
-                reader.onload = () => { setProductImage(typeof reader.result === "string" ? reader.result : ""); setProductImageName(file.name); setError(""); };
-                reader.onerror = () => setError("Rasmni o‘qib bo‘lmadi. Boshqa rasm tanlang.");
-                reader.readAsDataURL(file);
-              }} />
-              {productImage && <div className="mt-3 flex items-center gap-3"><img src={productImage} alt="Yuklangan mahsulot" className="h-20 w-20 rounded-xl border border-gray-200 object-contain bg-white" /><div className="min-w-0 flex-1 text-xs text-gray-600">{productImageName}<button type="button" onClick={() => { setProductImage(""); setProductImageName(""); }} className="mt-2 block font-semibold text-red-600">Rasmni olib tashlash</button></div></div>}
+            <section className="mt-6 rounded-2xl border-2 border-dashed border-emerald-400 bg-emerald-50 p-4 sm:p-5">
+              <h3 className="flex items-center gap-2 text-base font-extrabold"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-700 text-xl text-white">+</span> Mahsulot rasmini qo‘shing</h3>
+              <p className="mt-2 text-sm leading-5 text-gray-600">Shu tugmani bosib telefoningizdan rasm tanlang. AI mahsulotni saqlab, fon va reklama dizaynini o‘zgartiradi.</p>
+              <label className="mt-4 flex min-h-24 w-full cursor-pointer flex-col items-center justify-center rounded-xl border border-emerald-300 bg-white px-4 py-4 text-center shadow-sm transition hover:border-emerald-600 hover:bg-emerald-50">
+                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-100 text-3xl font-bold leading-none text-emerald-800">+</span>
+                <span className="mt-2 text-sm font-extrabold text-emerald-800">{productImage ? "Boshqa rasm tanlash" : "＋ RASM QO‘SHISH"}</span>
+                <span className="mt-1 text-xs text-gray-500">JPG, PNG yoki WEBP · 10 MB gacha</span>
+                <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) { setProductImage(""); setProductImageName(""); return; }
+                  if (file.size > 10 * 1024 * 1024) { setError("Rasm hajmi 10 MB dan oshmasin."); e.target.value = ""; return; }
+                  const reader = new FileReader();
+                  reader.onload = () => { setProductImage(typeof reader.result === "string" ? reader.result : ""); setProductImageName(file.name); setError(""); };
+                  reader.onerror = () => setError("Rasmni o‘qib bo‘lmadi. Boshqa rasm tanlang.");
+                  reader.readAsDataURL(file);
+                }} />
+              </label>
+              {productImage && <div className="mt-3 flex items-center gap-3 rounded-xl border border-emerald-200 bg-white p-3"><img src={productImage} alt="Yuklangan mahsulot" className="h-20 w-20 rounded-xl border border-gray-200 object-contain bg-white" /><div className="min-w-0 flex-1 text-xs text-gray-600"><p className="break-all font-semibold">{productImageName}</p><button type="button" onClick={() => { setProductImage(""); setProductImageName(""); }} className="mt-2 font-semibold text-red-600">Rasmni olib tashlash</button></div></div>}
             </section>
             {format === "marketplace" && <>
               <label className="mt-6 block text-sm font-semibold">Mahsulot nomi<input value={productName} onChange={(e) => setProductName(e.target.value)} maxLength={120} placeholder="Masalan: ayollar qishki krossovkasi" className="mt-2 w-full rounded-xl border border-gray-200 p-3 font-normal outline-none focus:border-emerald-400" /></label>
