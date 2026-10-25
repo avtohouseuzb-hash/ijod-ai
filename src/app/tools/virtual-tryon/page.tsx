@@ -64,13 +64,44 @@ export default function VirtualTryOnPage() {
     setResult("");
   }
 
-  function toDataUrl(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("Rasmni o‘qib bo‘lmadi."));
-      reader.onerror = () => reject(new Error("Rasmni o‘qib bo‘lmadi."));
-      reader.readAsDataURL(file);
-    });
+  async function toDataUrl(file: File): Promise<string> {
+    // Compress both photos before sending JSON; Vercel has a request body limit.
+    const bitmap = await createImageBitmap(file);
+    try {
+      const maxSide = 1400;
+      const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Rasmni qayta ishlash imkoni bo‘lmadi.");
+      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const encode = (quality: number) => new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Rasmni siqib bo‘lmadi.")), "image/jpeg", quality);
+      });
+      let blob = await encode(0.82);
+      if (blob.size > 1500000) blob = await encode(0.68);
+      if (blob.size > 2000000) {
+        const smaller = document.createElement("canvas");
+        const shrink = Math.min(1, 1100 / Math.max(canvas.width, canvas.height));
+        smaller.width = Math.max(1, Math.round(canvas.width * shrink));
+        smaller.height = Math.max(1, Math.round(canvas.height * shrink));
+        const smallerContext = smaller.getContext("2d");
+        if (!smallerContext) throw new Error("Rasmni qayta ishlash imkoni bo‘lmadi.");
+        smallerContext.drawImage(canvas, 0, 0, smaller.width, smaller.height);
+        blob = await new Promise<Blob>((resolve, reject) => {
+          smaller.toBlob((value) => value ? resolve(value) : reject(new Error("Rasmni siqib bo‘lmadi.")), "image/jpeg", 0.65);
+        });
+      }
+      return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("Rasmni o‘qib bo‘lmadi."));
+        reader.onerror = () => reject(new Error("Rasmni o‘qib bo‘lmadi."));
+        reader.readAsDataURL(blob);
+      });
+    } finally {
+      bitmap.close();
+    }
   }
 
   async function downloadResult() {
@@ -115,7 +146,16 @@ export default function VirtualTryOnPage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({ mode, productImage, modelImage, prompt, resolution, generationMode, aspectRatio }),
       });
-      const data: { image?: string; error?: string; remainingCredits?: number } = await response.json();
+      const responseText = await response.text();
+      let data: { image?: string; error?: string; remainingCredits?: number };
+      try {
+        data = JSON.parse(responseText) as { image?: string; error?: string; remainingCredits?: number };
+      } catch {
+        if (response.status === 413 || /request entity too large|payload too large/i.test(responseText)) {
+          throw new Error("Rasmlar hajmi server limitidan oshib ketdi. Iltimos, rasmlarni kichikroq hajmda qayta yuklang.");
+        }
+        throw new Error("Serverdan noto‘g‘ri javob keldi (" + response.status + "). Sahifani yangilang va qayta urinib ko‘ring.");
+      }
       if (!response.ok) throw new Error(data.error || "Rasm yaratilmadi.");
       if (!data.image) throw new Error("AI bo‘sh natija qaytardi.");
       setResult(data.image);
