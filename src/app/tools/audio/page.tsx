@@ -4,6 +4,12 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
+const accents = [
+  { id: "uz-neutral", name: "O‘zbekcha — tabiiy, neytral" },
+  { id: "uz-tashkent", name: "O‘zbekcha — Toshkentga yaqin talaffuz" },
+  { id: "uz-turkic", name: "O‘zbekcha — yumshoq turkiy ohang" },
+];
+
 const voices = [
   { id: "alloy", name: "Alloy", detail: "Muvozanatli" },
   { id: "ash", name: "Ash", detail: "Aniq va ravshan" },
@@ -22,7 +28,8 @@ const voices = [
 
 export default function AudioToolPage() {
   const [text, setText] = useState("");
-  const [voice, setVoice] = useState("alloy");
+  const [voice, setVoice] = useState("marin");
+  const [accent, setAccent] = useState("uz-neutral");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [audioUrl, setAudioUrl] = useState("");
@@ -71,7 +78,7 @@ export default function AudioToolPage() {
       const response = await fetch("/api/preview-audio", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
-        body: JSON.stringify({ voice }),
+        body: JSON.stringify({ voice, accent }),
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -155,7 +162,7 @@ export default function AudioToolPage() {
       const response = await fetch("/api/generate-audio", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ text: text.trim(), voice }),
+        body: JSON.stringify({ text: text.trim(), voice, accent }),
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -211,6 +218,13 @@ export default function AudioToolPage() {
               {voices.map((item) => <option key={item.id} value={item.id}>{item.name} — {item.detail}</option>)}
             </select>
           </label>
+          <label className="mt-5 block text-sm font-semibold">
+            Talaffuz uslubi
+            <select value={accent} onChange={(e) => setAccent(e.target.value)} className="mt-2 w-full rounded-xl border border-gray-200 bg-white p-3">
+              {accents.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+          </label>
+          <p className="mt-2 text-xs leading-5 text-gray-400">Bu sozlama AI’ga o‘zbekcha talaffuzni yo‘naltiradi; alohida yozib olingan o‘zbek ovozi emas, natija farq qilishi mumkin.</p>
           <button type="button" disabled={previewLoading} onClick={previewVoice} className="mt-3 w-full rounded-xl border border-violet-200 bg-violet-50 p-3 text-sm font-bold text-violet-800 disabled:opacity-50">
             {previewLoading ? "Namuna tayyorlanmoqda..." : "▶ " + (voices.find((item) => item.id === voice)?.name ?? "Tanlangan") + " ovozini eshitib ko‘rish"}
           </button>
