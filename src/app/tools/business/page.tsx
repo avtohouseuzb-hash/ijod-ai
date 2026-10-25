@@ -16,6 +16,9 @@ const modes = [
 export default function BusinessToolsPage() {
   const [modeId, setModeId] = useState("product");
   const [topic, setTopic] = useState("");
+  const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const [documentDataUrl, setDocumentDataUrl] = useState("");
+  const [documentError, setDocumentError] = useState("");
   const [productName, setProductName] = useState("");
   const [category, setCategory] = useState("Kiyim va aksessuarlar");
   const [price, setPrice] = useState("");
@@ -64,7 +67,7 @@ export default function BusinessToolsPage() {
 
   async function generate() {
     if (loading) return;
-    if (modeId === "product" ? (!productName.trim() || !topic.trim()) : !topic.trim()) return;
+    if (modeId === "product" ? (!productName.trim() || !topic.trim()) : modeId === "document" ? (!topic.trim() && !documentDataUrl) : !topic.trim()) return;
     setLoading(true); setError(""); setResult(""); setResultImage(""); setBrandLogo(""); setCopied(false);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -84,7 +87,7 @@ export default function BusinessToolsPage() {
         const response = await fetch("/api/generate-text", {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
-          body: JSON.stringify({ type: mode.type, topic: topic.trim(), tone }),
+          body: JSON.stringify({ type: mode.type, topic: topic.trim(), tone, ...(modeId === "document" && documentDataUrl ? { fileDataUrl: documentDataUrl, fileName: documentFile?.name, fileMimeType: documentFile?.type || mimeFromName(documentFile?.name || "") } : {}) }),
         });
         const data: { text?: string; image?: string; error?: string; remainingCredits?: number } = await response.json();
         if (!response.ok) throw new Error(data.error || "Natija yaratilmadi.");
@@ -95,6 +98,24 @@ export default function BusinessToolsPage() {
       }
     } catch (e) { setError(e instanceof Error ? e.message : "Xatolik yuz berdi. Qayta urinib ko‘ring."); }
     finally { setLoading(false); }
+  }
+
+  function mimeFromName(name: string) {
+    const ext = name.toLowerCase().split(".").pop();
+    return ({ pdf: "application/pdf", docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", doc: "application/msword", xls: "application/vnd.ms-excel", csv: "text/csv", txt: "text/plain" } as Record<string, string>)[ext || ""] || "application/octet-stream";
+  }
+
+  function handleDocumentFile(file?: File) {
+    setDocumentError("");
+    if (!file) return;
+    const allowed = [".pdf", ".docx", ".xlsx", ".doc", ".xls", ".csv", ".txt"];
+    if (!allowed.some((ext) => file.name.toLowerCase().endsWith(ext))) { setDocumentError("PDF, Word, Excel, CSV yoki TXT faylini tanlang."); return; }
+    if (file.size > 8 * 1024 * 1024) { setDocumentError("Hujjat hajmi 8 MB dan oshmasin."); return; }
+    setDocumentFile(file);
+    const reader = new FileReader();
+    reader.onload = () => { if (typeof reader.result === "string") setDocumentDataUrl(reader.result); };
+    reader.onerror = () => setDocumentError("Faylni o‘qib bo‘lmadi. Qayta yuklang.");
+    reader.readAsDataURL(file);
   }
 
   async function handleProductImage(file?: File) {
@@ -192,6 +213,7 @@ export default function BusinessToolsPage() {
               {productImageError && <p className="mt-2 text-sm text-red-600">{productImageError}</p>}
             </div>
           </div>}
+          {modeId === "document" && <div className="mt-5 rounded-2xl border border-violet-100 bg-violet-50/40 p-4 sm:p-5"><div className="text-base font-bold">Hujjat yuklash</div><p className="mt-1 text-sm leading-6 text-gray-500">PDF, Word, Excel, CSV yoki TXT hujjatini tanlang. Hujjatni yuklamasdan ham matnni shu pastdagi maydonga joylashingiz mumkin.</p>{documentFile ? <div className="mt-3 flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-sm font-bold text-violet-700">{documentFile.name.split(".").pop()?.toUpperCase()}</span><div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold">{documentFile.name}</div><div className="text-xs text-gray-500">{(documentFile.size / 1024 / 1024).toFixed(2)} MB</div></div><button type="button" onClick={() => { setDocumentFile(null); setDocumentDataUrl(""); setDocumentError(""); }} className="rounded-lg border border-gray-200 px-3 py-2 text-sm">Olib tashlash</button></div> : <label className="mt-3 flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-violet-200 bg-white text-center hover:bg-violet-50"><span className="text-3xl font-light text-violet-600">＋</span><span className="mt-2 text-sm font-bold">Hujjat yuklash</span><span className="mt-1 text-xs text-gray-400">PDF · DOCX · XLSX · DOC · XLS · CSV · TXT</span><span className="mt-1 text-xs text-gray-400">8 MB gacha</span><input type="file" accept=".pdf,.docx,.xlsx,.doc,.xls,.csv,.txt,application/pdf,text/plain,text/csv" onChange={(e) => handleDocumentFile(e.target.files?.[0])} className="hidden" /></label>}{documentError && <p className="mt-2 text-sm text-red-600">{documentError}</p>}</div>}
           <label className="mt-5 block text-sm font-semibold">{modeId === "product" ? "Mahsulot xususiyatlari va ma’lumotlari *" : "Ma’lumot va topshiriq"}
             <textarea value={topic} onChange={(e) => setTopic(e.target.value)} rows={7} maxLength={4000} placeholder={modeId === "product" ? "Masalan: paxta va akril aralashmasi, qizil rang, tugmali, 1–3 yosh uchun. Faqat ma’lum xususiyatlarni yozing." : mode.placeholder} className="mt-2 w-full rounded-xl border border-gray-200 p-3 font-normal outline-none focus:border-violet-400" />
             <span className="mt-1 block text-right text-xs font-normal text-gray-400">{topic.length}/4000</span>
@@ -199,7 +221,7 @@ export default function BusinessToolsPage() {
           <label className="mt-4 block text-sm font-semibold">Uslub
             <select value={tone} onChange={(e) => setTone(e.target.value)} className="mt-2 w-full rounded-xl border border-gray-200 bg-white p-3"><option>Professional</option><option>Samimiy</option><option>Ijodiy va qiziqarli</option></select>
           </label>
-          <button disabled={!(modeId === "product" ? productName.trim() && topic.trim() : topic.trim()) || loading || Boolean(productImageError)} onClick={generate} className="mt-5 w-full rounded-xl bg-violet-600 p-3.5 text-sm font-bold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40">{loading ? (modeId === "product" ? "Kartochka va rasm tayyorlanmoqda..." : "AI tayyorlayapti...") : modeId === "product" ? "✦ To‘liq kartochka va rasm yaratish (5 kredit)" : "✦ Natija yaratish (1 kredit)"}</button>
+          <button disabled={!(modeId === "product" ? productName.trim() && topic.trim() : modeId === "document" ? (topic.trim() || documentDataUrl) : topic.trim()) || loading || Boolean(productImageError) || Boolean(documentError)} onClick={generate} className="mt-5 w-full rounded-xl bg-violet-600 p-3.5 text-sm font-bold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40">{loading ? (modeId === "product" ? "Kartochka va rasm tayyorlanmoqda..." : "AI tayyorlayapti...") : modeId === "product" ? "✦ To‘liq kartochka va rasm yaratish (5 kredit)" : modeId === "document" ? "✦ Hujjatni tahlil qilish (1 kredit)" : "✦ Natija yaratish (1 kredit)"}</button>
           {error && <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
           {result && <section className="mt-6 rounded-2xl border border-violet-100 bg-violet-50/50 p-5"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold">{modeId === "product" ? "Tayyor mahsulot kartochkasi" : "Tayyor natija"}</h2><button onClick={copyResult} className="rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm font-semibold text-violet-700">{copied ? "Nusxalandi ✓" : "Matnni nusxalash"}</button></div>{resultImage && <div className="mt-4 rounded-xl border border-violet-100 bg-white p-3"><h3 className="font-bold">AI mahsulot rasmi</h3><img src={resultImage} alt="AI yaratgan mahsulot tasviri" className="mx-auto mt-3 max-h-[700px] w-full rounded-lg object-contain" /><div className="mt-3 grid gap-2 sm:grid-cols-2"><button onClick={downloadProductImage} className="rounded-xl bg-violet-600 px-4 py-3 text-sm font-bold text-white">⬇ Rasmni yuklab olish</button><a href={resultImage} target="_blank" rel="noreferrer" className="rounded-xl border border-violet-200 px-4 py-3 text-center text-sm font-semibold text-violet-700">Rasmni yangi oynada ochish ↗</a></div>{downloadError && <p className="mt-2 text-sm text-amber-700">{downloadError}</p>}</div>}{brandLogo && <div className="mt-4 rounded-xl border border-violet-100 bg-white p-4"><h3 className="font-bold">AI yaratgan logo</h3><img src={brandLogo} alt="AI yaratgan brend logotipi" className="mx-auto mt-3 max-h-[420px] w-full rounded-lg object-contain" /><div className="mt-3 grid gap-2 sm:grid-cols-2"><button onClick={downloadBrandLogo} className="rounded-xl bg-violet-600 px-4 py-3 text-sm font-bold text-white">⬇ Logoni yuklab olish</button><a href={brandLogo} target="_blank" rel="noreferrer" className="rounded-xl border border-violet-200 px-4 py-3 text-center text-sm font-semibold text-violet-700">Logoni yangi oynada ochish ↗</a></div>{downloadError && <p className="mt-2 text-sm text-amber-700">{downloadError}</p>}</div>}<div className="mt-4 whitespace-pre-wrap text-sm leading-7 text-gray-800">{result}</div></section>}
           <p className="mt-4 text-xs leading-5 text-gray-400">{modeId === "product" ? "To‘liq mahsulot kartochkasi va AI rasmi muvaffaqiyatli yaratilganda 5 kredit ishlatiladi. Xatolik yuz bersa, kredit qaytariladi." : "Har bir muvaffaqiyatli generatsiya 1 kredit ishlatadi. API xatoligida kreditni qaytarishga urinamiz."}</p>
