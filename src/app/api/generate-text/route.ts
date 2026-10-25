@@ -93,7 +93,8 @@ export async function POST(request: Request) {
     storeUrl?: unknown;
   };
 
-  if (typeof topic !== "string" || (topic.trim().length < 2 && !(typeof fileDataUrl === "string" && fileDataUrl.startsWith("data:")))) {
+  const marketingLinkOnly = type === "AI Marketing maslahatchi" && ((typeof storeUrl === "string" && storeUrl.trim().length > 0) || (typeof instagramHandle === "string" && instagramHandle.trim().length > 0) || (typeof analysisImageDataUrl === "string" && analysisImageDataUrl.startsWith("data:image/")));
+  if (typeof topic !== "string" || (topic.trim().length < 2 && !(typeof fileDataUrl === "string" && fileDataUrl.startsWith("data:")) && !marketingLinkOnly)) {
     return NextResponse.json(
       { error: "Matn kiriting yoki tahlil qilish uchun hujjat yuklang." },
       { status: 400 },
