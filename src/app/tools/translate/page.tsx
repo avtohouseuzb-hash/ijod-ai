@@ -13,6 +13,7 @@ export default function TranslateToolPage() {
   const [sourceLanguage, setSourceLanguage] = useState("Avtomatik aniqlash");
   const [targetLanguage, setTargetLanguage] = useState("O‘zbekcha");
   const [translatedText, setTranslatedText] = useState("");
+  const [generatedImage, setGeneratedImage] = useState("");
   const [credits, setCredits] = useState<number | null>(null);
   const [signedIn, setSignedIn] = useState(false);
   const [checking, setChecking] = useState(true);
@@ -39,7 +40,7 @@ export default function TranslateToolPage() {
 
   async function translate() {
     if ((!text.trim() && !image) || loading) return;
-    setLoading(true); setError(""); setTranslatedText(""); setCopied(false);
+    setLoading(true); setError(""); setTranslatedText(""); setGeneratedImage(""); setCopied(false);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { setSignedIn(false); throw new Error("Davom etish uchun avval hisobingizga kiring."); }
@@ -70,10 +71,11 @@ export default function TranslateToolPage() {
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
         body: JSON.stringify({ text: text.trim(), sourceLanguage, targetLanguage, imageDataUrl }),
       });
-      const data: { translatedText?: string; error?: string; remainingCredits?: number } = await response.json();
+      const data: { translatedText?: string; generatedImage?: string; error?: string; remainingCredits?: number } = await response.json();
       if (!response.ok) throw new Error(data.error || "Tarjima bajarilmadi.");
       if (!data.translatedText) throw new Error("Tarjima natijasi bo‘sh qaytdi.");
       setTranslatedText(data.translatedText);
+      if (data.generatedImage) setGeneratedImage(data.generatedImage);
       if (typeof data.remainingCredits === "number") setCredits(data.remainingCredits);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Ulanishda xatolik. Qayta urinib ko‘ring.");
@@ -99,7 +101,7 @@ export default function TranslateToolPage() {
       <header className="mt-6 rounded-3xl bg-gradient-to-br from-[#191326] to-violet-900 p-8 text-white">
         <p className="text-xs font-bold tracking-widest text-violet-200">IJOD LABORATORIYASI</p>
         <h1 className="mt-3 text-3xl font-black">AI Tarjima</h1>
-        <p className="mt-3 text-sm text-white/75">Matnlarni turli tillarga aniq va tabiiy tarjima qiling.</p>
+        <p className="mt-3 text-sm text-white/75">Matnni tarjima qiling yoki rasm ichidagi yozuvlarni tarjima qilingan yangi rasmga aylantiring.</p>
         <p className="mt-4 inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold">✦ {credits === null ? "Kredit tekshirilmoqda..." : `${credits} kredit`}</p>
       </header>
       <section className="mt-6 rounded-3xl border border-gray-200 bg-white p-6">
@@ -134,7 +136,10 @@ export default function TranslateToolPage() {
         </div>
         <button disabled={(!text.trim() && !image) || loading} onClick={translate} className="mt-5 w-full rounded-xl bg-violet-600 p-3.5 text-sm font-bold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40">{loading ? "Tarjima qilinmoqda..." : "🌐 Tarjima qilish — 1 kredit"}</button>
         {error && <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-        {translatedText && <section className="mt-6 rounded-2xl border border-violet-100 bg-violet-50/50 p-5"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold">Tarjima natijasi</h2><button onClick={copy} className="rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm font-semibold text-violet-700">{copied ? "Nusxalandi ✓" : "Nusxalash"}</button></div><div className="mt-4 whitespace-pre-wrap text-sm leading-7">{translatedText}</div></section>}
+        {translatedText && <section className="mt-6 rounded-2xl border border-violet-100 bg-violet-50/50 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold">Tarjima natijasi</h2>{!generatedImage && <button onClick={copy} className="rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm font-semibold text-violet-700">{copied ? "Nusxalandi ✓" : "Nusxalash"}</button>}</div>
+          {generatedImage ? <div className="mt-4"><img src={generatedImage} alt="Tarjima qilingan rasm" className="mx-auto max-h-[640px] w-full rounded-xl object-contain" /><a href={generatedImage} download="ijod-ai-translated-image.png" className="mt-4 block rounded-xl bg-violet-600 p-3 text-center text-sm font-bold text-white">Rasmni yuklab olish</a></div> : <div className="mt-4 whitespace-pre-wrap text-sm leading-7">{translatedText}</div>}
+        </section>}
         <p className="mt-4 text-xs leading-5 text-gray-400">Har bir muvaffaqiyatli tarjima 1 kredit ishlatadi. Server xatosi yuz bersa, kreditni qaytarishga harakat qilamiz.</p>
       </section>
     </div>
