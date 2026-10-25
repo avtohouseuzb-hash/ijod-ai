@@ -4,6 +4,11 @@ import { NextResponse } from "next/server";
 
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const accentInstructions: Record<string, string> = {
+  "uz-neutral": "Speak Uzbek naturally and clearly, with neutral standard Uzbek pronunciation. Preserve Uzbek Latin spelling and pronounce Uzbek-specific sounds carefully.",
+  "uz-tashkent": "Speak the Uzbek text naturally, with a subtle Tashkent-style Uzbek accent. Keep it fluent; do not switch to Russian or translate.",
+  "uz-turkic": "Speak the Uzbek text clearly with a gentle Central Asian Turkic cadence close to natural Uzbek speech. Do not translate.",
+};
 const allowedVoices = new Set([
   "alloy", "ash", "ballad", "coral", "echo", "fable",
   "nova", "onyx", "sage", "shimmer", "verse",
@@ -35,6 +40,8 @@ export async function POST(request: Request) {
   }
   const input = body && typeof body === "object" ? (body as { text?: unknown }).text : undefined;
   const requestedVoice = body && typeof body === "object" ? (body as { voice?: unknown }).voice : undefined;
+  const requestedAccent = body && typeof body === "object" ? (body as { accent?: unknown }).accent : undefined;
+  const accent = typeof requestedAccent === "string" && accentInstructions[requestedAccent] ? requestedAccent : "uz-neutral";
   const voice = typeof requestedVoice === "string" && allowedVoices.has(requestedVoice) ? requestedVoice : "alloy";
 
   if (typeof input !== "string" || input.trim().length < 2) {
@@ -63,7 +70,7 @@ export async function POST(request: Request) {
       voice,
       input: input.trim(),
       response_format: "mp3",
-      instructions: "Speak clearly and naturally in the same language as the input. Preserve the original language and pronunciation; do not translate.",
+      instructions: accentInstructions[accent] + " Preserve the original language; do not translate. Speak at a natural conversational pace.",
     });
     const audioBuffer = Buffer.from(await speech.arrayBuffer());
     if (!audioBuffer.length) throw new Error("Audio API bo‘sh fayl qaytardi.");
