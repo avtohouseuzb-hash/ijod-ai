@@ -6,7 +6,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const languages = new Set([
   "O‘zbekcha", "Ruscha", "Inglizcha", "Turkcha", "Koreyscha",
-  "Nemischa", "Fransuzcha", "Arabcha", "Qozoqcha"
+  "Nemischa", "Fransuzcha", "Arabcha", "Qozoqcha", "Qirg‘izcha", "Tojikcha", "Qoraqalpoqcha", "Turkmancha", "Yaponcha", "Xitoycha (soddalashtirilgan)", "Xitoycha (an’anaviy)", "Ispancha", "Italyancha", "Portugalcha", "Hindcha", "Urducha", "Forscha", "Indonezcha", "Malaycha", "Ukraincha", "Polyakcha", "Gollandcha", "Yunoncha", "Ibroniycha", "Bengalcha", "Tailandcha", "Vetnamcha", "Shvedcha", "Norvegcha", "Daniyacha"
 ]);
 
 export async function POST(request: Request) {
@@ -46,12 +46,14 @@ export async function POST(request: Request) {
   }
 
   const { text, targetLanguage, sourceLanguage } = body as {
-    text?: unknown; targetLanguage?: unknown; sourceLanguage?: unknown;
+    text?: unknown; targetLanguage?: unknown; sourceLanguage?: unknown; imageDataUrl?: unknown;
   };
-  if (typeof text !== "string" || text.trim().length < 2) {
-    return NextResponse.json({ error: "Tarjima qilinadigan matnni kiriting (kamida 2 ta belgi)." }, { status: 400 });
+  const imageDataUrl = typeof (body as { imageDataUrl?: unknown }).imageDataUrl === "string" ? (body as { imageDataUrl: string }).imageDataUrl : "";
+  const hasImage = imageDataUrl.length > 0;
+  if ((!hasImage && (typeof text !== "string" || text.trim().length < 2)) || (hasImage && typeof text !== "string")) {
+    return NextResponse.json({ error: "Tarjima uchun matn kiriting yoki matnli rasm yuklang." }, { status: 400 });
   }
-  if (text.length > 8000) {
+  if (typeof text === "string" && text.length > 8000) {
     return NextResponse.json({ error: "Matn 8000 belgidan oshmasin." }, { status: 400 });
   }
   if (typeof targetLanguage !== "string" || !languages.has(targetLanguage)) {
@@ -82,8 +84,14 @@ export async function POST(request: Request) {
     const response = await openai.responses.create({
       model: "gpt-6-luna",
       instructions: "Sen professional tarjimonsan. Ma’noni, uslubni va formatni saqla. Faqat tarjima natijasini qaytar; izoh qo‘shma, agar foydalanuvchi izoh so‘ramagan bo‘lsa. Ismlar, raqamlar va havolalarni to‘g‘ri saqla.",
-      input: `Manba tili: ${source}\nMaqsad til: ${targetLanguage}\n\nTarjima qilinadigan matn:\n${text.trim()}`,
-      max_output_tokens: 1800,
+      input: [{
+        role: "user",
+        content: [
+          { type: "input_text", text: "Manba tili: " + source + "\nMaqsad til: " + targetLanguage + "\n\n" + (typeof text === "string" && text.trim() ? "Tarjima qilinadigan matn:\n" + text.trim() : "Yuklangan rasmdagi barcha ko‘rinadigan matnni o‘qib, " + targetLanguage + " tiliga tarjima qil. Jadval, satrlar va tartibni imkon qadar saqla.") },
+          ...(hasImage ? [{ type: "input_image" as const, image_url: imageDataUrl, detail: "high" as const }] : []),
+        ],
+      }],
+      max_output_tokens: 3000,
     });
     const translatedText = response.output_text?.trim();
     if (!translatedText) throw new Error("EMPTY_TRANSLATION_RESPONSE");
