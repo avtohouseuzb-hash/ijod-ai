@@ -12,6 +12,12 @@ const tools = [
   { icon: "Aa", title: "AI Matn", desc: "Post, reklama va ssenariy yozing", color: "bg-sky-100 text-sky-700", tag: "" },
   { icon: "◈", title: "AI Dizayn", desc: "Instagram post, reklama banneri va marketing dizaynlari", color: "bg-emerald-100 text-emerald-700", tag: "Yangi" },
   { icon: "◎", title: "AI Tarjima", desc: "Matn va kontentni boshqa tillarga tarjima qiling", color: "bg-orange-100 text-orange-700", tag: "" },
+  { icon: "🛍", title: "AI Mahsulot sotuvchi", desc: "Marketplace uchun mahsulot kartasi, SEO va reklama paketi", color: "bg-fuchsia-100 text-fuchsia-700", tag: "Biznes" },
+  { icon: "▦", title: "AI Kontent-reja", desc: "7 kunlik kontent reja, post va Reels g‘oyalari", color: "bg-cyan-100 text-cyan-700", tag: "Yangi" },
+  { icon: "↗", title: "AI Marketing maslahatchi", desc: "Reklama variantlari, auditoriya va A/B test", color: "bg-lime-100 text-lime-700", tag: "Biznes" },
+  { icon: "✦", title: "AI Brend yaratish", desc: "Brend pozitsiyasi, slogan, ranglar va Instagram bio", color: "bg-rose-100 text-rose-700", tag: "Yangi" },
+  { icon: "▤", title: "AI Hujjat yordamchisi", desc: "Matn va hujjatlarni qisqartirish, tushuntirish va qayta yozish", color: "bg-blue-100 text-blue-700", tag: "" },
+  { icon: "▶", title: "AI Reels ssenariy paketi", desc: "Kadrlar, subtitr matni, voiceover va CTA bilan ssenariy", color: "bg-amber-100 text-amber-700", tag: "" },
 ];
 
 export default function Home() {
@@ -198,6 +204,12 @@ export default function Home() {
                     "AI Ovoz": "/tools/audio",
                     "AI Matn": "/tools/text",
                     "AI Tarjima": "/tools/translate",
+                    "AI Mahsulot sotuvchi": "/tools/business?mode=product",
+                    "AI Kontent-reja": "/tools/business?mode=content",
+                    "AI Marketing maslahatchi": "/tools/business?mode=marketing",
+                    "AI Brend yaratish": "/tools/business?mode=brand",
+                    "AI Hujjat yordamchisi": "/tools/business?mode=document",
+                    "AI Reels ssenariy paketi": "/tools/business?mode=reels",
                   };
                   const route = routes[tool.title];
                   if (route) window.location.href = route;
