@@ -30,11 +30,21 @@ export async function POST(request: Request) {
   }
   const prompt = body && typeof body === "object" ? (body as { prompt?: unknown }).prompt : undefined;
   const requestedSize = body && typeof body === "object" ? (body as { size?: unknown }).size : undefined;
+  const imageDataUrl = body && typeof body === "object" ? (body as { imageDataUrl?: unknown }).imageDataUrl : undefined;
   const size = requestedSize === "1024x1536" || requestedSize === "1536x1024" ? requestedSize : "1024x1024";
   if (typeof prompt !== "string" || prompt.trim().length < 3) {
     return NextResponse.json({ error: "Rasm tavsifini kamida 3 ta belgi bilan kiriting." }, { status: 400 });
   }
   if (prompt.length > 2000) return NextResponse.json({ error: "Rasm tavsifi 2000 belgidan oshmasin." }, { status: 400 });
+  let inputImage: File | null = null;
+  if (imageDataUrl !== undefined && imageDataUrl !== null && imageDataUrl !== "") {
+    if (typeof imageDataUrl !== "string") return NextResponse.json({ error: "Yuklangan rasm formati noto‘g‘ri." }, { status: 400 });
+    const match = imageDataUrl.match(/^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/);
+    if (!match) return NextResponse.json({ error: "Faqat JPG, PNG yoki WEBP rasm yuklang." }, { status: 400 });
+    const bytes = Buffer.from(match[2], "base64");
+    if (bytes.length > 10 * 1024 * 1024) return NextResponse.json({ error: "Rasm hajmi 10 MB dan oshmasin." }, { status: 400 });
+    inputImage = new File([bytes], "product." + (match[1] === "image/jpeg" ? "jpg" : match[1] === "image/webp" ? "webp" : "png"), { type: match[1] });
+  }
 
   const serviceClient = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const requestId = crypto.randomUUID();
@@ -50,11 +60,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await openai.images.generate({
-      model: "gpt-image-2.5-sunburst",
-      prompt: prompt.trim(),
-      size,
-    });
+    const imageOptions = { model: "gpt-image-2.5-sunburst", prompt: prompt.trim(), size };
+    const result = inputImage
+      ? await openai.images.edit({ ...imageOptions, image: inputImage })
+      : await openai.images.generate(imageOptions);
     const b64 = result.data?.[0]?.b64_json;
     if (!b64) throw new Error("Image API bo‘sh natija qaytardi.");
 
