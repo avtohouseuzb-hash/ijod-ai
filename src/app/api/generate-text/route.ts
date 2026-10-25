@@ -140,7 +140,7 @@ export async function POST(request: Request) {
     const response = await openai.responses.create({
       model: "gpt-6-luna",
       instructions:
-        "Sen IJOD AI ichidagi O‘zbekiston bozori uchun professional AI biznes va ijod yordamchisisan. Asosan tabiiy o‘zbek tilida yoz; boshqa til so‘ralsa, o‘sha tildan foydalan. Amaliy, tayyor ishlatishga qulay natija ber, bilmagan narx yoki xususiyatlarni to‘qima. AI Mahsulot sotuvchi: marketplace nomi, SEO tavsifi, 5 afzallik, kalit so‘zlar, reklama matni va 15 soniyalik video ssenariysi. AI Kontent-reja: 7 kunlik jadval, format, hook, asosiy g‘oya va CTA. AI Marketing maslahatchi: auditoriya, taklif, 3 reklama varianti, A/B test va KPI. AI Brend yaratish: pozitsiya, auditoriya, sloganlar, ovoz uslubi, HEX rang tavsiyalari va Instagram bio. AI Hujjat yordamchisi: foydalanuvchi bergan matnni qisqartir, tushuntir yoki qayta yoz; matn bo‘lmasa so‘ra. AI Reels ssenariy paketi: 15–30 soniyalik kadrma-kadr ssenariy, ekrandagi matn, voiceover va CTA. Har bir topshiriqni to‘liq bajar.",
+        "Sen IJOD AI ichidagi O‘zbekiston bozori uchun professional AI biznes va ijod yordamchisisan. Asosan tabiiy o‘zbek tilida yoz; boshqa til so‘ralsa, o‘sha tildan foydalan. Amaliy, tayyor ishlatishga qulay natija ber, bilmagan narx yoki xususiyatlarni to‘qima. AI Mahsulot sotuvchi: marketplace nomi, SEO tavsifi, 5 afzallik, kalit so‘zlar, reklama matni va 15 soniyalik video ssenariysi. AI Kontent-reja: 7 kunlik jadval, format, hook, asosiy g‘oya va CTA. AI Marketing maslahatchi: auditoriya, taklif, 3 reklama varianti, A/B test va KPI. AI Brend yaratish: pozitsiya, auditoriya, 5 ta slogan, brend ovozi, HEX ranglar, Instagram bio, logo konsepsiyasi va logodagi matnni aniq yoz. Foydalanuvchi brend nomini bergan bo‘lsa, nomni o‘zgartirma. AI Hujjat yordamchisi: foydalanuvchi bergan matnni qisqartir, tushuntir yoki qayta yoz; matn bo‘lmasa so‘ra. AI Reels ssenariy paketi: 15–30 soniyalik kadrma-kadr ssenariy, ekrandagi matn, voiceover va CTA. Har bir topshiriqni to‘liq bajar.",
       input: [
         {
           role: "user",
@@ -175,7 +175,19 @@ export async function POST(request: Request) {
     }
 
     creditReserved = false;
-    return NextResponse.json({ text, remainingCredits });
+    let image: string | undefined;
+    if (safeType === "AI Brend yaratish") {
+      const logoPrompt = `Create a polished, original, professional brand logo image for the brand described below. Brand brief: ${topic.trim()}. Style: ${safeTone}. Design a clean, memorable logo mark with carefully typeset brand name and, if appropriate, a short tagline. Text in the logo must match the supplied brand name exactly; do not add unrelated words. Strong legibility, balanced composition, clean vector-like edges, flat colors, white or transparent-looking simple background, centered, suitable for Instagram profile, website and marketplace branding. No mockup, no watermark, no extra decorations, no misspelled text. Generate one square 1024x1024 logo concept.`;
+      const logoResult = await openai.images.generate({
+        model: "gpt-image-2.5-sunburst",
+        prompt: logoPrompt,
+        size: "1024x1024",
+      });
+      const logoB64 = logoResult.data?.[0]?.b64_json;
+      if (!logoB64) throw new Error("Logo rasmi yaratilmadi.");
+      image = "data:image/png;base64," + logoB64;
+    }
+    return NextResponse.json({ text, image, remainingCredits });
   } catch (error) {
     if (creditReserved) {
       const { error: refundError } = await serviceClient.rpc("refund_credit", {
