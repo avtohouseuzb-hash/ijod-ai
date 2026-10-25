@@ -195,6 +195,7 @@ export default function Home() {
                     "AI Rasm": "/tools/image",
                     "AI Dizayn": "/tools/design",
                     "AI Video": "/tools/video",
+                    "AI Ovoz": "/tools/audio",
                     "AI Matn": "/tools/text",
                     "AI Tarjima": "/tools/translate",
                   };
