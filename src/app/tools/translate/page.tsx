@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
-const languages = ["O‘zbekcha", "Ruscha", "Inglizcha", "Turkcha", "Koreyscha", "Nemischa", "Fransuzcha", "Arabcha", "Qozoqcha"];
+const languages = ["O‘zbekcha", "Inglizcha", "Ruscha", "Turkcha", "Qozoqcha", "Qirg‘izcha", "Tojikcha", "Qoraqalpoqcha", "Turkmancha", "Koreyscha", "Yaponcha", "Xitoycha (soddalashtirilgan)", "Xitoycha (an’anaviy)", "Nemischa", "Fransuzcha", "Ispancha", "Italyancha", "Portugalcha", "Arabcha", "Hindcha", "Urducha", "Forscha", "Indonezcha", "Malaycha", "Ukraincha", "Polyakcha", "Gollandcha", "Yunoncha", "Ibroniycha", "Bengalcha", "Tailandcha", "Vetnamcha", "Shvedcha", "Norvegcha", "Daniyacha"];
 
 export default function TranslateToolPage() {
   const [text, setText] = useState("");
+  const [image, setImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState("");
   const [sourceLanguage, setSourceLanguage] = useState("Avtomatik aniqlash");
   const [targetLanguage, setTargetLanguage] = useState("O‘zbekcha");
   const [translatedText, setTranslatedText] = useState("");
@@ -36,15 +38,24 @@ export default function TranslateToolPage() {
   }, []);
 
   async function translate() {
-    if (!text.trim() || loading) return;
+    if ((!text.trim() && !image) || loading) return;
     setLoading(true); setError(""); setTranslatedText(""); setCopied(false);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { setSignedIn(false); throw new Error("Davom etish uchun avval hisobingizga kiring."); }
+      let imageDataUrl: string | undefined;
+      if (image) {
+        imageDataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("Rasmni o‘qib bo‘lmadi."));
+          reader.onerror = () => reject(new Error("Rasmni o‘qib bo‘lmadi."));
+          reader.readAsDataURL(image);
+        });
+      }
       const response = await fetch("/api/translate", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ text: text.trim(), sourceLanguage, targetLanguage }),
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+        body: JSON.stringify({ text: text.trim(), sourceLanguage, targetLanguage, imageDataUrl }),
       });
       const data: { translatedText?: string; error?: string; remainingCredits?: number } = await response.json();
       if (!response.ok) throw new Error(data.error || "Tarjima bajarilmadi.");
@@ -90,10 +101,25 @@ export default function TranslateToolPage() {
           </select>
         </label>
         <label className="mt-5 block text-sm font-semibold">Tarjima qilinadigan matn
-          <textarea value={text} onChange={e => setText(e.target.value)} rows={7} maxLength={8000} placeholder="Tarjima qilinadigan matnni shu yerga yozing yoki joylang..." className="mt-2 w-full rounded-xl border border-gray-200 p-3 font-normal outline-none focus:border-violet-400" />
+          <textarea value={text} onChange={e => setText(e.target.value)} rows={7} maxLength={8000} placeholder="Matnni yozing yoki rasm yuklab, matnni tarjima qildiring..." className="mt-2 w-full rounded-xl border border-gray-200 p-3 font-normal outline-none focus:border-violet-400" />
           <span className="mt-1 block text-right text-xs font-normal text-gray-400">{text.length}/8000</span>
         </label>
-        <button disabled={text.trim().length < 2 || loading} onClick={translate} className="mt-5 w-full rounded-xl bg-violet-600 p-3.5 text-sm font-bold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40">{loading ? "Tarjima qilinmoqda..." : "🌐 Tarjima qilish — 1 kredit"}</button>
+        <div className="mt-4 rounded-xl border border-dashed border-gray-300 p-4">
+          <label className="flex cursor-pointer flex-col items-center gap-2 text-center">
+            <span className="text-2xl">🖼️</span>
+            <span className="text-sm font-semibold">{image ? "Boshqa rasm tanlash" : "Rasmdan tarjima qilish"}</span>
+            <span className="text-xs font-normal text-gray-500">Matnli surat, hujjat yoki skrinshot · JPG, PNG, WEBP · 8 MB gacha</span>
+            <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={e => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) { setError("Faqat JPG, PNG yoki WEBP rasm yuklang."); return; }
+              if (file.size > 8 * 1024 * 1024) { setError("Rasm 8 MB dan kichik bo‘lishi kerak."); return; }
+              setImage(file); setImagePreview(URL.createObjectURL(file)); setError(""); setTranslatedText("");
+            }} />
+          </label>
+          {imagePreview && <div className="mt-3"><img src={imagePreview} alt="Tarjima uchun yuklangan rasm" className="mx-auto max-h-64 rounded-lg object-contain" /><button type="button" onClick={() => { setImage(null); setImagePreview(""); }} className="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm">Rasmni olib tashlash</button></div>}
+        </div>
+        <button disabled={(!text.trim() && !image) || loading} onClick={translate} className="mt-5 w-full rounded-xl bg-violet-600 p-3.5 text-sm font-bold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40">{loading ? "Tarjima qilinmoqda..." : "🌐 Tarjima qilish — 1 kredit"}</button>
         {error && <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         {translatedText && <section className="mt-6 rounded-2xl border border-violet-100 bg-violet-50/50 p-5"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold">Tarjima natijasi</h2><button onClick={copy} className="rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm font-semibold text-violet-700">{copied ? "Nusxalandi ✓" : "Nusxalash"}</button></div><div className="mt-4 whitespace-pre-wrap text-sm leading-7">{translatedText}</div></section>}
         <p className="mt-4 text-xs leading-5 text-gray-400">Har bir muvaffaqiyatli tarjima 1 kredit ishlatadi. Server xatosi yuz bersa, kreditni qaytarishga harakat qilamiz.</p>
