@@ -90,9 +90,9 @@ export async function POST(request: Request) {
     fileMimeType?: unknown;
   };
 
-  if (typeof topic !== "string" || topic.trim().length < 2) {
+  if (typeof topic !== "string" || (topic.trim().length < 2 && !(typeof fileDataUrl === "string" && fileDataUrl.startsWith("data:")))) {
     return NextResponse.json(
-      { error: "Mavzuni kamida 2 ta belgi bilan kiriting." },
+      { error: "Matn kiriting yoki tahlil qilish uchun hujjat yuklang." },
       { status: 400 },
     );
   }
