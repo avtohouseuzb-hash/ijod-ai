@@ -67,7 +67,7 @@ export default function DesignToolPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Dizayn yaratish uchun avval hisobingizga kiring.");
       const selected = formats.find((item) => item.id === format)!;
-      const designPrompt = `Create a polished, professional ${selected.title} design. Format: ${selected.description}. Visual brief: ${prompt.trim()}. Make the composition clean, high quality, visually striking, and suitable for a real marketing campaign. If text is requested, use short, legible text and avoid random letters. Do not add watermarks.`;
+      const designPrompt = `Create a polished ${selected.title} for ${marketplace}. Product: ${productName || "as described in the brief"}. Benefits: ${benefits || "not specified"}. Format: ${selected.description}. Visual brief: ${prompt.trim()}. For marketplace product cards, use a clean vertical e-commerce layout, show the product clearly and prominently, use short readable Uzbek labels only when requested, do not invent specifications, discounts, or certification marks, and do not add platform logos or watermarks. Make it professional and high quality.`;
       const response = await fetch("/api/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
@@ -102,7 +102,8 @@ export default function DesignToolPage() {
 
         <section className="mt-6 grid gap-6 lg:grid-cols-[1fr_0.85fr]">
           <div className="rounded-3xl border border-gray-200 bg-white p-6">
-            <h2 className="text-lg font-bold">1. Dizayn formatini tanlang</h2>
+            <h2 className="text-lg font-bold">1. Marketplace va formatni tanlang</h2>
+            <label className="mt-3 block text-sm font-semibold">Platforma<select value={marketplace} onChange={(e) => setMarketplace(e.target.value)} className="mt-2 w-full rounded-xl border border-gray-200 bg-white p-3 font-normal"><option>Uzum Market</option><option>Yandex Market</option><option>Wildberries</option><option>Ozon</option></select></label>
             <div className="mt-4 grid grid-cols-2 gap-3">
               {formats.map((item) => (
                 <button key={item.id} type="button" onClick={() => setFormat(item.id)} className={`rounded-2xl border p-4 text-left transition ${format === item.id ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100" : "border-gray-200 hover:border-emerald-200"}`}>
@@ -112,6 +113,10 @@ export default function DesignToolPage() {
               ))}
             </div>
 
+            {format === "marketplace" && <>
+              <label className="mt-6 block text-sm font-semibold">Mahsulot nomi<input value={productName} onChange={(e) => setProductName(e.target.value)} maxLength={120} placeholder="Masalan: ayollar qishki krossovkasi" className="mt-2 w-full rounded-xl border border-gray-200 p-3 font-normal outline-none focus:border-emerald-400" /></label>
+              <label className="mt-3 block text-sm font-semibold">Mahsulot afzalliklari<input value={benefits} onChange={(e) => setBenefits(e.target.value)} maxLength={240} placeholder="Masalan: yengil, issiq, sirpanmaydigan taglik" className="mt-2 w-full rounded-xl border border-gray-200 p-3 font-normal outline-none focus:border-emerald-400" /></label>
+            </>}
             <h2 className="mt-7 text-lg font-bold">2. Qanday dizayn kerak?</h2>
             <label className="mt-3 block text-sm font-semibold">Dizayn tavsifi
               <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={5} maxLength={1500} placeholder="Masalan: Labbay do‘koni uchun oq va binafsha ranglarda premium reklama. Mahsulot markazda, sarlavha qisqa, ko‘rinishi zamonaviy..." className="mt-2 w-full rounded-xl border border-gray-200 p-3 font-normal outline-none focus:border-emerald-400" />
