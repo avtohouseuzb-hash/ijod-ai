@@ -114,7 +114,7 @@ export default function AudioToolPage() {
         video!.onerror = () => reject(new Error("Videoni ochib bo‘lmadi. Boshqa formatda urinib ko‘ring."));
       });
       const capture = video as HTMLVideoElement & { captureStream?: () => MediaStream; mozCaptureStream?: () => MediaStream };
-      stream = capture.captureStream?.() ?? capture.mozCaptureStream?.();
+      stream = (capture.captureStream?.() ?? capture.mozCaptureStream?.()) ?? null;
       if (!stream || stream.getAudioTracks().length === 0) throw new Error("Brauzer video ovozini ajrata olmadi yoki videoda ovoz yo‘q. Chrome/Edge brauzerida urinib ko‘ring.");
       const mimeType = ["audio/webm;codecs=opus", "audio/webm"].find((type) => MediaRecorder.isTypeSupported(type));
       if (!mimeType) throw new Error("Brauzer audio yozishni qo‘llab-quvvatlamaydi.");
