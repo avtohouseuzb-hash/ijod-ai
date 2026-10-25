@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import OpenAI, { toFile } from "openai";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
@@ -84,6 +84,19 @@ export async function POST(request: Request) {
 
   let creditReserved = true;
   try {
+    if (hasImage) {
+      const match = imageDataUrl.match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/);
+      if (!match) throw new Error("INVALID_TRANSLATION_IMAGE");
+      const mimeType = match[1];
+      const extension = mimeType === "image/png" ? "png" : mimeType === "image/webp" ? "webp" : "jpg";
+      const imageFile = await toFile(Buffer.from(match[2], "base64"), "source." + extension, { type: mimeType });
+      const prompt = "Edit this supplied image to translate its visible text into " + targetLanguage + ". The source language is " + source + ". This is an image translation task, not a text-only OCR response: return a new image that visually matches the original as closely as possible, with all readable text replaced by accurate natural " + targetLanguage + " translations. Preserve the same layout, colors, typography style, icons, illustrations, product appearance, background, spacing and aspect ratio. Do not translate brand names or proper nouns unless they are ordinary words. Do not add explanations, extra text, watermarks or new objects. If a word has a clear translation, translate it; for example, Uzbek ‘ijod’ means English ‘art/creativity’ depending on context. Make translated lettering clear and legible.";
+      const edited = await openai.images.edit({ model: "gpt-image-2.5-sunburst", image: imageFile, prompt, size: "1024x1024" });
+      const generatedImage = edited.data?.[0]?.b64_json;
+      if (!generatedImage) throw new Error("EMPTY_TRANSLATED_IMAGE");
+      creditReserved = false;
+      return NextResponse.json({ translatedText: "Rasm tanlangan tilga tarjima qilindi.", generatedImage: "data:image/png;base64," + generatedImage, remainingCredits });
+    }
     const response = await openai.responses.create({
       model: "gpt-6-luna",
       instructions: "Sen professional tarjimonsan. Ma’noni, uslubni va formatni saqla. Faqat tarjima natijasini qaytar; izoh qo‘shma, agar foydalanuvchi izoh so‘ramagan bo‘lsa. Ismlar, raqamlar va havolalarni to‘g‘ri saqla.",
