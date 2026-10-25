@@ -27,6 +27,8 @@ export default function DesignToolPage() {
   const [marketplace, setMarketplace] = useState("Uzum Market");
   const [productName, setProductName] = useState("");
   const [benefits, setBenefits] = useState("");
+  const [productImage, setProductImage] = useState("");
+  const [productImageName, setProductImageName] = useState("");
   const [image, setImage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -67,11 +69,11 @@ export default function DesignToolPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Dizayn yaratish uchun avval hisobingizga kiring.");
       const selected = formats.find((item) => item.id === format)!;
-      const designPrompt = `Create a polished ${selected.title} for ${marketplace}. Product: ${productName || "as described in the brief"}. Benefits: ${benefits || "not specified"}. Format: ${selected.description}. Visual brief: ${prompt.trim()}. For marketplace product cards, use a clean vertical e-commerce layout, show the product clearly and prominently, use short readable Uzbek labels only when requested, do not invent specifications, discounts, or certification marks, and do not add platform logos or watermarks. Make it professional and high quality.`;
+      const designPrompt = `Edit the uploaded original product photo into a polished ${selected.title} for ${marketplace}. Product: ${productName || "as shown in uploaded photo or brief"}. Benefits: ${benefits || "not specified"}. Format: ${selected.description}. Visual brief: ${prompt.trim()}. If a source photo is supplied, preserve the exact product identity, shape, color, materials, details, and proportions; do not replace it with a different product. Improve only background, lighting, composition, shadows, decorative elements, and marketing layout. For marketplace cards use a clean vertical e-commerce layout, short readable Uzbek labels only when requested, no invented specifications, discounts, certification marks, platform logos, or watermarks. Make it professional and high quality.`;
       const response = await fetch("/api/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ prompt: designPrompt, size: selected.size }),
+        body: JSON.stringify({ prompt: designPrompt, size: selected.size, imageDataUrl: productImage || undefined }),
       });
       const data: { image?: string; error?: string; remainingCredits?: number } = await response.json();
       if (!response.ok) throw new Error(data.error || "Dizayn yaratishda xatolik yuz berdi.");
@@ -113,6 +115,20 @@ export default function DesignToolPage() {
               ))}
             </div>
 
+            <section className="mt-6 rounded-2xl border border-dashed border-emerald-300 bg-emerald-50/50 p-4">
+              <h3 className="font-bold">Rasm yuklash (ixtiyoriy)</h3>
+              <p className="mt-1 text-xs leading-5 text-gray-500">Mahsulotingizning asl rasmini yuklang. AI mahsulot ko‘rinishini saqlab, fon va reklama dizaynini o‘zgartiradi. JPG, PNG yoki WEBP, 10 MB gacha.</p>
+              <input type="file" accept="image/png,image/jpeg,image/webp" className="mt-3 block w-full text-sm" onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) { setProductImage(""); setProductImageName(""); return; }
+                if (file.size > 10 * 1024 * 1024) { setError("Rasm hajmi 10 MB dan oshmasin."); e.target.value = ""; return; }
+                const reader = new FileReader();
+                reader.onload = () => { setProductImage(typeof reader.result === "string" ? reader.result : ""); setProductImageName(file.name); setError(""); };
+                reader.onerror = () => setError("Rasmni o‘qib bo‘lmadi. Boshqa rasm tanlang.");
+                reader.readAsDataURL(file);
+              }} />
+              {productImage && <div className="mt-3 flex items-center gap-3"><img src={productImage} alt="Yuklangan mahsulot" className="h-20 w-20 rounded-xl border border-gray-200 object-contain bg-white" /><div className="min-w-0 flex-1 text-xs text-gray-600">{productImageName}<button type="button" onClick={() => { setProductImage(""); setProductImageName(""); }} className="mt-2 block font-semibold text-red-600">Rasmni olib tashlash</button></div></div>}
+            </section>
             {format === "marketplace" && <>
               <label className="mt-6 block text-sm font-semibold">Mahsulot nomi<input value={productName} onChange={(e) => setProductName(e.target.value)} maxLength={120} placeholder="Masalan: ayollar qishki krossovkasi" className="mt-2 w-full rounded-xl border border-gray-200 p-3 font-normal outline-none focus:border-emerald-400" /></label>
               <label className="mt-3 block text-sm font-semibold">Mahsulot afzalliklari<input value={benefits} onChange={(e) => setBenefits(e.target.value)} maxLength={240} placeholder="Masalan: yengil, issiq, sirpanmaydigan taglik" className="mt-2 w-full rounded-xl border border-gray-200 p-3 font-normal outline-none focus:border-emerald-400" /></label>
