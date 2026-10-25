@@ -16,6 +16,13 @@ const modes = [
 export default function BusinessToolsPage() {
   const [modeId, setModeId] = useState("product");
   const [topic, setTopic] = useState("");
+  const [productName, setProductName] = useState("");
+  const [category, setCategory] = useState("Kiyim va aksessuarlar");
+  const [price, setPrice] = useState("");
+  const [productImage, setProductImage] = useState<File | null>(null);
+  const [productImagePreview, setProductImagePreview] = useState("");
+  const [productImageDataUrl, setProductImageDataUrl] = useState("");
+  const [productImageError, setProductImageError] = useState("");
   const [tone, setTone] = useState("Professional");
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
@@ -24,6 +31,8 @@ export default function BusinessToolsPage() {
   const [signedIn, setSignedIn] = useState(false);
   const [authChecking, setAuthChecking] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [resultImage, setResultImage] = useState("");
+  const [downloadError, setDownloadError] = useState("");
   const mode = modes.find((item) => item.id === modeId) ?? modes[0];
 
   useEffect(() => {
@@ -53,23 +62,60 @@ export default function BusinessToolsPage() {
   }
 
   async function generate() {
-    if (!topic.trim() || loading) return;
-    setLoading(true); setError(""); setResult(""); setCopied(false);
+    if (loading) return;
+    if (modeId === "product" ? (!productName.trim() || !topic.trim()) : !topic.trim()) return;
+    setLoading(true); setError(""); setResult(""); setResultImage(""); setCopied(false);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("AI vositasidan foydalanish uchun avval hisobingizga kiring.");
-      const response = await fetch("/api/generate-text", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ type: mode.type, topic: topic.trim(), tone }),
-      });
-      const data: { text?: string; error?: string; remainingCredits?: number } = await response.json();
-      if (!response.ok) throw new Error(data.error || "Natija yaratilmadi.");
-      if (!data.text?.trim()) throw new Error("AI bo‘sh javob qaytardi. Qayta urinib ko‘ring.");
-      setResult(data.text);
-      if (typeof data.remainingCredits === "number") setCredits(data.remainingCredits);
+      if (modeId === "product") {
+        const response = await fetch("/api/generate-product-card", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+          body: JSON.stringify({ productName: productName.trim(), category, price, details: topic.trim(), tone, imageDataUrl: productImageDataUrl || undefined }),
+        });
+        const data: { text?: string; image?: string; error?: string; remainingCredits?: number } = await response.json();
+        if (!response.ok) throw new Error(data.error || "Mahsulot kartochkasi yaratilmadi.");
+        if (!data.text?.trim() || !data.image) throw new Error("AI to‘liq natija qaytarmadi.");
+        setResult(data.text); setResultImage(data.image);
+        if (typeof data.remainingCredits === "number") setCredits(data.remainingCredits);
+      } else {
+        const response = await fetch("/api/generate-text", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+          body: JSON.stringify({ type: mode.type, topic: topic.trim(), tone }),
+        });
+        const data: { text?: string; error?: string; remainingCredits?: number } = await response.json();
+        if (!response.ok) throw new Error(data.error || "Natija yaratilmadi.");
+        if (!data.text?.trim()) throw new Error("AI bo‘sh javob qaytardi. Qayta urinib ko‘ring.");
+        setResult(data.text);
+        if (typeof data.remainingCredits === "number") setCredits(data.remainingCredits);
+      }
     } catch (e) { setError(e instanceof Error ? e.message : "Xatolik yuz berdi. Qayta urinib ko‘ring."); }
     finally { setLoading(false); }
+  }
+
+  async function handleProductImage(file?: File) {
+    setProductImageError("");
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) { setProductImageError("Faqat JPG, PNG yoki WEBP rasm yuklang."); return; }
+    if (file.size > 10 * 1024 * 1024) { setProductImageError("Rasm 10 MB dan kichik bo‘lishi kerak."); return; }
+    setProductImage(file); setProductImagePreview(URL.createObjectURL(file));
+    const reader = new FileReader();
+    reader.onload = () => { if (typeof reader.result === "string") setProductImageDataUrl(reader.result); };
+    reader.onerror = () => setProductImageError("Rasmni o‘qib bo‘lmadi. Qayta tanlang.");
+    reader.readAsDataURL(file);
+  }
+
+  async function downloadProductImage() {
+    if (!resultImage) return;
+    try {
+      const response = await fetch(resultImage); const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob); const a = document.createElement("a");
+      a.href = objectUrl; a.download = "ijod-ai-mahsulot-rasmi.png";
+      document.body.appendChild(a); a.click(); a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
+    } catch { setDownloadError("Yuklab olish bloklandi. Rasmni yangi oynada ochib, rasm ustiga bosib turib saqlang."); }
   }
 
   async function copyResult() {
@@ -106,17 +152,37 @@ export default function BusinessToolsPage() {
               {modes.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
             </select>
           </label>
-          <label className="mt-5 block text-sm font-semibold">Ma’lumot va topshiriq
-            <textarea value={topic} onChange={(e) => setTopic(e.target.value)} rows={7} maxLength={4000} placeholder={mode.placeholder} className="mt-2 w-full rounded-xl border border-gray-200 p-3 font-normal outline-none focus:border-violet-400" />
+          {modeId === "product" && <div className="mt-5 space-y-4 rounded-2xl border border-violet-100 bg-violet-50/40 p-4 sm:p-5">
+            <h2 className="text-lg font-bold">Mahsulot ma’lumotlari</h2>
+            <label className="block text-sm font-semibold">Mahsulot nomi *
+              <input value={productName} onChange={(e) => setProductName(e.target.value)} maxLength={160} placeholder="Masalan: Ayollar uchun qizil trikotaj jilet" className="mt-2 w-full rounded-xl border border-gray-200 bg-white p-3 font-normal outline-none focus:border-violet-400" />
+            </label>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block text-sm font-semibold">Kategoriya
+                <select value={category} onChange={(e) => setCategory(e.target.value)} className="mt-2 w-full rounded-xl border border-gray-200 bg-white p-3 font-normal"><option>Kiyim va aksessuarlar</option><option>Oyoq kiyim</option><option>Bolalar tovarlari</option><option>Uy-ro‘zg‘or buyumlari</option><option>Elektronika</option><option>Go‘zallik va parvarish</option><option>Boshqa</option></select>
+              </label>
+              <label className="block text-sm font-semibold">Narxi (ixtiyoriy)
+                <input value={price} onChange={(e) => setPrice(e.target.value)} maxLength={80} placeholder="Masalan: 129 000 so‘m" className="mt-2 w-full rounded-xl border border-gray-200 bg-white p-3 font-normal outline-none focus:border-violet-400" />
+              </label>
+            </div>
+            <div>
+              <div className="text-sm font-semibold">Mahsulot rasmi (ixtiyoriy)</div>
+              <p className="mt-1 text-xs leading-5 text-gray-500">Rasmingiz bo‘lsa yuklang. Bo‘lmasa AI yozgan ma’lumotlaringizdan mahsulot tasvirini yaratadi.</p>
+              {productImagePreview ? <div className="mt-3 rounded-xl border border-gray-200 bg-white p-3"><img src={productImagePreview} alt="Yuklangan mahsulot" className="max-h-64 w-full rounded-lg object-contain" /><div className="mt-2 flex items-center justify-between gap-2"><span className="truncate text-xs text-gray-500">{productImage?.name}</span><button type="button" onClick={() => { setProductImage(null); setProductImagePreview(""); setProductImageDataUrl(""); }} className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold">Olib tashlash</button></div></div> : <label className="mt-3 flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-violet-200 bg-white text-center hover:bg-violet-50"><span className="text-3xl text-violet-600">＋</span><span className="mt-2 text-sm font-bold">Rasm yuklash</span><span className="mt-1 text-xs text-gray-400">JPG, PNG yoki WEBP · 10 MB gacha</span><input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => void handleProductImage(e.target.files?.[0])} className="hidden" /></label>}
+              {productImageError && <p className="mt-2 text-sm text-red-600">{productImageError}</p>}
+            </div>
+          </div>}
+          <label className="mt-5 block text-sm font-semibold">{modeId === "product" ? "Mahsulot xususiyatlari va ma’lumotlari *" : "Ma’lumot va topshiriq"}
+            <textarea value={topic} onChange={(e) => setTopic(e.target.value)} rows={7} maxLength={4000} placeholder={modeId === "product" ? "Masalan: paxta va akril aralashmasi, qizil rang, tugmali, 1–3 yosh uchun. Faqat ma’lum xususiyatlarni yozing." : mode.placeholder} className="mt-2 w-full rounded-xl border border-gray-200 p-3 font-normal outline-none focus:border-violet-400" />
             <span className="mt-1 block text-right text-xs font-normal text-gray-400">{topic.length}/4000</span>
           </label>
           <label className="mt-4 block text-sm font-semibold">Uslub
             <select value={tone} onChange={(e) => setTone(e.target.value)} className="mt-2 w-full rounded-xl border border-gray-200 bg-white p-3"><option>Professional</option><option>Samimiy</option><option>Ijodiy va qiziqarli</option></select>
           </label>
-          <button disabled={!topic.trim() || loading} onClick={generate} className="mt-5 w-full rounded-xl bg-violet-600 p-3.5 text-sm font-bold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40">{loading ? "AI tayyorlayapti..." : "✦ Natija yaratish (1 kredit)"}</button>
+          <button disabled={!(modeId === "product" ? productName.trim() && topic.trim() : topic.trim()) || loading || Boolean(productImageError)} onClick={generate} className="mt-5 w-full rounded-xl bg-violet-600 p-3.5 text-sm font-bold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40">{loading ? (modeId === "product" ? "Kartochka va rasm tayyorlanmoqda..." : "AI tayyorlayapti...") : modeId === "product" ? "✦ To‘liq kartochka va rasm yaratish (5 kredit)" : "✦ Natija yaratish (1 kredit)"}</button>
           {error && <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-          {result && <section className="mt-6 rounded-2xl border border-violet-100 bg-violet-50/50 p-5"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold">Tayyor natija</h2><button onClick={copyResult} className="rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm font-semibold text-violet-700">{copied ? "Nusxalandi ✓" : "Nusxalash"}</button></div><div className="mt-4 whitespace-pre-wrap text-sm leading-7 text-gray-800">{result}</div></section>}
-          <p className="mt-4 text-xs leading-5 text-gray-400">Har bir muvaffaqiyatli generatsiya 1 kredit ishlatadi. API xatoligida kreditni qaytarishga urinamiz. Ushbu sahifa matnli natijalar yaratadi; video montaj yoki rasm faylini avtomatik tahrirlash funksiyasi emas.</p>
+          {result && <section className="mt-6 rounded-2xl border border-violet-100 bg-violet-50/50 p-5"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold">{modeId === "product" ? "Tayyor mahsulot kartochkasi" : "Tayyor natija"}</h2><button onClick={copyResult} className="rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm font-semibold text-violet-700">{copied ? "Nusxalandi ✓" : "Matnni nusxalash"}</button></div>{resultImage && <div className="mt-4 rounded-xl border border-violet-100 bg-white p-3"><h3 className="font-bold">AI mahsulot rasmi</h3><img src={resultImage} alt="AI yaratgan mahsulot tasviri" className="mx-auto mt-3 max-h-[700px] w-full rounded-lg object-contain" /><div className="mt-3 grid gap-2 sm:grid-cols-2"><button onClick={downloadProductImage} className="rounded-xl bg-violet-600 px-4 py-3 text-sm font-bold text-white">⬇ Rasmni yuklab olish</button><a href={resultImage} target="_blank" rel="noreferrer" className="rounded-xl border border-violet-200 px-4 py-3 text-center text-sm font-semibold text-violet-700">Rasmni yangi oynada ochish ↗</a></div>{downloadError && <p className="mt-2 text-sm text-amber-700">{downloadError}</p>}</div>}<div className="mt-4 whitespace-pre-wrap text-sm leading-7 text-gray-800">{result}</div></section>}
+          <p className="mt-4 text-xs leading-5 text-gray-400">{modeId === "product" ? "To‘liq mahsulot kartochkasi va AI rasmi muvaffaqiyatli yaratilganda 5 kredit ishlatiladi. Xatolik yuz bersa, kredit qaytariladi." : "Har bir muvaffaqiyatli generatsiya 1 kredit ishlatadi. API xatoligida kreditni qaytarishga urinamiz."}</p>
         </section>
       </div>
     </main>
