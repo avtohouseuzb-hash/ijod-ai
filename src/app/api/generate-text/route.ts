@@ -81,13 +81,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Noto‘g‘ri so‘rov." }, { status: 400 });
   }
 
-  const { topic, type, tone, fileDataUrl, fileName, fileMimeType } = body as {
+  const { topic, type, tone, fileDataUrl, fileName, fileMimeType, analysisImageDataUrl, instagramHandle, storeUrl } = body as {
     topic?: unknown;
     type?: unknown;
     tone?: unknown;
     fileDataUrl?: unknown;
     fileName?: unknown;
     fileMimeType?: unknown;
+    analysisImageDataUrl?: unknown;
+    instagramHandle?: unknown;
+    storeUrl?: unknown;
   };
 
   if (typeof topic !== "string" || (topic.trim().length < 2 && !(typeof fileDataUrl === "string" && fileDataUrl.startsWith("data:")))) {
@@ -125,6 +128,18 @@ export async function POST(request: Request) {
     }
     attachedFile = { data: fileDataUrl, name: fileName.slice(0, 180), mime: fileMimeType };
   }
+
+  let analysisImage: { data: string; mime: string } | null = null;
+  if (analysisImageDataUrl !== undefined && analysisImageDataUrl !== null && analysisImageDataUrl !== "") {
+    if (typeof analysisImageDataUrl !== "string") return NextResponse.json({ error: "Rasm formati noto‘g‘ri." }, { status: 400 });
+    const match = analysisImageDataUrl.match(/^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/);
+    if (!match) return NextResponse.json({ error: "JPG, PNG yoki WEBP rasm yuklang." }, { status: 400 });
+    const bytes = Buffer.from(match[2], "base64");
+    if (!bytes.length || bytes.length > 8 * 1024 * 1024) return NextResponse.json({ error: "Rasm hajmi 8 MB dan oshmasin." }, { status: 400 });
+    analysisImage = { data: analysisImageDataUrl, mime: match[1] };
+  }
+  const safeInstagram = typeof instagramHandle === "string" ? instagramHandle.replace(/^@/, "").trim().slice(0,80) : "";
+  const safeStoreUrl = typeof storeUrl === "string" ? storeUrl.trim().slice(0,500) : "";
 
   const safeType =
     typeof type === "string" && allowedTypes.has(type) ? type : "Boshqa";
@@ -165,13 +180,14 @@ export async function POST(request: Request) {
     const response = await openai.responses.create({
       model: "gpt-6-luna",
       instructions:
-        "Sen IJOD AI ichidagi O‘zbekiston bozori uchun professional AI biznes va ijod yordamchisisan. Asosan tabiiy o‘zbek tilida yoz; boshqa til so‘ralsa, o‘sha tildan foydalan. Amaliy, tayyor ishlatishga qulay natija ber, bilmagan narx yoki xususiyatlarni to‘qima. AI Mahsulot sotuvchi: marketplace nomi, SEO tavsifi, 5 afzallik, kalit so‘zlar, reklama matni va 15 soniyalik video ssenariysi. AI Kontent-reja: 7 kunlik jadval, format, hook, asosiy g‘oya va CTA. AI Marketing maslahatchi: auditoriya, taklif, 3 reklama varianti, A/B test va KPI. AI Brend yaratish: pozitsiya, auditoriya, 5 ta slogan, brend ovozi, HEX ranglar, Instagram bio, logo konsepsiyasi va logodagi matnni aniq yoz. Foydalanuvchi brend nomini bergan bo‘lsa, nomni o‘zgartirma. AI Hujjat yordamchisi: foydalanuvchi bergan matnni qisqartir, tushuntir yoki qayta yoz; matn bo‘lmasa so‘ra. AI Reels ssenariy paketi: 15–30 soniyalik kadrma-kadr ssenariy, ekrandagi matn, voiceover va CTA. Har bir topshiriqni to‘liq bajar.",
+        "Sen IJOD AI ichidagi O‘zbekiston bozori uchun professional AI biznes va ijod yordamchisisan. Asosan tabiiy o‘zbek tilida yoz; boshqa til so‘ralsa, o‘sha tildan foydalan. Amaliy, tayyor ishlatishga qulay natija ber, bilmagan narx yoki xususiyatlarni to‘qima. AI Mahsulot sotuvchi: marketplace nomi, SEO tavsifi, 5 afzallik, kalit so‘zlar, reklama matni va 15 soniyalik video ssenariysi. AI Kontent-reja: 7 kunlik jadval, format, hook, asosiy g‘oya va CTA. AI Marketing maslahatchi: biriktirilgan rasm bo‘lsa mahsulot tasvirini tahlil qil; 10–20 ta mos SEO/qidiruv kaliti, sarlavha va tavsif, 3 reklama varianti, auditoriya, taklif, A/B test va KPI ber. Instagram username yoki do‘kon URL berilsa, faqat haqiqatan ko‘rilgan ma’lumotlar asosida tahlil qil. Sahifaga kira olmasang, buni ochiq ayt va skrinshot yoki mahsulot havolasini so‘ra; ko‘rilmagan statistika, mahsulotlar yoki raqamlarni to‘qima. Havola: " + safeStoreUrl + ". Instagram: " + safeInstagram + ". AI Brend yaratish: pozitsiya, auditoriya, 5 ta slogan, brend ovozi, HEX ranglar, Instagram bio, logo konsepsiyasi va logodagi matnni aniq yoz. Foydalanuvchi brend nomini bergan bo‘lsa, nomni o‘zgartirma. AI Hujjat yordamchisi: foydalanuvchi bergan matnni qisqartir, tushuntir yoki qayta yoz; matn bo‘lmasa so‘ra. AI Reels ssenariy paketi: 15–30 soniyalik kadrma-kadr ssenariy, ekrandagi matn, voiceover va CTA. Har bir topshiriqni to‘liq bajar.",
       input: [
         {
           role: "user",
           content: [
             { type: "input_text", text: `Matn turi: ${safeType}\nOhang: ${safeTone}\nMavzu/topshiriq: ${topic.trim() || "Yuklangan hujjatni tahlil qil."}\n\nBiriktirilgan hujjat bo‘lsa, uning mazmuniga tayangan holda topshiriqni bajar. Muhim faktlarni o‘zgartirma va hujjatda yo‘q ma’lumotlarni to‘qima. Hujjatni qisqartirish, tushuntirish, xatolarini topish yoki qayta yozish topshirig‘iga mos javob ber.` },
             ...(attachedFile ? [{ type: "input_file" as const, filename: attachedFile.name, file_data: attachedFile.data }] : []),
+            ...(analysisImage ? [{ type: "input_image" as const, image_url: analysisImage.data, detail: "high" as const }] : []),
           ],
         },
       ],
