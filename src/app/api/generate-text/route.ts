@@ -81,10 +81,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Noto‘g‘ri so‘rov." }, { status: 400 });
   }
 
-  const { topic, type, tone } = body as {
+  const { topic, type, tone, fileDataUrl, fileName, fileMimeType } = body as {
     topic?: unknown;
     type?: unknown;
     tone?: unknown;
+    fileDataUrl?: unknown;
+    fileName?: unknown;
+    fileMimeType?: unknown;
   };
 
   if (typeof topic !== "string" || topic.trim().length < 2) {
@@ -99,6 +102,28 @@ export async function POST(request: Request) {
       { error: "Mavzu 4000 belgidan oshmasin." },
       { status: 400 },
     );
+  }
+
+  let attachedFile: { data: string; name: string; mime: string } | null = null;
+  if (fileDataUrl !== undefined && fileDataUrl !== null && fileDataUrl !== "") {
+    if (typeof fileDataUrl !== "string" || typeof fileName !== "string" || typeof fileMimeType !== "string") {
+      return NextResponse.json({ error: "Yuklangan hujjat ma’lumotlari noto‘g‘ri." }, { status: 400 });
+    }
+    const allowedMime = new Set([
+      "application/pdf", "text/plain", "text/csv",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/msword", "application/vnd.ms-excel",
+    ]);
+    const match = fileDataUrl.match(/^data:([^;,]+);base64,([A-Za-z0-9+/=]+)$/);
+    if (!match || match[1] !== fileMimeType || !allowedMime.has(fileMimeType)) {
+      return NextResponse.json({ error: "PDF, Word, Excel, CSV yoki TXT hujjatini yuklang." }, { status: 400 });
+    }
+    const bytes = Buffer.from(match[2], "base64");
+    if (!bytes.length || bytes.length > 8 * 1024 * 1024) {
+      return NextResponse.json({ error: "Hujjat hajmi 8 MB dan oshmasin." }, { status: 400 });
+    }
+    attachedFile = { data: fileDataUrl, name: fileName.slice(0, 180), mime: fileMimeType };
   }
 
   const safeType =
@@ -144,7 +169,10 @@ export async function POST(request: Request) {
       input: [
         {
           role: "user",
-          content: `Matn turi: ${safeType}\nOhang: ${safeTone}\nMavzu/topshiriq: ${topic.trim()}\n\nShu ma’lumotlar asosida tayyor, foydalanishga qulay matn yoz.`,
+          content: [
+            { type: "input_text", text: `Matn turi: ${safeType}\nOhang: ${safeTone}\nMavzu/topshiriq: ${topic.trim() || "Yuklangan hujjatni tahlil qil."}\n\nBiriktirilgan hujjat bo‘lsa, uning mazmuniga tayangan holda topshiriqni bajar. Muhim faktlarni o‘zgartirma va hujjatda yo‘q ma’lumotlarni to‘qima. Hujjatni qisqartirish, tushuntirish, xatolarini topish yoki qayta yozish topshirig‘iga mos javob ber.` },
+            ...(attachedFile ? [{ type: "input_file" as const, filename: attachedFile.name, file_data: attachedFile.data }] : []),
+          ],
         },
       ],
       max_output_tokens: 900,
