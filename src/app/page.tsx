@@ -18,6 +18,7 @@ const tools = [
   { icon: "✦", title: "AI Brend yaratish", desc: "Brend pozitsiyasi, slogan, ranglar va Instagram bio", color: "bg-rose-100 text-rose-700", tag: "Yangi" },
   { icon: "▤", title: "AI Hujjat yordamchisi", desc: "Matn va hujjatlarni qisqartirish, tushuntirish va qayta yozish", color: "bg-blue-100 text-blue-700", tag: "" },
   { icon: "▶", title: "AI Reels ssenariy paketi", desc: "Kadrlar, subtitr matni, voiceover va CTA bilan ssenariy", color: "bg-amber-100 text-amber-700", tag: "" },
+  { icon: "👗", title: "AI Virtual Kiyintirish", desc: "Kiyim, oyoq kiyim va aksessuarlarni AI modelga kiydiring", color: "bg-violet-100 text-violet-700", tag: "Yangi" },
 ];
 
 export default function Home() {
@@ -210,6 +211,7 @@ export default function Home() {
                     "AI Brend yaratish": "/tools/business?mode=brand",
                     "AI Hujjat yordamchisi": "/tools/business?mode=document",
                     "AI Reels ssenariy paketi": "/tools/business?mode=reels",
+                    "AI Virtual Kiyintirish": "/tools/virtual-tryon",
                   };
                   const route = routes[tool.title];
                   if (route) window.location.href = route;
