@@ -79,7 +79,7 @@ export default function Home() {
     <div className="min-h-screen bg-[#f7f7fb] text-[#191923]">
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-[250px] flex-col border-r border-gray-200 bg-white px-5 py-6 lg:flex">
         <a href="#" aria-label="IJOD AI bosh sahifa" className="mb-10 flex flex-col items-start gap-1">
-          <img src="/ijod-logo.svg" alt="IJOD AI" className="h-auto w-[158px] object-contain" />
+          <img src="/ijod-logo-v2.svg" alt="IJOD AI" className="h-auto w-[158px] object-contain" />
           <span className="pl-1 text-[9px] tracking-[.18em] text-gray-400">CREATIVE SUPERAPP</span>
         </a>
 
@@ -125,7 +125,7 @@ export default function Home() {
       {mobileMenuOpen && <div className="fixed inset-0 z-40 lg:hidden">
         <button aria-label="Menyuni yopish" onClick={() => setMobileMenuOpen(false)} className="absolute inset-0 bg-black/30" />
         <aside className="absolute inset-y-0 left-0 flex w-[min(84vw,300px)] flex-col bg-white px-5 py-6 shadow-2xl">
-          <div className="mb-8 flex items-center justify-between"><div className="flex items-center gap-2"><div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-600 text-white">✳</div><span className="font-black">IJOD AI</span></div><button onClick={() => setMobileMenuOpen(false)} aria-label="Yopish" className="rounded-lg px-3 py-1 text-2xl text-gray-500">×</button></div>
+          <div className="mb-8 flex items-center justify-between"><div className="flex items-center gap-2"><img src="/ijod-logo-v2.svg" alt="IJOD AI" className="h-11 w-[105px] object-contain" /></div><button onClick={() => setMobileMenuOpen(false)} aria-label="Yopish" className="rounded-lg px-3 py-1 text-2xl text-gray-500">×</button></div>
           <div className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.18em] text-gray-400">MENYU</div>
           <nav className="space-y-1">{menu.map((item) => <button key={item.name} onClick={() => { setActive(item.name); setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); }} className={"flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium " + (active === item.name ? "bg-violet-50 text-violet-700" : "text-gray-600 hover:bg-gray-50")}><span className="w-5 text-center text-lg">{item.icon}</span>{item.name}{item.name === "AI vositalar" && <span className="ml-auto text-xs text-gray-400">{tools.length}</span>}</button>)}</nav>
           <div className="mt-8 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-700 p-4 text-white"><div className="mb-2 text-xl">✦</div><div className="text-sm font-bold">Tasavvuringizni yarating</div><p className="mt-1 text-xs leading-5 text-violet-100">AI yordamida g‘oyalaringizni hayotga olib keling.</p><button onClick={() => { setActive("AI vositalar"); setMobileMenuOpen(false); document.getElementById("tools")?.scrollIntoView({ behavior: "smooth" }); }} className="mt-4 rounded-lg bg-white px-3 py-2 text-xs font-bold text-violet-700">Boshlash →</button></div>
