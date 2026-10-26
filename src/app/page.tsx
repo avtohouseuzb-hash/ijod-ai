@@ -197,7 +197,8 @@ export default function Home() {
 
             <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {filteredTools.map((tool) => (
-                <button key={tool.title} onClick={() => {
+                <button key={tool.title} disabled={tool.title === "AI Video"} onClick={() => {
+                  if (tool.title === "AI Video") return;
                   const routes: Record<string, string> = {
                     "AI Rasm": "/tools/image",
                     "AI Dizayn": "/tools/design",
@@ -216,16 +217,19 @@ export default function Home() {
                   const route = routes[tool.title];
                   if (route) window.location.href = route;
                   else alert(`${tool.title} tez orada ishga tushadi!`);
-                }} className="group rounded-2xl border border-gray-200/80 bg-white p-5 text-left transition duration-200 hover:-translate-y-1 hover:border-violet-200 hover:shadow-xl hover:shadow-violet-100/50">
-                  <div className="flex items-start justify-between">
-                    <div className={`flex h-12 w-12 items-center justify-center rounded-2xl text-xl font-bold ${tool.color}`}>{tool.icon}</div>
-                    {tool.tag && <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${tool.tag === "Yangi" ? "bg-pink-50 text-pink-600" : "bg-violet-50 text-violet-600"}`}>{tool.tag}</span>}
+                }} className={`group relative rounded-2xl border border-gray-200/80 bg-white p-5 text-left transition duration-200 ${tool.title === "AI Video" ? "cursor-not-allowed border-pink-100" : "hover:-translate-y-1 hover:border-violet-200 hover:shadow-xl hover:shadow-violet-100/50"}`}>
+                  <div className={tool.title === "AI Video" ? "pointer-events-none select-none blur-[2px] opacity-60" : ""}>
+                    <div className="flex items-start justify-between">
+                      <div className={`flex h-12 w-12 items-center justify-center rounded-2xl text-xl font-bold ${tool.color}`}>{tool.icon}</div>
+                      {tool.tag && <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${tool.tag === "Yangi" ? "bg-pink-50 text-pink-600" : "bg-violet-50 text-violet-600"}`}>{tool.tag}</span>}
+                    </div>
+                    <h3 className="mt-5 font-bold">{tool.title}</h3>
+                    <p className="mt-2 min-h-10 text-sm leading-5 text-gray-500">{tool.desc}</p>
+                    <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4 text-xs font-semibold text-gray-500">
+                      Ochish <span className="text-base">→</span>
+                    </div>
                   </div>
-                  <h3 className="mt-5 font-bold">{tool.title}</h3>
-                  <p className="mt-2 min-h-10 text-sm leading-5 text-gray-500">{tool.desc}</p>
-                  <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4 text-xs font-semibold text-gray-500 transition group-hover:text-violet-700">
-                    Ochish <span className="text-base transition group-hover:translate-x-1">→</span>
-                  </div>
+                  {tool.title === "AI Video" && <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-2xl bg-white/30"><span className="rounded-full border border-pink-200 bg-pink-50 px-4 py-2 text-sm font-bold text-pink-700 shadow-sm">Tez orada</span></div>}
                 </button>
               ))}
             </div>
