@@ -20,6 +20,8 @@ export default function TranslateToolPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState("");
+  const [zoom, setZoom] = useState(1);
 
   useEffect(() => {
     let mounted = true;
@@ -46,7 +48,12 @@ export default function TranslateToolPage() {
       if (!session) { setSignedIn(false); throw new Error("Davom etish uchun avval hisobingizga kiring."); }
       let imageDataUrl: string | undefined;
       if (image) {
-        const bitmap = await createImageBitmap(image);
+        let bitmap: ImageBitmap;
+        try {
+          bitmap = await createImageBitmap(image);
+        } catch {
+          throw new Error("Bu rasm formati brauzerda ochilmadi. Iltimos, rasmni JPG yoki PNG qilib saqlab qayta yuklang.");
+        }
         try {
           const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
           const canvas = document.createElement("canvas");
@@ -123,24 +130,39 @@ export default function TranslateToolPage() {
           <label className="flex cursor-pointer flex-col items-center gap-2 text-center">
             <span className="text-2xl">🖼️</span>
             <span className="text-sm font-semibold">{image ? "Boshqa rasm tanlash" : "Rasmdan tarjima qilish"}</span>
-            <span className="text-xs font-normal text-gray-500">Matnli surat, hujjat yoki skrinshot · JPG, PNG, WEBP · 8 MB gacha</span>
-            <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={e => {
+            <span className="text-xs font-normal text-gray-500">Skrinshot va ko‘p uchraydigan rasm formatlari · JPG, PNG, WEBP, GIF, BMP, AVIF va boshqalar · 8 MB gacha</span>
+            <input type="file" accept="image/*,.jfif,.pjpeg,.pjp,.tif,.tiff,.avif,.bmp,.gif" className="hidden" onChange={e => {
               const file = e.target.files?.[0];
               if (!file) return;
-              if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) { setError("Faqat JPG, PNG yoki WEBP rasm yuklang."); return; }
-              if (file.size > 8 * 1024 * 1024) { setError("Rasm 8 MB dan kichik bo‘lishi kerak."); return; }
-              setImage(file); setImagePreview(URL.createObjectURL(file)); setError(""); setTranslatedText("");
+              if (!file.type.startsWith("image/") && !/\.(jfif|pjpeg|pjp|tif|tiff|avif|bmp|gif)$/i.test(file.name)) { setError("Rasm faylini tanlang."); e.currentTarget.value = ""; return; }
+              if (file.size > 8 * 1024 * 1024) { setError("Rasm 8 MB dan kichik bo‘lishi kerak."); e.currentTarget.value = ""; return; }
+              setImage(file); setImagePreview(URL.createObjectURL(file)); setError(""); setTranslatedText(""); setGeneratedImage("");
             }} />
           </label>
-          {imagePreview && <div className="mt-3"><img src={imagePreview} alt="Tarjima uchun yuklangan rasm" className="mx-auto max-h-64 rounded-lg object-contain" /><button type="button" onClick={() => { setImage(null); setImagePreview(""); }} className="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm">Rasmni olib tashlash</button></div>}
+          {imagePreview && <div className="mt-3"><button type="button" onClick={() => { setLightboxImage(imagePreview); setZoom(1); }} className="block w-full cursor-zoom-in" aria-label="Yuklangan rasmni kattalashtirib ko‘rish"><img src={imagePreview} alt="Tarjima uchun yuklangan rasm — kattalashtirish uchun bosing" className="mx-auto max-h-64 rounded-lg object-contain" /></button><p className="mt-1 text-center text-xs text-gray-500">Rasmni kattalashtirib ko‘rish uchun ustiga bosing</p><button type="button" onClick={() => { setImage(null); setImagePreview(""); }} className="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm">Rasmni olib tashlash</button></div>}
         </div>
         <button disabled={(!text.trim() && !image) || loading} onClick={translate} className="mt-5 w-full rounded-xl bg-violet-600 p-3.5 text-sm font-bold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40">{loading ? "Tarjima qilinmoqda..." : "🌐 Tarjima qilish — 1 kredit"}</button>
         {error && <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         {translatedText && <section className="mt-6 rounded-2xl border border-violet-100 bg-violet-50/50 p-5">
           <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold">Tarjima natijasi</h2>{!generatedImage && <button onClick={copy} className="rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm font-semibold text-violet-700">{copied ? "Nusxalandi ✓" : "Nusxalash"}</button>}</div>
-          {generatedImage ? <div className="mt-4"><img src={generatedImage} alt="Tarjima qilingan rasm" className="mx-auto max-h-[640px] w-full rounded-xl object-contain" /><a href={generatedImage} download="ijod-ai-translated-image.png" className="mt-4 block rounded-xl bg-violet-600 p-3 text-center text-sm font-bold text-white">Rasmni yuklab olish</a></div> : <div className="mt-4 whitespace-pre-wrap text-sm leading-7">{translatedText}</div>}
+          {generatedImage ? <div className="mt-4"><button type="button" onClick={() => { setLightboxImage(generatedImage); setZoom(1); }} className="block w-full cursor-zoom-in" aria-label="Natija rasmini kattalashtirib ko‘rish"><img src={generatedImage} alt="Tarjima qilingan rasm — kattalashtirish uchun bosing" className="mx-auto max-h-[640px] w-full rounded-xl object-contain" /></button><p className="mt-1 text-center text-xs text-gray-500">Rasmni ochish va yaqinlashtirish uchun ustiga bosing</p><a href={generatedImage} download="ijod-ai-translated-image.png" className="mt-4 block rounded-xl bg-violet-600 p-3 text-center text-sm font-bold text-white">Rasmni yuklab olish</a></div> : <div className="mt-4 whitespace-pre-wrap text-sm leading-7">{translatedText}</div>}
         </section>}
         <p className="mt-4 text-xs leading-5 text-gray-400">Har bir muvaffaqiyatli tarjima 1 kredit ishlatadi. Server xatosi yuz bersa, kreditni qaytarishga harakat qilamiz.</p>
+      {lightboxImage && <div className="fixed inset-0 z-[100] flex flex-col bg-black/90 p-3 sm:p-6" role="dialog" aria-modal="true" aria-label="Rasmni kattalashtirib ko‘rish">
+        <div className="flex shrink-0 items-center justify-between gap-2 pb-3 text-white">
+          <span className="text-sm font-semibold">Rasmni ko‘rish</span>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => setZoom(value => Math.max(0.5, Math.round((value - 0.25) * 100) / 100))} className="rounded-lg bg-white/15 px-3 py-2" aria-label="Kichraytirish">−</button>
+            <button type="button" onClick={() => setZoom(1)} className="min-w-16 rounded-lg bg-white/15 px-3 py-2 text-sm">{Math.round(zoom * 100)}%</button>
+            <button type="button" onClick={() => setZoom(value => Math.min(4, Math.round((value + 0.25) * 100) / 100))} className="rounded-lg bg-white/15 px-3 py-2" aria-label="Kattalashtirish">+</button>
+            <button type="button" onClick={() => { setLightboxImage(""); setZoom(1); }} className="ml-1 rounded-lg bg-white/20 px-3 py-2" aria-label="Yopish">✕</button>
+          </div>
+        </div>
+        <div className="min-h-0 flex-1 overflow-auto rounded-xl text-center" onClick={e => { if (e.target === e.currentTarget) { setLightboxImage(""); setZoom(1); } }}>
+          <img src={lightboxImage} alt="Kattalashtirilgan rasm" onWheel={e => { if (e.deltaY < 0) setZoom(value => Math.min(4, value + 0.1)); else setZoom(value => Math.max(0.5, value - 0.1)); }} style={{ transform: "scale(" + zoom + ")", transformOrigin: "top center", maxWidth: "100%", height: "auto" }} className="mx-auto cursor-zoom-in rounded-md" />
+        </div>
+        <p className="shrink-0 pt-2 text-center text-xs text-white/70">+ / − tugmalari yoki sichqoncha g‘ildiragi bilan yaqinlashtiring</p>
+      </div>}
       </section>
     </div>
   </main>;
