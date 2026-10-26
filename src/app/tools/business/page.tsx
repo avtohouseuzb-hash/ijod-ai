@@ -26,11 +26,11 @@ export default function BusinessToolsPage() {
   const [storeUrl, setStoreUrl] = useState("");
   const [marketingFocus, setMarketingFocus] = useState<string[]>(["profile_audit", "brand_strategy", "image_audit", "audience", "ad_analytics"]);
   const marketingOptions = [
-    { id: "profile_audit", title: "Instagram sahifasini tahlil qilish", description: "Bio, kontent, Reels va vizual uslub" },
-    { id: "brand_strategy", title: "Brend strategiyasi", description: "Pozitsiya, farqlanish va brend ovozi" },
-    { id: "image_audit", title: "Marketing rasmlarini tahlil qilish", description: "Kreativ sifati, dizayn va yaxshilash yo‘llari" },
-    { id: "audience", title: "Auditoriya va mijoz psixologiyasi", description: "Mijoz segmentlari, ehtiyojlar va xarid to‘siqlari" },
-    { id: "ad_analytics", title: "Reklama natijalarini tahlil qilish", description: "CTR, CPC, konversiya va ROAS skrinshotlari asosida" },
+    { id: "profile_audit", title: "Instagram sahifamni tekshirish", description: "Profil va postlaringizni ko‘rib, nimalarni yaxshilash kerakligini aytadi." },
+    { id: "brand_strategy", title: "Brendimni rivojlantirish", description: "Biznesingizni boshqalardan ajratish va mijozlarga esda qolarli qilish yo‘llarini taklif qiladi." },
+    { id: "image_audit", title: "Reklama rasmimni yaxshilash", description: "Rasmni ko‘rib, nimasi yaxshi va nimani o‘zgartirish kerakligini tushuntiradi." },
+    { id: "audience", title: "Mijozlarimni tushunish", description: "Kimlar mahsulotingizni sotib olishi mumkinligi va ularni nima qiziqtirishini aniqlashga yordam beradi." },
+    { id: "ad_analytics", title: "Reklamam qanday ishlayotganini bilish", description: "Reklama statistikasi rasmini yuklang — natijalarni sodda tilda tushuntirib, yaxshilash yo‘lini aytadi." },
   ];
   const [productName, setProductName] = useState("");
   const [category, setCategory] = useState("Kiyim va aksessuarlar");
@@ -241,7 +241,7 @@ export default function BusinessToolsPage() {
           {modeId === "marketing" && <div className="mt-5 space-y-4 rounded-2xl border border-violet-100 bg-violet-50/40 p-4 sm:p-5"><h2 className="text-base font-bold">Tahlil uchun ma’lumotlar</h2>
 <div className="mt-1">
   <div className="text-sm font-semibold">Qaysi marketing xizmatlari kerak?</div>
-  <p className="mt-1 text-xs leading-5 text-gray-500">Bir nechtasini tanlashingiz mumkin. Tanlangan yo‘nalishlar natijada alohida tahlil qilinadi.</p>
+  <p className="mt-1 text-xs leading-5 text-gray-500">Sizga kerakli ishlarni belgilang. Masalan, Instagram sahifangizni tekshirtiring yoki reklama rasmingizni yaxshilash bo‘yicha maslahat oling.</p>
   <div className="mt-3 grid gap-2 sm:grid-cols-2">
     {marketingOptions.map((option) => (
       <label key={option.id} className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition ${marketingFocus.includes(option.id) ? "border-violet-400 bg-white ring-1 ring-violet-200" : "border-gray-200 bg-white"}`}>
