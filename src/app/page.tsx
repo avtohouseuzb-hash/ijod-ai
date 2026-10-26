@@ -136,7 +136,7 @@ export default function Home() {
         <header className="sticky top-0 z-10 flex h-[72px] items-center justify-between border-b border-gray-200/80 bg-white/90 px-5 backdrop-blur-xl sm:px-8">
           <div className="flex items-center gap-3 lg:hidden">
             <button type="button" aria-label="Menyuni ochish" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen((v) => !v)} className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-xl text-gray-800 shadow-sm">{mobileMenuOpen ? "×" : "☰"}</button>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-600 text-white">✳</div><span className="font-black">IJOD AI</span>
+            <img src="/ijod-logo-v2.svg?v=3" alt="IJOD AI" className="h-11 w-[112px] object-contain object-left" />
           </div>
           <div className="hidden text-sm text-gray-400 lg:block">Ijod qiling <span className="mx-2">/</span> <span className="font-semibold text-gray-800">{active}</span></div>
           <div className="flex items-center gap-3">
