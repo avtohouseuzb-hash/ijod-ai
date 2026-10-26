@@ -86,7 +86,7 @@ export default function Home() {
           {menu.map((item) => (
             <button
               key={item.name}
-              onClick={() => setActive(item.name)}
+              onClick={() => { setActive(item.name); window.scrollTo({ top: 0, behavior: "smooth" }); }}
               className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition ${
                 active === item.name
                   ? "bg-violet-50 text-violet-700"
@@ -144,6 +144,7 @@ export default function Home() {
         </header>
 
         <div className="mx-auto max-w-[1400px] px-5 py-8 sm:px-8 sm:py-10">
+          {(active === "Bosh sahifa" || active === "AI vositalar") && <>
           <section className="relative overflow-hidden rounded-[28px] bg-[#171326] px-6 py-9 text-white sm:px-10 sm:py-12">
             <div className="pointer-events-none absolute -right-10 -top-24 h-72 w-72 rounded-full bg-violet-500/30 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-32 right-1/3 h-64 w-64 rounded-full bg-fuchsia-500/20 blur-3xl" />
@@ -250,6 +251,21 @@ export default function Home() {
             </div>
           </section>
 
+          </>}
+          {active === "Mening loyihalarim" && <section className="rounded-3xl border border-gray-200 bg-white p-8 sm:p-12">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-100 text-2xl text-violet-700">▤</div>
+            <p className="text-xs font-bold uppercase tracking-[.18em] text-violet-600">IJOD LABORATORIYASI</p>
+            <h1 className="mt-2 text-3xl font-black">Mening loyihalarim</h1>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-gray-500">AI yordamida yaratgan ishlaringiz shu yerda ko‘rinadi. Hozircha saqlangan loyiha yo‘q.</p>
+            <button onClick={() => { setActive("AI vositalar"); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="mt-6 rounded-xl bg-violet-600 px-5 py-3 text-sm font-bold text-white hover:bg-violet-700">AI vositalarni ko‘rish →</button>
+          </section>}
+          {active === "Sevimlilar" && <section className="rounded-3xl border border-gray-200 bg-white p-8 sm:p-12">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-pink-100 text-2xl text-pink-600">♡</div>
+            <p className="text-xs font-bold uppercase tracking-[.18em] text-violet-600">SHAXSIY RO‘YXAT</p>
+            <h1 className="mt-2 text-3xl font-black">Sevimlilar</h1>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-gray-500">Tez-tez ishlatadigan AI vositalaringizni keyinroq tez topish uchun shu yerda saqlash mumkin. Hozircha sevimlilarga qo‘shilgan vosita yo‘q.</p>
+            <button onClick={() => { setActive("AI vositalar"); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="mt-6 rounded-xl bg-violet-600 px-5 py-3 text-sm font-bold text-white hover:bg-violet-700">AI vositalarni ko‘rish →</button>
+          </section>}
           <footer className="flex flex-col justify-between gap-2 py-8 text-xs text-gray-400 sm:flex-row">
             <span>© 2026 IJOD AI. Barcha huquqlar himoyalangan.</span>
             <span>O‘zbekistonda yaratilgan ✦</span>
