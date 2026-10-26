@@ -27,6 +27,8 @@ export default function Home() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [credits, setCredits] = useState<number | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -86,7 +88,7 @@ export default function Home() {
           {menu.map((item) => (
             <button
               key={item.name}
-              onClick={() => { setActive(item.name); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+              onClick={() => { setActive(item.name); window.scrollTo({ top: 0, behavior: "smooth" }); setMobileMenuOpen(false); }}
               className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition ${
                 active === item.name
                   ? "bg-violet-50 text-violet-700"
@@ -109,23 +111,32 @@ export default function Home() {
           </button>
         </div>
 
-        <div className="mt-auto border-t border-gray-100 pt-4">
-          <div className="flex items-center gap-3 rounded-xl p-2">
+        <div className="relative mt-auto border-t border-gray-100 pt-4">
+          <button type="button" onClick={() => setProfileMenuOpen((v) => !v)} aria-expanded={profileMenuOpen} className="flex w-full items-center gap-3 rounded-xl p-2 text-left hover:bg-gray-50">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-500">👤</div>
-            <div>
-              <div className="text-sm font-semibold">Mehmon</div>
-              <div className="text-xs text-gray-400">Hisob ulanmagan</div>
-            </div>
-            <span className="ml-auto text-gray-400">⋯</span>
-          </div>
+            <div className="min-w-0 flex-1"><div className="text-sm font-semibold">{userEmail ? "Hisobim" : "Mehmon"}</div><div className="truncate text-xs text-gray-400">{userEmail || "Hisob ulanmagan"}</div></div><span className="text-gray-400">⋯</span>
+          </button>
+          {profileMenuOpen && <div className="absolute bottom-full left-0 right-0 mb-2 rounded-xl border border-gray-200 bg-white p-2 shadow-xl">
+            {userEmail ? <button onClick={handleSignOut} className="w-full rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">Hisobdan chiqish</button> : <Link href="/login" onClick={() => setProfileMenuOpen(false)} className="block rounded-lg px-3 py-2 text-sm text-violet-700 hover:bg-violet-50">Kirish / Ro‘yxatdan o‘tish ↗</Link>}
+          </div>}
         </div>
       </aside>
 
+      {mobileMenuOpen && <div className="fixed inset-0 z-40 lg:hidden">
+        <button aria-label="Menyuni yopish" onClick={() => setMobileMenuOpen(false)} className="absolute inset-0 bg-black/30" />
+        <aside className="absolute inset-y-0 left-0 flex w-[min(84vw,300px)] flex-col bg-white px-5 py-6 shadow-2xl">
+          <div className="mb-8 flex items-center justify-between"><div className="flex items-center gap-2"><div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-600 text-white">✳</div><span className="font-black">IJOD AI</span></div><button onClick={() => setMobileMenuOpen(false)} aria-label="Yopish" className="rounded-lg px-3 py-1 text-2xl text-gray-500">×</button></div>
+          <div className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.18em] text-gray-400">MENYU</div>
+          <nav className="space-y-1">{menu.map((item) => <button key={item.name} onClick={() => { setActive(item.name); setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); }} className={"flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium " + (active === item.name ? "bg-violet-50 text-violet-700" : "text-gray-600 hover:bg-gray-50")}><span className="w-5 text-center text-lg">{item.icon}</span>{item.name}{item.name === "AI vositalar" && <span className="ml-auto text-xs text-gray-400">{tools.length}</span>}</button>)}</nav>
+          <div className="mt-8 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-700 p-4 text-white"><div className="mb-2 text-xl">✦</div><div className="text-sm font-bold">Tasavvuringizni yarating</div><p className="mt-1 text-xs leading-5 text-violet-100">AI yordamida g‘oyalaringizni hayotga olib keling.</p><button onClick={() => { setActive("AI vositalar"); setMobileMenuOpen(false); document.getElementById("tools")?.scrollIntoView({ behavior: "smooth" }); }} className="mt-4 rounded-lg bg-white px-3 py-2 text-xs font-bold text-violet-700">Boshlash →</button></div>
+          <div className="mt-auto border-t border-gray-100 pt-4"><div className="mb-2 px-2 text-sm font-semibold">{userEmail || "Mehmon"}</div>{userEmail ? <button onClick={handleSignOut} className="w-full rounded-xl px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-50">Hisobdan chiqish</button> : <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-50">Kirish / Ro‘yxatdan o‘tish ↗</Link>}</div>
+        </aside>
+      </div>}
       <main className="min-h-screen lg:ml-[250px]">
         <header className="sticky top-0 z-10 flex h-[72px] items-center justify-between border-b border-gray-200/80 bg-white/90 px-5 backdrop-blur-xl sm:px-8">
           <div className="flex items-center gap-3 lg:hidden">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-600 text-white">✳</div>
-            <span className="font-black">IJOD AI</span>
+            <button type="button" aria-label="Menyuni ochish" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen((v) => !v)} className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-xl text-gray-800 shadow-sm">{mobileMenuOpen ? "×" : "☰"}</button>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-600 text-white">✳</div><span className="font-black">IJOD AI</span>
           </div>
           <div className="hidden text-sm text-gray-400 lg:block">Ijod qiling <span className="mx-2">/</span> <span className="font-semibold text-gray-800">{active}</span></div>
           <div className="flex items-center gap-3">
