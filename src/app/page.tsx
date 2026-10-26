@@ -76,12 +76,9 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#f7f7fb] text-[#191923]">
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-[250px] flex-col border-r border-gray-200 bg-white px-5 py-6 lg:flex">
-        <a href="#" className="mb-10 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-600 text-xl text-white shadow-lg shadow-violet-200">✳</div>
-          <div>
-            <div className="text-lg font-black tracking-tight">IJOD AI</div>
-            <div className="text-[10px] tracking-[.18em] text-gray-400">CREATIVE SUPERAPP</div>
-          </div>
+        <a href="#" aria-label="IJOD AI bosh sahifa" className="mb-10 flex flex-col items-start gap-1">
+          <img src="/ijod-logo.svg" alt="IJOD AI" className="h-auto w-[158px] object-contain" />
+          <span className="pl-1 text-[9px] tracking-[.18em] text-gray-400">CREATIVE SUPERAPP</span>
         </a>
 
         <div className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.18em] text-gray-400">MENYU</div>
