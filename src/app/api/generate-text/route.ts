@@ -302,7 +302,30 @@ export async function POST(request: Request) {
       if (!logoB64) throw new Error("Logo rasmi yaratilmadi.");
       image = "data:image/png;base64," + logoB64;
     }
-    return NextResponse.json({ text, image, remainingCredits });
+    let projectAssetUrl: string | null = null;
+    if (image) {
+      try {
+        const base64 = image.split(",")[1];
+        const assetPath = `${user.id}/${crypto.randomUUID()}.png`;
+        const { data: uploaded, error: uploadError } = await serviceClient.storage.from("ai-project-assets").upload(assetPath, Buffer.from(base64, "base64"), { contentType: "image/png", upsert: false });
+        if (!uploadError && uploaded) {
+          const { data: publicUrl } = serviceClient.storage.from("ai-project-assets").getPublicUrl(uploaded.path);
+          projectAssetUrl = publicUrl.publicUrl;
+        } else console.error("Project asset upload failed:", uploadError?.message);
+      } catch (saveError) { console.error("Project asset save failed:", saveError); }
+    }
+    try {
+      const { error: saveError } = await serviceClient.from("ai_projects").insert({
+        user_id: user.id,
+        title: (topic.trim() || safeType).slice(0, 120),
+        service: safeType,
+        result_text: text,
+        asset_url: projectAssetUrl,
+        prompt: topic.trim().slice(0, 4000),
+      });
+      if (saveError) console.error("AI text project save failed:", saveError.message);
+    } catch (saveError) { console.error("AI text project save failed:", saveError); }
+    return NextResponse.json({ text, image, remainingCredits, saved: true });
   } catch (error) {
     if (creditReserved) {
       const { error: refundError } = await serviceClient.rpc("refund_credit", {
