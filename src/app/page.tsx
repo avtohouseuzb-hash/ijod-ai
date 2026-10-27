@@ -70,10 +70,10 @@ export default function Home() {
 
   const menu = [
     { name: "Bosh sahifa", icon: "⌂" },
+    { name: "Tariflar", icon: "✦" },
     { name: "AI vositalar", icon: "✳" },
     { name: "Mening loyihalarim", icon: "▤" },
     { name: "Sevimlilar", icon: "♡" },
-    { name: "Tariflar", icon: "✦" },
   ];
 
   return (
@@ -291,7 +291,7 @@ export default function Home() {
                 { name: "Pro", price: "29 000", credits: 60, unit: "483 so‘m / kredit", desc: "Ko‘proq ijod, yaxshiroq qiymat", featured: true },
                 { name: "Business", price: "59 000", credits: 130, unit: "454 so‘m / kredit", desc: "Faol ijodkorlar va biznes uchun", featured: false },
               ].map((plan) => (
-                <article key={plan.name} className={"relative flex flex-col rounded-3xl border bg-white p-6 " + (plan.featured ? "border-violet-500 shadow-xl shadow-violet-100 ring-1 ring-violet-500" : "border-gray-200")}>
+                <article key={plan.name} className={"relative flex flex-col rounded-3xl border bg-white p-6 transition-all duration-300 ease-out hover:-translate-y-2 hover:scale-[1.02] hover:border-violet-300 hover:shadow-2xl hover:shadow-violet-200/60 motion-reduce:transform-none " + (plan.featured ? "border-violet-500 shadow-xl shadow-violet-100 ring-1 ring-violet-500" : "border-gray-200 shadow-sm")}>
                   {plan.featured && <span className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-violet-600 px-3 py-1 text-[10px] font-bold text-white">OMMABOP</span>}
                   <h2 className="text-lg font-bold">{plan.name}</h2>
                   <p className="mt-2 text-sm text-gray-500">{plan.desc}</p>
