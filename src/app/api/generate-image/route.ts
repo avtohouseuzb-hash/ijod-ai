@@ -67,8 +67,25 @@ export async function POST(request: Request) {
     const b64 = result.data?.[0]?.b64_json;
     if (!b64) throw new Error("Image API bo‘sh natija qaytardi.");
 
+    const image = `data:image/png;base64,${b64}`;
+    let assetUrl: string | null = null;
+    try {
+      const assetPath = `${user.id}/${crypto.randomUUID()}.png`;
+      const { data: uploaded, error: uploadError } = await serviceClient.storage.from("ai-project-assets").upload(assetPath, Buffer.from(b64, "base64"), { contentType: "image/png", upsert: false });
+      if (!uploadError && uploaded) {
+        const { data: publicUrl } = serviceClient.storage.from("ai-project-assets").getPublicUrl(uploaded.path);
+        assetUrl = publicUrl.publicUrl;
+      } else console.error("AI image asset upload failed:", uploadError?.message);
+    } catch (saveError) { console.error("AI image asset upload failed:", saveError); }
+    try {
+      const { error: saveError } = await serviceClient.from("ai_projects").insert({
+        user_id: user.id, title: prompt.trim().slice(0, 120), service: "AI Rasm",
+        result_text: prompt.trim(), asset_url: assetUrl, prompt: prompt.trim(),
+      });
+      if (saveError) console.error("AI image project save failed:", saveError.message);
+    } catch (saveError) { console.error("AI image project save failed:", saveError); }
     const { data: profile } = await serviceClient.from("profiles").select("credits").eq("user_id", user.id).maybeSingle();
-    return NextResponse.json({ image: `data:image/png;base64,${b64}`, remainingCredits: profile?.credits ?? null });
+    return NextResponse.json({ image, remainingCredits: profile?.credits ?? null, saved: true });
   } catch (error) {
     const { error: refundError } = await serviceClient.rpc("refund_credit", {
       p_user_id: user.id, p_request_id: requestId, p_reason: "ai_image_generation_failed",
