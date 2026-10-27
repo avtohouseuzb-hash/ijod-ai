@@ -29,6 +29,10 @@ export default function Home() {
   const [authLoading, setAuthLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [projects, setProjects] = useState<Array<{ id: string; title: string; service: string; result_text: string | null; asset_url: string | null; prompt: string | null; rating: number | null; rating_note: string | null; created_at: string }>>([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
+  const [ratingNotes, setRatingNotes] = useState<Record<string, string>>({});
+  const [ratingSaving, setRatingSaving] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -57,6 +61,30 @@ export default function Home() {
       .eq("user_id", session.user.id)
       .maybeSingle();
     if (!error && typeof data?.credits === "number") setCredits(data.credits);
+  }
+
+  useEffect(() => {
+    if (active !== "Mening loyihalarim" || !userEmail) return;
+    let cancelled = false;
+    async function loadProjects() {
+      setProjectsLoading(true);
+      const { data, error } = await supabase.from("ai_projects").select("id,title,service,result_text,asset_url,prompt,rating,rating_note,created_at").order("created_at", { ascending: false }).limit(100);
+      if (!cancelled) {
+        if (!error && data) setProjects(data as typeof projects);
+        else if (error) console.error("Projects load failed:", error.message);
+        setProjectsLoading(false);
+      }
+    }
+    void loadProjects();
+    return () => { cancelled = true; };
+  }, [active, userEmail]);
+
+  async function saveProjectRating(projectId: string, rating: number) {
+    setRatingSaving(projectId);
+    const { error } = await supabase.from("ai_projects").update({ rating, rating_note: (ratingNotes[projectId] || "").trim().slice(0, 500), updated_at: new Date().toISOString() }).eq("id", projectId);
+    if (error) alert("Bahoni saqlab bo‘lmadi. Supabase migration qo‘llanganini tekshiring.");
+    else setProjects(current => current.map(project => project.id === projectId ? { ...project, rating, rating_note: (ratingNotes[projectId] || "").trim().slice(0, 500) } : project));
+    setRatingSaving(null);
   }
 
   async function handleSignOut() {
@@ -264,12 +292,29 @@ export default function Home() {
           </section>
 
           </>}
-          {active === "Mening loyihalarim" && <section className="rounded-3xl border border-gray-200 bg-white p-8 sm:p-12">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-100 text-2xl text-violet-700">▤</div>
-            <p className="text-xs font-bold uppercase tracking-[.18em] text-violet-600">IJOD LABORATORIYASI</p>
-            <h1 className="mt-2 text-3xl font-black">Mening loyihalarim</h1>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-gray-500">AI yordamida yaratgan ishlaringiz shu yerda ko‘rinadi. Hozircha saqlangan loyiha yo‘q.</p>
-            <button onClick={() => { setActive("AI vositalar"); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="mt-6 rounded-xl bg-violet-600 px-5 py-3 text-sm font-bold text-white hover:bg-violet-700">AI vositalarni ko‘rish →</button>
+          {active === "Mening loyihalarim" && <section className="space-y-6">
+            <div className="rounded-3xl border border-gray-200 bg-white p-8 sm:p-10">
+              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-100 text-2xl text-violet-700">▤</div>
+              <p className="text-xs font-bold uppercase tracking-[.18em] text-violet-600">IJOD LABORATORIYASI</p>
+              <h1 className="mt-2 text-3xl font-black">Mening loyihalarim</h1>
+              <p className="mt-3 max-w-xl text-sm leading-6 text-gray-500">AI yaratgan natijalaringiz shu yerda saqlanadi. Har bir javobga baho berib, sifatini yaxshilashga yordam bering.</p>
+              <button onClick={() => { setActive("AI vositalar"); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="mt-6 rounded-xl bg-violet-600 px-5 py-3 text-sm font-bold text-white hover:bg-violet-700">AI vositalarni ko‘rish →</button>
+            </div>
+            {projectsLoading ? <div className="rounded-2xl bg-white p-8 text-center text-sm text-gray-500">Loyihalar yuklanmoqda...</div> :
+              !userEmail ? <div className="rounded-2xl bg-white p-8 text-center text-sm text-gray-500">Loyihalaringizni ko‘rish uchun hisobingizga kiring.</div> :
+              projects.length === 0 ? <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center"><div className="text-3xl">✦</div><h2 className="mt-3 font-bold">Hozircha saqlangan loyiha yo‘q</h2><p className="mt-2 text-sm text-gray-500">AI Matn yoki AI Rasm orqali natija yarating — u shu yerda paydo bo‘ladi.</p></div> :
+              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{projects.map(project => <article key={project.id} className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+                {project.asset_url && <a href={project.asset_url} target="_blank" rel="noreferrer"><img src={project.asset_url} alt={project.title} className="max-h-72 w-full object-cover" /></a>}
+                <div className="p-5"><div className="flex items-start justify-between gap-3"><span className="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-bold text-violet-700">{project.service}</span><time className="text-xs text-gray-400">{new Date(project.created_at).toLocaleDateString("uz-UZ")}</time></div>
+                  <h2 className="mt-3 font-bold">{project.title}</h2>
+                  {project.result_text && <pre className="mt-3 max-h-52 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-gray-50 p-3 font-sans text-sm leading-6 text-gray-700">{project.result_text}</pre>}
+                  <div className="mt-5 border-t border-gray-100 pt-4"><p className="text-sm font-bold">AI natijasini baholang</p><p className="mt-1 text-xs text-gray-500">Vazifa qanchalik yaxshi bajarildi?</p>
+                    <div className="mt-3 flex items-center gap-2" role="group" aria-label="Natijaga 1 dan 5 gacha baho berish">{[1,2,3,4,5].map(star => <button key={star} disabled={ratingSaving===project.id} onClick={() => void saveProjectRating(project.id,star)} aria-label={star+" yulduz"} className={"text-2xl transition hover:scale-125 disabled:opacity-50 "+(project.rating!==null&&star<=project.rating?"text-amber-400":"text-gray-300")}>★</button>)}<span className="text-xs text-gray-500">{project.rating ? project.rating+"/5" : "Baho yo‘q"}</span></div>
+                    <textarea value={ratingNotes[project.id] ?? project.rating_note ?? ""} onChange={e=>setRatingNotes(prev=>({...prev,[project.id]:e.target.value}))} maxLength={500} rows={2} placeholder="Ixtiyoriy izoh: nima yaxshi yoki nimani yaxshilash kerak?" className="mt-3 w-full rounded-xl border border-gray-200 p-3 text-sm outline-none focus:border-violet-400" />
+                    <button disabled={ratingSaving===project.id} onClick={()=>void saveProjectRating(project.id,project.rating ?? 0)} className="mt-2 rounded-lg border border-violet-200 px-3 py-2 text-xs font-bold text-violet-700 hover:bg-violet-50 disabled:opacity-50">Izohni saqlash</button>
+                  </div>
+                </div>
+              </article>)}</div>}
           </section>}
           {active === "Sevimlilar" && <section className="rounded-3xl border border-gray-200 bg-white p-8 sm:p-12">
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-pink-100 text-2xl text-pink-600">♡</div>
