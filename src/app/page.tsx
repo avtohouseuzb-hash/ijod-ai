@@ -286,19 +286,33 @@ export default function Home() {
             </div>
             <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
               {[
-                { name: "Mini", price: "5 000", credits: 10, unit: "500 so‘m / kredit", desc: "IJOD AI bilan tanishish uchun", featured: false },
-                { name: "Start", price: "15 000", credits: 30, unit: "500 so‘m / kredit", desc: "Doimiy foydalanishni boshlang", featured: false },
-                { name: "Pro", price: "29 000", credits: 60, unit: "483 so‘m / kredit", desc: "Ko‘proq ijod, yaxshiroq qiymat", featured: true },
-                { name: "Business", price: "59 000", credits: 130, unit: "454 so‘m / kredit", desc: "Faol ijodkorlar va biznes uchun", featured: false },
+                { name: "Mini", price: "5 000", credits: 10, unit: "500 so‘m / kredit", desc: "IJOD AI bilan tanishish uchun", featured: false, style: "mini" },
+                { name: "Start", price: "15 000", credits: 30, unit: "500 so‘m / kredit", desc: "Doimiy foydalanishni boshlang", featured: false, style: "start" },
+                { name: "Pro", price: "29 000", credits: 60, unit: "483 so‘m / kredit", desc: "Ko‘proq ijod, yaxshiroq qiymat", featured: true, style: "pro" },
+                { name: "Business", price: "59 000", credits: 130, unit: "454 so‘m / kredit", desc: "Faol ijodkorlar va biznes uchun", featured: false, style: "business" },
               ].map((plan) => (
-                <article key={plan.name} className={"relative flex flex-col rounded-3xl border bg-white p-6 transition-all duration-300 ease-out hover:-translate-y-2 hover:scale-[1.02] hover:border-violet-300 hover:shadow-2xl hover:shadow-violet-200/60 motion-reduce:transform-none " + (plan.featured ? "border-violet-500 shadow-xl shadow-violet-100 ring-1 ring-violet-500" : "border-gray-200 shadow-sm")}>
-                  {plan.featured && <span className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-violet-600 px-3 py-1 text-[10px] font-bold text-white">OMMABOP</span>}
-                  <h2 className="text-lg font-bold">{plan.name}</h2>
-                  <p className="mt-2 text-sm text-gray-500">{plan.desc}</p>
-                  <div className="mt-6 flex items-baseline gap-1"><span className="text-3xl font-black tracking-tight">{plan.price}</span><span className="text-sm text-gray-500">so‘m</span></div>
-                  <div className="mt-4 rounded-xl bg-violet-50 px-4 py-3"><span className="text-2xl font-black text-violet-700">{plan.credits}</span><span className="ml-2 text-sm font-semibold text-violet-700">kredit</span></div>
-                  <p className="mt-3 text-xs text-gray-500">{plan.unit}</p>
-                  <button onClick={() => { if (!userEmail) { window.location.href = "/login"; return; } alert("Kredit xaridi tez orada ulanadi. Hozircha to‘lov tizimi sozlanmoqda."); }} className={"mt-6 w-full rounded-xl px-4 py-3 text-sm font-bold transition " + (plan.featured ? "bg-violet-600 text-white hover:bg-violet-700" : "border border-gray-200 text-gray-700 hover:border-violet-300 hover:text-violet-700")}>Tarifni tanlash</button>
+                <article key={plan.name} className={"group relative flex flex-col rounded-3xl border bg-white p-6 transition-all duration-300 ease-out hover:-translate-y-2 hover:scale-[1.025] hover:shadow-2xl motion-reduce:transform-none " +
+                  (plan.style === "mini" ? "border-gray-200 shadow-sm" :
+                   plan.style === "start" ? "border-sky-200 shadow-md shadow-sky-100/70 hover:border-sky-400 hover:shadow-sky-200/70" :
+                   plan.style === "pro" ? "border-violet-500 shadow-xl shadow-violet-100 ring-1 ring-violet-500 hover:border-violet-600 hover:shadow-violet-300/70" :
+                   "overflow-hidden border-amber-300 bg-gradient-to-br from-[#fffdf7] via-white to-amber-50 shadow-lg shadow-amber-100/80 hover:border-amber-500 hover:shadow-amber-300/70")}>
+                  {plan.style === "start" && <span className="absolute -right-8 top-5 rotate-45 bg-sky-600 px-9 py-1 text-[9px] font-black tracking-widest text-white shadow-sm">START</span>}
+                  {plan.style === "pro" && <span className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-violet-600 px-3 py-1 text-[10px] font-bold text-white shadow-md">OMMABOP</span>}
+                  {plan.style === "business" && <>
+                    <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-amber-300/30 blur-2xl transition-all duration-300 group-hover:bg-amber-400/50" />
+                    <div className="absolute right-4 top-4 rounded-full border border-amber-300 bg-amber-100 px-2.5 py-1 text-[9px] font-black tracking-[.16em] text-amber-800">PREMIUM</div>
+                    <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-300 via-yellow-500 to-amber-300" />
+                  </>}
+                  <h2 className={"relative text-lg font-bold " + (plan.style === "business" ? "text-amber-950" : "")}>{plan.name}</h2>
+                  <p className="relative mt-2 text-sm text-gray-500">{plan.desc}</p>
+                  <div className="relative mt-6 flex items-baseline gap-1"><span className={"text-3xl font-black tracking-tight " + (plan.style === "business" ? "bg-gradient-to-r from-amber-700 to-yellow-600 bg-clip-text text-transparent" : "")}>{plan.price}</span><span className="text-sm text-gray-500">so‘m</span></div>
+                  <div className={"relative mt-4 rounded-xl px-4 py-3 " + (plan.style === "business" ? "border border-amber-200 bg-gradient-to-r from-amber-100 to-yellow-50" : plan.style === "start" ? "bg-sky-50" : "bg-violet-50")}><span className={"text-2xl font-black " + (plan.style === "business" ? "text-amber-700" : plan.style === "start" ? "text-sky-700" : "text-violet-700")}>{plan.credits}</span><span className={"ml-2 text-sm font-semibold " + (plan.style === "business" ? "text-amber-800" : plan.style === "start" ? "text-sky-700" : "text-violet-700")}>kredit</span></div>
+                  <p className="relative mt-3 text-xs text-gray-500">{plan.unit}</p>
+                  <button onClick={() => { if (!userEmail) { window.location.href = "/login"; return; } alert("Kredit xaridi tez orada ulanadi. Hozircha to‘lov tizimi sozlanmoqda."); }} className={"relative mt-6 w-full rounded-xl px-4 py-3 text-sm font-bold transition " +
+                    (plan.style === "pro" ? "bg-violet-600 text-white hover:bg-violet-700" :
+                     plan.style === "business" ? "border border-amber-400 bg-gradient-to-r from-amber-500 to-yellow-500 text-amber-950 shadow-md hover:from-amber-600 hover:to-yellow-600" :
+                     plan.style === "start" ? "border border-sky-200 text-sky-800 hover:bg-sky-50" :
+                     "border border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50")}>Tarifni tanlash</button>
                 </article>
               ))}
             </div>
