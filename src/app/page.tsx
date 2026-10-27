@@ -79,7 +79,7 @@ export default function Home() {
     return () => { cancelled = true; };
   }, [active, userEmail]);
 
-  async function saveProjectRating(projectId: string, rating: number) {
+  async function saveProjectRating(projectId: string, rating: number | null) {
     setRatingSaving(projectId);
     const { error } = await supabase.from("ai_projects").update({ rating, rating_note: (ratingNotes[projectId] || "").trim().slice(0, 500), updated_at: new Date().toISOString() }).eq("id", projectId);
     if (error) alert("Bahoni saqlab bo‘lmadi. Supabase migration qo‘llanganini tekshiring.");
@@ -311,7 +311,7 @@ export default function Home() {
                   <div className="mt-5 border-t border-gray-100 pt-4"><p className="text-sm font-bold">AI natijasini baholang</p><p className="mt-1 text-xs text-gray-500">Vazifa qanchalik yaxshi bajarildi?</p>
                     <div className="mt-3 flex items-center gap-2" role="group" aria-label="Natijaga 1 dan 5 gacha baho berish">{[1,2,3,4,5].map(star => <button key={star} disabled={ratingSaving===project.id} onClick={() => void saveProjectRating(project.id,star)} aria-label={star+" yulduz"} className={"text-2xl transition hover:scale-125 disabled:opacity-50 "+(project.rating!==null&&star<=project.rating?"text-amber-400":"text-gray-300")}>★</button>)}<span className="text-xs text-gray-500">{project.rating ? project.rating+"/5" : "Baho yo‘q"}</span></div>
                     <textarea value={ratingNotes[project.id] ?? project.rating_note ?? ""} onChange={e=>setRatingNotes(prev=>({...prev,[project.id]:e.target.value}))} maxLength={500} rows={2} placeholder="Ixtiyoriy izoh: nima yaxshi yoki nimani yaxshilash kerak?" className="mt-3 w-full rounded-xl border border-gray-200 p-3 text-sm outline-none focus:border-violet-400" />
-                    <button disabled={ratingSaving===project.id} onClick={()=>void saveProjectRating(project.id,project.rating ?? 0)} className="mt-2 rounded-lg border border-violet-200 px-3 py-2 text-xs font-bold text-violet-700 hover:bg-violet-50 disabled:opacity-50">Izohni saqlash</button>
+                    <button disabled={ratingSaving===project.id} onClick={()=>void saveProjectRating(project.id,project.rating)} className="mt-2 rounded-lg border border-violet-200 px-3 py-2 text-xs font-bold text-violet-700 hover:bg-violet-50 disabled:opacity-50">Izohni saqlash</button>
                   </div>
                 </div>
               </article>)}</div>}
