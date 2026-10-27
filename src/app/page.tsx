@@ -73,6 +73,7 @@ export default function Home() {
     { name: "AI vositalar", icon: "✳" },
     { name: "Mening loyihalarim", icon: "▤" },
     { name: "Sevimlilar", icon: "♡" },
+    { name: "Tariflar", icon: "✦" },
   ];
 
   return (
@@ -276,6 +277,49 @@ export default function Home() {
             <h1 className="mt-2 text-3xl font-black">Sevimlilar</h1>
             <p className="mt-3 max-w-xl text-sm leading-6 text-gray-500">Tez-tez ishlatadigan AI vositalaringizni keyinroq tez topish uchun shu yerda saqlash mumkin. Hozircha sevimlilarga qo‘shilgan vosita yo‘q.</p>
             <button onClick={() => { setActive("AI vositalar"); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="mt-6 rounded-xl bg-violet-600 px-5 py-3 text-sm font-bold text-white hover:bg-violet-700">AI vositalarni ko‘rish →</button>
+          </section>}
+          {active === "Tariflar" && <section className="space-y-8">
+            <div className="text-center">
+              <p className="text-xs font-bold uppercase tracking-[.18em] text-violet-600">IJOD AI TARIFLARI</p>
+              <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">O‘zingizga mos tarifni tanlang</h1>
+              <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-gray-500">Kreditlarni xarid qiling va ularni AI vositalarida o‘zingizga kerakli natijalarni yaratish uchun ishlating.</p>
+            </div>
+            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+              {[
+                { name: "Mini", price: "5 000", credits: 10, unit: "500 so‘m / kredit", desc: "IJOD AI bilan tanishish uchun", featured: false },
+                { name: "Start", price: "15 000", credits: 30, unit: "500 so‘m / kredit", desc: "Doimiy foydalanishni boshlang", featured: false },
+                { name: "Pro", price: "29 000", credits: 60, unit: "483 so‘m / kredit", desc: "Ko‘proq ijod, yaxshiroq qiymat", featured: true },
+                { name: "Business", price: "59 000", credits: 130, unit: "454 so‘m / kredit", desc: "Faol ijodkorlar va biznes uchun", featured: false },
+              ].map((plan) => (
+                <article key={plan.name} className={"relative flex flex-col rounded-3xl border bg-white p-6 " + (plan.featured ? "border-violet-500 shadow-xl shadow-violet-100 ring-1 ring-violet-500" : "border-gray-200")}>
+                  {plan.featured && <span className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-violet-600 px-3 py-1 text-[10px] font-bold text-white">OMMABOP</span>}
+                  <h2 className="text-lg font-bold">{plan.name}</h2>
+                  <p className="mt-2 text-sm text-gray-500">{plan.desc}</p>
+                  <div className="mt-6 flex items-baseline gap-1"><span className="text-3xl font-black tracking-tight">{plan.price}</span><span className="text-sm text-gray-500">so‘m</span></div>
+                  <div className="mt-4 rounded-xl bg-violet-50 px-4 py-3"><span className="text-2xl font-black text-violet-700">{plan.credits}</span><span className="ml-2 text-sm font-semibold text-violet-700">kredit</span></div>
+                  <p className="mt-3 text-xs text-gray-500">{plan.unit}</p>
+                  <button onClick={() => { if (!userEmail) { window.location.href = "/login"; return; } alert("Kredit xaridi tez orada ulanadi. Hozircha to‘lov tizimi sozlanmoqda."); }} className={"mt-6 w-full rounded-xl px-4 py-3 text-sm font-bold transition " + (plan.featured ? "bg-violet-600 text-white hover:bg-violet-700" : "border border-gray-200 text-gray-700 hover:border-violet-300 hover:text-violet-700")}>Tarifni tanlash</button>
+                </article>
+              ))}
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-white p-6">
+              <h2 className="text-lg font-bold">Kreditlar qanday sarflanadi?</h2>
+              <p className="mt-2 text-sm leading-6 text-gray-500">Xizmatga qarab kredit sarfi farq qiladi. Quyidagi qiymatlar boshlang‘ich tariflar bo‘lib, xizmatlarning haqiqiy AI xarajatlari tekshirilgach yangilanishi mumkin.</p>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {[
+                  ["AI matn / post", "1 kreditdan"],
+                  ["Reels ssenariysi", "2 kreditdan"],
+                  ["Kontent-reja", "3 kreditdan"],
+                  ["AI ovoz", "3–5 kredit"],
+                  ["AI rasm", "20 kredit"],
+                  ["Logo / brend", "25 kredit"],
+                  ["Mahsulot kartochkasi", "25 kredit"],
+                  ["AI video · 6 soniya", "35 kredit"],
+                  ["AI video · 10 soniya", "70 kredit"],
+                ].map(([label, value]) => <div key={label} className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 px-4 py-3"><span className="text-sm text-gray-600">{label}</span><span className="whitespace-nowrap text-sm font-bold text-violet-700">{value}</span></div>)}
+              </div>
+              <p className="mt-4 text-xs leading-5 text-gray-400">Eslatma: kredit paketlari narxlari ko‘rsatilgan. To‘lovni amalga oshirish funksiyasi alohida to‘lov provayderi integratsiyasini talab qiladi.</p>
+            </div>
           </section>}
           <footer className="flex flex-col justify-between gap-2 py-8 text-xs text-gray-400 sm:flex-row">
             <span>© 2026 IJOD AI. Barcha huquqlar himoyalangan.</span>
