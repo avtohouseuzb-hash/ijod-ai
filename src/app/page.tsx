@@ -29,10 +29,11 @@ export default function Home() {
   const [authLoading, setAuthLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const [projects, setProjects] = useState<Array<{ id: string; title: string; service: string; result_text: string | null; asset_url: string | null; prompt: string | null; rating: number | null; rating_note: string | null; created_at: string }>>([]);
+  const [projects, setProjects] = useState<Array<{ id: string; title: string; service: string; result_text: string | null; asset_url: string | null; prompt: string | null; rating: number | null; rating_note: string | null; task_outcome: "completed" | "partial" | "failed" | null; created_at: string }>>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [ratingNotes, setRatingNotes] = useState<Record<string, string>>({});
   const [ratingSaving, setRatingSaving] = useState<string | null>(null);
+  const [outcomeSaving, setOutcomeSaving] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -68,7 +69,7 @@ export default function Home() {
     let cancelled = false;
     async function loadProjects() {
       setProjectsLoading(true);
-      const { data, error } = await supabase.from("ai_projects").select("id,title,service,result_text,asset_url,prompt,rating,rating_note,created_at").order("created_at", { ascending: false }).limit(100);
+      const { data, error } = await supabase.from("ai_projects").select("id,title,service,result_text,asset_url,prompt,rating,rating_note,task_outcome,created_at").order("created_at", { ascending: false }).limit(100);
       if (!cancelled) {
         if (!error && data) setProjects(data as typeof projects);
         else if (error) console.error("Projects load failed:", error.message);
@@ -85,6 +86,14 @@ export default function Home() {
     if (error) alert("Bahoni saqlab bo‘lmadi. Supabase migration qo‘llanganini tekshiring.");
     else setProjects(current => current.map(project => project.id === projectId ? { ...project, rating, rating_note: (ratingNotes[projectId] || "").trim().slice(0, 500) } : project));
     setRatingSaving(null);
+  }
+
+  async function saveProjectOutcome(projectId: string, outcome: "completed" | "partial" | "failed") {
+    setOutcomeSaving(projectId);
+    const { error } = await supabase.from("ai_projects").update({ task_outcome: outcome, updated_at: new Date().toISOString() }).eq("id", projectId);
+    if (error) alert("Vazifa holatini saqlab bo‘lmadi. Qayta urinib ko‘ring.");
+    else setProjects(current => current.map(project => project.id === projectId ? { ...project, task_outcome: outcome } : project));
+    setOutcomeSaving(null);
   }
 
   async function handleSignOut() {
@@ -310,6 +319,7 @@ export default function Home() {
                   {project.result_text && <pre className="mt-3 max-h-52 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-gray-50 p-3 font-sans text-sm leading-6 text-gray-700">{project.result_text}</pre>}
                   <div className="mt-5 border-t border-gray-100 pt-4"><p className="text-sm font-bold">AI natijasini baholang</p><p className="mt-1 text-xs text-gray-500">Vazifa qanchalik yaxshi bajarildi?</p>
                     <div className="mt-3 flex items-center gap-2" role="group" aria-label="Natijaga 1 dan 5 gacha baho berish">{[1,2,3,4,5].map(star => <button key={star} disabled={ratingSaving===project.id} onClick={() => void saveProjectRating(project.id,star)} aria-label={star+" yulduz"} className={"text-2xl transition hover:scale-125 disabled:opacity-50 "+(project.rating!==null&&star<=project.rating?"text-amber-400":"text-gray-300")}>★</button>)}<span className="text-xs text-gray-500">{project.rating ? project.rating+"/5" : "Baho yo‘q"}</span></div>
+                    <div className="mt-4 rounded-xl bg-gray-50 p-3"><p className="text-sm font-bold">Vazifa natijasi</p><p className="mt-1 text-xs text-gray-500">AI topshiriqni qanchalik bajardi?</p><div className="mt-3 flex flex-wrap gap-2">{([{value:"completed",label:"✓ Bajarildi"},{value:"partial",label:"◐ Qisman"},{value:"failed",label:"✕ Bajarilmadi"}] as const).map(option => <button key={option.value} type="button" disabled={outcomeSaving===project.id} aria-pressed={project.task_outcome===option.value} onClick={()=>void saveProjectOutcome(project.id,option.value)} className={"rounded-lg border px-3 py-2 text-xs font-semibold transition disabled:opacity-50 "+(project.task_outcome===option.value?"border-violet-600 bg-violet-600 text-white":"border-gray-200 bg-white text-gray-600 hover:border-violet-300")}>{option.label}</button>)}</div></div>
                     <textarea value={ratingNotes[project.id] ?? project.rating_note ?? ""} onChange={e=>setRatingNotes(prev=>({...prev,[project.id]:e.target.value}))} maxLength={500} rows={2} placeholder="Ixtiyoriy izoh: nima yaxshi yoki nimani yaxshilash kerak?" className="mt-3 w-full rounded-xl border border-gray-200 p-3 text-sm outline-none focus:border-violet-400" />
                     <button disabled={ratingSaving===project.id} onClick={()=>void saveProjectRating(project.id,project.rating)} className="mt-2 rounded-lg border border-violet-200 px-3 py-2 text-xs font-bold text-violet-700 hover:bg-violet-50 disabled:opacity-50">Izohni saqlash</button>
                   </div>
