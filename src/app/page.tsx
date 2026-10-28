@@ -178,7 +178,7 @@ export default function Home() {
           </div>
           <div className="hidden text-sm text-gray-400 lg:block">Ijod qiling <span className="mx-2">/</span> <span className="font-semibold text-gray-800">{active}</span></div>
           <div className="flex items-center gap-3">
-            <div className="hidden items-center gap-2 rounded-full border border-gray-200 px-3 py-2 text-xs text-gray-500 sm:flex">
+            <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-gray-200 px-2 py-2 text-[11px] text-gray-600 sm:gap-2 sm:px-3 sm:text-xs">
               <span className="text-amber-500">✦</span> {credits === null ? "— kredit" : `${credits} kredit`}
             </div>
             {userEmail ? (
