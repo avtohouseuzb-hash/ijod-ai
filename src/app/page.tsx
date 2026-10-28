@@ -35,6 +35,19 @@ export default function Home() {
   const [ratingSaving, setRatingSaving] = useState<string | null>(null);
   const [outcomeSaving, setOutcomeSaving] = useState<string | null>(null);
 
+  // Prevent the page behind the mobile drawer from scrolling on touch devices.
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    const previousOverscroll = document.body.style.overscrollBehavior;
+    document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.overscrollBehavior = previousOverscroll;
+    };
+  }, [mobileMenuOpen]);
+
   useEffect(() => {
     let mounted = true;
     supabase.auth.getSession().then(({ data }) => {
@@ -162,7 +175,7 @@ export default function Home() {
 
       {mobileMenuOpen && <div className="fixed inset-0 z-40 lg:hidden">
         <button aria-label="Menyuni yopish" onClick={() => setMobileMenuOpen(false)} className="absolute inset-0 bg-black/30" />
-        <aside className="absolute inset-y-0 left-0 flex w-[min(84vw,300px)] flex-col bg-white px-5 py-6 shadow-2xl">
+        <aside className="absolute inset-y-0 left-0 flex w-[min(84vw,300px)] flex-col overflow-y-auto overscroll-contain touch-pan-y bg-white px-5 py-6 shadow-2xl">
           <div className="mb-8 flex items-center justify-between"><div className="flex items-center gap-2"><img src="/ijod-logo-v2.svg" alt="IJOD AI" className="h-11 w-[105px] object-contain" /></div><button onClick={() => setMobileMenuOpen(false)} aria-label="Yopish" className="rounded-lg px-3 py-1 text-2xl text-gray-500">×</button></div>
           <div className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.18em] text-gray-400">MENYU</div>
           <nav className="space-y-1">{menu.map((item) => <button key={item.name} onClick={() => { setActive(item.name); setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); }} className={"flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium " + (active === item.name ? "bg-violet-50 text-violet-700" : "text-gray-600 hover:bg-gray-50")}><span className="w-5 text-center text-lg">{item.icon}</span>{item.name}{item.name === "AI vositalar" && <span className="ml-auto text-xs text-gray-400">{tools.length}</span>}</button>)}</nav>
