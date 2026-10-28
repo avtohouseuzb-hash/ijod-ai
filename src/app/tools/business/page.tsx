@@ -50,6 +50,11 @@ export default function BusinessToolsPage() {
   const [resultImage, setResultImage] = useState("");
   const [brandLogo, setBrandLogo] = useState("");
   const [downloadError, setDownloadError] = useState("");
+  const [feedbackProjectId, setFeedbackProjectId] = useState<string | null>(null);
+  const [feedbackRating, setFeedbackRating] = useState<number | null>(null);
+  const [feedbackNote, setFeedbackNote] = useState("");
+  const [feedbackOutcome, setFeedbackOutcome] = useState<"completed" | "partial" | "failed" | null>(null);
+  const [feedbackSaving, setFeedbackSaving] = useState(false);
   const mode = modes.find((item) => item.id === modeId) ?? modes[0];
 
   useEffect(() => {
@@ -81,7 +86,7 @@ export default function BusinessToolsPage() {
   async function generate() {
     if (loading) return;
     if (modeId === "product" ? (!productName.trim() || !topic.trim()) : modeId === "document" ? (!topic.trim() && !documentDataUrl) : modeId === "marketing" ? (!topic.trim() && !storeUrl.trim() && !instagramHandle.trim() && !marketingImageUrl) : !topic.trim()) return;
-    setLoading(true); setError(""); setResult(""); setResultImage(""); setBrandLogo(""); setCopied(false);
+    setLoading(true); setError(""); setResult(""); setResultImage(""); setBrandLogo(""); setCopied(false); setFeedbackProjectId(null); setFeedbackRating(null); setFeedbackNote(""); setFeedbackOutcome(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("AI vositasidan foydalanish uchun avval hisobingizga kiring.");
@@ -108,6 +113,14 @@ export default function BusinessToolsPage() {
         setResult(data.text);
         if (modeId === "brand" && data.image) setBrandLogo(data.image);
         if (typeof data.remainingCredits === "number") setCredits(data.remainingCredits);
+      }
+      // Locate the project just saved by the generation API, scoped to the signed-in user.
+      const { data: savedProject } = await supabase.from("ai_projects").select("id,rating,rating_note,task_outcome").eq("user_id", session.user.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (savedProject) {
+        setFeedbackProjectId(savedProject.id);
+        setFeedbackRating(savedProject.rating);
+        setFeedbackNote(savedProject.rating_note ?? "");
+        setFeedbackOutcome(savedProject.task_outcome);
       }
     } catch (e) { setError(e instanceof Error ? e.message : "Xatolik yuz berdi. Qayta urinib ko‘ring."); }
     finally { setLoading(false); }
@@ -182,6 +195,15 @@ export default function BusinessToolsPage() {
       document.body.appendChild(a); a.click(); a.remove();
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
     } catch { setDownloadError("Yuklab olish bloklandi. Rasmni yangi oynada ochib, rasm ustiga bosib turib saqlang."); }
+  }
+
+  async function saveFeedback(rating: number | null = feedbackRating, outcome = feedbackOutcome) {
+    if (!feedbackProjectId || feedbackSaving) return;
+    setFeedbackSaving(true);
+    const { error: saveError } = await supabase.from("ai_projects").update({ rating, rating_note: feedbackNote.trim().slice(0, 500), task_outcome: outcome, updated_at: new Date().toISOString() }).eq("id", feedbackProjectId);
+    if (saveError) alert("Bahoni saqlab bo‘lmadi. Qayta urinib ko‘ring.");
+    else { setFeedbackRating(rating); setFeedbackOutcome(outcome); }
+    setFeedbackSaving(false);
   }
 
   async function copyResult() {
@@ -261,7 +283,7 @@ export default function BusinessToolsPage() {
           </label>
           <button disabled={!(modeId === "product" ? productName.trim() && topic.trim() : modeId === "document" ? (topic.trim() || documentDataUrl) : modeId === "marketing" ? Boolean(marketingImageUrl) : topic.trim()) || loading || Boolean(productImageError) || Boolean(documentError) || Boolean(marketingImageError)} onClick={generate} className="mt-5 w-full rounded-xl bg-violet-600 p-3.5 text-sm font-bold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40">{loading ? (modeId === "product" ? "Kartochka va rasm tayyorlanmoqda..." : "AI tayyorlayapti...") : modeId === "product" ? "✦ To‘liq kartochka va rasm yaratish (5 kredit)" : modeId === "document" ? "✦ Hujjatni tahlil qilish (1 kredit)" : "✦ Natija yaratish (1 kredit)"}</button>
           {error && <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-          {result && <section className="mt-6 rounded-2xl border border-violet-100 bg-violet-50/50 p-5"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold">{modeId === "product" ? "Tayyor mahsulot kartochkasi" : "Tayyor natija"}</h2><button onClick={copyResult} className="rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm font-semibold text-violet-700">{copied ? "Nusxalandi ✓" : "Matnni nusxalash"}</button></div>{resultImage && <div className="mt-4 rounded-xl border border-violet-100 bg-white p-3"><h3 className="font-bold">AI mahsulot rasmi</h3><img src={resultImage} alt="AI yaratgan mahsulot tasviri" className="mx-auto mt-3 max-h-[700px] w-full rounded-lg object-contain" /><div className="mt-3 grid gap-2 sm:grid-cols-2"><button onClick={downloadProductImage} className="rounded-xl bg-violet-600 px-4 py-3 text-sm font-bold text-white">⬇ Rasmni yuklab olish</button><a href={resultImage} target="_blank" rel="noreferrer" className="rounded-xl border border-violet-200 px-4 py-3 text-center text-sm font-semibold text-violet-700">Rasmni yangi oynada ochish ↗</a></div>{downloadError && <p className="mt-2 text-sm text-amber-700">{downloadError}</p>}</div>}{brandLogo && <div className="mt-4 rounded-xl border border-violet-100 bg-white p-4"><h3 className="font-bold">AI yaratgan logo</h3><img src={brandLogo} alt="AI yaratgan brend logotipi" className="mx-auto mt-3 max-h-[420px] w-full rounded-lg object-contain" /><div className="mt-3 grid gap-2 sm:grid-cols-2"><button onClick={downloadBrandLogo} className="rounded-xl bg-violet-600 px-4 py-3 text-sm font-bold text-white">⬇ Logoni yuklab olish</button><a href={brandLogo} target="_blank" rel="noreferrer" className="rounded-xl border border-violet-200 px-4 py-3 text-center text-sm font-semibold text-violet-700">Logoni yangi oynada ochish ↗</a></div>{downloadError && <p className="mt-2 text-sm text-amber-700">{downloadError}</p>}</div>}<div className="mt-4 whitespace-pre-wrap text-sm leading-7 text-gray-800">{result}</div></section>}
+          {result && <section className="mt-6 rounded-2xl border border-violet-100 bg-violet-50/50 p-5"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold">{modeId === "product" ? "Tayyor mahsulot kartochkasi" : "Tayyor natija"}</h2><button onClick={copyResult} className="rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm font-semibold text-violet-700">{copied ? "Nusxalandi ✓" : "Matnni nusxalash"}</button></div>{resultImage && <div className="mt-4 rounded-xl border border-violet-100 bg-white p-3"><h3 className="font-bold">AI mahsulot rasmi</h3><img src={resultImage} alt="AI yaratgan mahsulot tasviri" className="mx-auto mt-3 max-h-[700px] w-full rounded-lg object-contain" /><div className="mt-3 grid gap-2 sm:grid-cols-2"><button onClick={downloadProductImage} className="rounded-xl bg-violet-600 px-4 py-3 text-sm font-bold text-white">⬇ Rasmni yuklab olish</button><a href={resultImage} target="_blank" rel="noreferrer" className="rounded-xl border border-violet-200 px-4 py-3 text-center text-sm font-semibold text-violet-700">Rasmni yangi oynada ochish ↗</a></div>{downloadError && <p className="mt-2 text-sm text-amber-700">{downloadError}</p>}</div>}{brandLogo && <div className="mt-4 rounded-xl border border-violet-100 bg-white p-4"><h3 className="font-bold">AI yaratgan logo</h3><img src={brandLogo} alt="AI yaratgan brend logotipi" className="mx-auto mt-3 max-h-[420px] w-full rounded-lg object-contain" /><div className="mt-3 grid gap-2 sm:grid-cols-2"><button onClick={downloadBrandLogo} className="rounded-xl bg-violet-600 px-4 py-3 text-sm font-bold text-white">⬇ Logoni yuklab olish</button><a href={brandLogo} target="_blank" rel="noreferrer" className="rounded-xl border border-violet-200 px-4 py-3 text-center text-sm font-semibold text-violet-700">Logoni yangi oynada ochish ↗</a></div>{downloadError && <p className="mt-2 text-sm text-amber-700">{downloadError}</p>}</div>}<div className="mt-4 whitespace-pre-wrap text-sm leading-7 text-gray-800">{result}</div>{feedbackProjectId && <div className="mt-5 border-t border-violet-100 pt-4"><p className="text-sm font-bold">AI javobini baholang</p><p className="mt-1 text-xs text-gray-500">Natija vazifangizga qanchalik mos keldi?</p><div className="mt-3 flex items-center gap-2" role="group" aria-label="AI natijasiga yulduzli baho berish">{[1,2,3,4,5].map(star => <button key={star} type="button" disabled={feedbackSaving} onClick={() => { setFeedbackRating(star); void saveFeedback(star); }} aria-label={star + " yulduz"} className={"text-2xl disabled:opacity-50 " + (feedbackRating !== null && star <= feedbackRating ? "text-amber-400" : "text-gray-300")}>★</button>)}<span className="text-xs text-gray-500">{feedbackRating ? feedbackRating + "/5" : "Baho tanlanmagan"}</span></div><div className="mt-4 flex flex-wrap gap-2">{([{value:"completed",label:"✓ Bajarildi"},{value:"partial",label:"◐ Qisman"},{value:"failed",label:"✕ Bajarilmadi"}] as const).map(option => <button key={option.value} type="button" disabled={feedbackSaving} onClick={() => { setFeedbackOutcome(option.value); void saveFeedback(feedbackRating, option.value); }} aria-pressed={feedbackOutcome===option.value} className={"rounded-lg border px-3 py-2 text-xs font-semibold disabled:opacity-50 " + (feedbackOutcome===option.value ? "border-violet-600 bg-violet-600 text-white" : "border-violet-200 bg-white text-violet-700")}>{option.label}</button>)}</div><textarea value={feedbackNote} onChange={e=>setFeedbackNote(e.target.value)} maxLength={500} rows={2} placeholder="Izoh (ixtiyoriy): nima yaxshi yoki nimani yaxshilash kerak?" className="mt-3 w-full rounded-xl border border-violet-200 bg-white p-3 text-sm outline-none focus:border-violet-400"/><button type="button" disabled={feedbackSaving} onClick={() => void saveFeedback()} className="mt-2 rounded-lg bg-violet-600 px-4 py-2 text-xs font-bold text-white disabled:opacity-50">{feedbackSaving ? "Saqlanmoqda..." : "Bahoni va izohni saqlash"}</button></div>}</section>}
           <p className="mt-4 text-xs leading-5 text-gray-400">{modeId === "product" ? "To‘liq mahsulot kartochkasi va AI rasmi muvaffaqiyatli yaratilganda 5 kredit ishlatiladi. Xatolik yuz bersa, kredit qaytariladi." : "Har bir muvaffaqiyatli generatsiya 1 kredit ishlatadi. API xatoligida kreditni qaytarishga urinamiz."}</p>
         </section>
       </div>
