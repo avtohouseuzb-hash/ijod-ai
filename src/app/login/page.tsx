@@ -53,12 +53,9 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#f7f7fb] px-4 py-10 text-[#191923]">
       <div className="w-full max-w-md">
-        <Link href="/" className="mb-8 flex items-center justify-center gap-3">
-          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-600 text-2xl text-white shadow-lg shadow-violet-200">✳</span>
-          <span>
-            <span className="block text-xl font-black tracking-tight">IJOD AI</span>
-            <span className="block text-[10px] tracking-[.2em] text-gray-400">CREATIVE SUPERAPP</span>
-          </span>
+        <Link href="/" aria-label="IJOD AI bosh sahifasi" className="mb-8 flex flex-col items-center justify-center gap-1">
+          <img src="/ijod-logo-v2.svg?v=4" alt="IJOD AI logotipi" className="h-auto w-[180px] object-contain" />
+          <span className="text-[10px] tracking-[.2em] text-gray-400">CREATIVE SUPERAPP</span>
         </Link>
 
         <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-xl shadow-violet-100/40 sm:p-8">
