@@ -7,7 +7,6 @@ import { supabase } from "@/lib/supabase";
 
 const tools = [
   { icon: "✳", title: "AI Rasm", desc: "G‘oyangizdan ajoyib rasmlar yarating", color: "bg-violet-100 text-violet-700", tag: "Mashhur" },
-  { icon: "▶", title: "AI Video", desc: "Matn va rasmlardan video yarating", color: "bg-pink-100 text-pink-700", tag: "Yangi" },
   { icon: "♫", title: "AI Ovoz", desc: "Matnni ovozga va nutqqa aylantiring", color: "bg-amber-100 text-amber-700", tag: "" },
   { icon: "Aa", title: "AI Matn", desc: "Post, reklama va ssenariy yozing", color: "bg-sky-100 text-sky-700", tag: "" },
   { icon: "◈", title: "AI Dizayn", desc: "Instagram post, reklama banneri va marketing dizaynlari", color: "bg-emerald-100 text-emerald-700", tag: "Yangi" },
@@ -20,6 +19,7 @@ const tools = [
   { icon: "▤", title: "AI Hujjat yordamchisi", desc: "Matn va hujjatlarni qisqartirish, tushuntirish va qayta yozish", color: "bg-blue-100 text-blue-700", tag: "" },
   { icon: "▶", title: "AI Reels ssenariy paketi", desc: "Kadrlar, subtitr matni, voiceover va CTA bilan ssenariy", color: "bg-amber-100 text-amber-700", tag: "" },
   { icon: "👗", title: "AI Virtual Kiyintirish", desc: "Kiyim, oyoq kiyim va aksessuarlarni AI modelga kiydiring", color: "bg-violet-100 text-violet-700", tag: "Yangi" },
+  { icon: "▶", title: "AI Video", desc: "Matn va rasmlardan video yarating", color: "bg-pink-100 text-pink-700", tag: "Yangi" },
 ];
 
 export default function Home() {
@@ -243,6 +243,34 @@ export default function Home() {
             </div>
           </section>
 
+          <section className="mt-8 overflow-hidden rounded-3xl border border-violet-200 bg-gradient-to-br from-white via-violet-50 to-fuchsia-50 p-5 shadow-sm sm:p-8">
+            <div className="grid gap-7 lg:grid-cols-[.9fr_1.1fr] lg:items-center">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[.18em] text-violet-600">YANGI · AI LANGUAGE TUTOR</p>
+                <h2 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">AI Ustoz — sizning shaxsiy til o‘qituvchingiz</h2>
+                <p className="mt-3 max-w-xl text-sm leading-6 text-gray-600">Ingliz va rus tilini o‘zingizga mos ohangda o‘rganing: ustoz, do‘st, hazilkash yoki professional mentor bilan suhbatlashing.</p>
+                <ul className="mt-4 space-y-2 text-sm text-gray-700">
+                  <li>✓ Qiziqarli suhbat va real mavzular</li><li>✓ Xatolarni tuzatish va o‘zbekcha tushuntirish</li><li>✓ So‘zlar, grammatika va darajaga mos mashqlar</li><li>✓ A1–C1 darajalar</li>
+                </ul>
+                <button onClick={() => { window.location.href = "/tools/language"; }} className="mt-6 rounded-xl bg-violet-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-violet-200 transition hover:bg-violet-700">AI Ustozni ochish →</button>
+              </div>
+              <div className="rounded-2xl border border-white bg-white/80 p-4 sm:p-5">
+                <h3 className="text-sm font-bold">AI suhbatchi kayfiyatlari</h3>
+                <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-6">
+                  {[
+                    ["•‿•","Neytral","bg-violet-50 text-violet-700 border-violet-100"],
+                    ["♥‿♥","Mehribon","bg-pink-50 text-pink-600 border-pink-100"],
+                    ["✧ᴗ✧","Xursand","bg-amber-50 text-amber-600 border-amber-100"],
+                    ["ಠ益ಠ","Jahli chiqqan","bg-red-50 text-red-600 border-red-100"],
+                    ["•﹏•","O‘ylayapti","bg-sky-50 text-sky-700 border-sky-100"],
+                    ["－ᴗ－","Dam olyapti","bg-indigo-50 text-indigo-600 border-indigo-100"],
+                  ].map(([face,label,style]) => <div key={label} className="text-center"><div className={"mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border text-sm font-black shadow-sm " + style}>{face}</div><p className="mt-2 text-[10px] font-semibold text-gray-700">{label}</p></div>)}
+                </div>
+                <p className="mt-4 text-center text-xs text-gray-500">Suhbat ohangiga qarab AI belgisi ham o‘zgaradi.</p>
+              </div>
+            </div>
+          </section>
+
           <section className="mt-9" id="tools">
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
               <div>
@@ -296,34 +324,6 @@ export default function Home() {
               ))}
             </div>
             {filteredTools.length === 0 && <p className="mt-6 rounded-xl bg-white p-6 text-center text-sm text-gray-500">Mos vosita topilmadi. Boshqa so‘z bilan qidiring.</p>}
-          </section>
-
-          <section className="mt-8 overflow-hidden rounded-3xl border border-violet-200 bg-gradient-to-br from-white via-violet-50 to-fuchsia-50 p-5 shadow-sm sm:p-8">
-            <div className="grid gap-7 lg:grid-cols-[.9fr_1.1fr] lg:items-center">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[.18em] text-violet-600">YANGI · AI LANGUAGE TUTOR</p>
-                <h2 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">AI Ustoz — sizning shaxsiy til o‘qituvchingiz</h2>
-                <p className="mt-3 max-w-xl text-sm leading-6 text-gray-600">Ingliz va rus tilini o‘zingizga mos ohangda o‘rganing: ustoz, do‘st, hazilkash yoki professional mentor bilan suhbatlashing.</p>
-                <ul className="mt-4 space-y-2 text-sm text-gray-700">
-                  <li>✓ Qiziqarli suhbat va real mavzular</li><li>✓ Xatolarni tuzatish va o‘zbekcha tushuntirish</li><li>✓ So‘zlar, grammatika va darajaga mos mashqlar</li><li>✓ A1–C1 darajalar</li>
-                </ul>
-                <button onClick={() => { window.location.href = "/tools/language"; }} className="mt-6 rounded-xl bg-violet-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-violet-200 transition hover:bg-violet-700">AI Ustozni ochish →</button>
-              </div>
-              <div className="rounded-2xl border border-white bg-white/80 p-4 sm:p-5">
-                <h3 className="text-sm font-bold">AI suhbatchi kayfiyatlari</h3>
-                <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-6">
-                  {[
-                    ["•‿•","Neytral","bg-violet-50 text-violet-700 border-violet-100"],
-                    ["♥‿♥","Mehribon","bg-pink-50 text-pink-600 border-pink-100"],
-                    ["✧ᴗ✧","Xursand","bg-amber-50 text-amber-600 border-amber-100"],
-                    ["ಠ益ಠ","Jahli chiqqan","bg-red-50 text-red-600 border-red-100"],
-                    ["•﹏•","O‘ylayapti","bg-sky-50 text-sky-700 border-sky-100"],
-                    ["－ᴗ－","Dam olyapti","bg-indigo-50 text-indigo-600 border-indigo-100"],
-                  ].map(([face,label,style]) => <div key={label} className="text-center"><div className={"mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border text-sm font-black shadow-sm " + style}>{face}</div><p className="mt-2 text-[10px] font-semibold text-gray-700">{label}</p></div>)}
-                </div>
-                <p className="mt-4 text-center text-xs text-gray-500">Suhbat ohangiga qarab AI belgisi ham o‘zgaradi.</p>
-              </div>
-            </div>
           </section>
 
           <section id="how" className="mt-12 rounded-2xl border border-gray-200 bg-white p-6 sm:p-8">
