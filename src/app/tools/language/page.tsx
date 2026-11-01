@@ -77,88 +77,12 @@ export default function LanguageTutorPage() {
 
   function cleanSpeechText(value: string) {
     return value
-      .replace(/\p{Extended_Pictographic}/gu, " ")
-      .replace(/\uFE0F|\u200D/g, "")
+      .replace(/!\[[^\]]*\]\([^)]+\)/g, " ")
       .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .replace(/\p{Extended_Pictographic}/gu, " ")
+      .replace(/[\uFE0F\u200D]/g, "")
       .replace(/[*_~`#>|]/g, " ")
       .replace(/\s+/g, " ")
-      .trim();
-  }
-
-  async function transcribeRecording(blob: Blob) {
-    if (blob.size < 1500) {
-      setVoiceNotice("Ovoz juda qisqa yozildi. Qayta gapirib ko‘ring.");
-      return;
-    }
-    setTranscribing(true);
-    setVoiceNotice("Nutqingiz matnga aylantirilmoqda…");
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { window.location.href = "/login"; return; }
-      const form = new FormData();
-      form.append("audio", blob, "recording.webm");
-      form.append("language", language);
-      const response = await fetch("/api/language-tutor/transcribe", {
-        method: "POST",
-        headers: { Authorization: "Bearer " + session.access_token },
-        body: form,
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Ovozni matnga aylantirib bo‘lmadi.");
-      setInput((current) => (current ? current.trimEnd() + " " : "") + data.text);
-      setVoiceNotice("Nutqingiz matnga aylantirildi. Yuborishdan oldin tekshirib oling.");
-    } catch (err) {
-      setVoiceNotice(err instanceof Error ? err.message : "Mikrofon yozuvini qayta ishlashda xatolik.");
-    } finally { setTranscribing(false); }
-  }
-
-  async function startMicrophone() {
-    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
-      setVoiceNotice("Bu qurilmada mikrofon yozuvi qo‘llab-quvvatlanmaydi. Saytni HTTPS orqali Chrome yoki Safari'da oching.");
-      return;
-    }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
-      const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].find((type) => MediaRecorder.isTypeSupported(type));
-      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-      audioChunksRef.current = [];
-      mediaRecorderRef.current = recorder;
-      recorder.ondataavailable = (event) => { if (event.data.size) audioChunksRef.current.push(event.data); };
-      recorder.onerror = () => {
-        setListening(false);
-        stream.getTracks().forEach((track) => track.stop());
-        setVoiceNotice("Mikrofon yozuvida xatolik yuz berdi.");
-      };
-      recorder.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
-        stream.getTracks().forEach((track) => track.stop());
-        setListening(false);
-        void transcribeRecording(blob);
-      };
-      recorder.start();
-      setListening(true);
-      setVoiceNotice("🔴 Yozilmoqda. Gapirib bo‘lgach, mikrofon tugmasini yana bosing.");
-    } catch (err) {
-      const name = err instanceof Error ? err.name : "";
-      setVoiceNotice(name === "NotAllowedError" ? "Mikrofonga ruxsat berilmadi. Brauzer manzil satridagi qulf belgisidan mikrofonni yoqing." : "Mikrofonni ochib bo‘lmadi. Qurilma ruxsati va boshqa ilovalar mikrofonni band qilmaganini tekshiring.");
-    }
-  }
-
-  function stopMicrophone() {
-    if (mediaRecorderRef.current?.state === "recording") {
-      mediaRecorderRef.current.stop();
-      setVoiceNotice("Yozuv yakunlanmoqda…");
-    }
-  }
-
-  function cleanSpeechText(value: string) {
-    return value
-      .replace(/!\\[[^\\]]*\\]\\([^)]+\\)/g, " ")
-      .replace(/\\[([^\\]]+)\\]\\([^)]+\\)/g, "$1")
-      .replace(/\\p{Extended_Pictographic}/gu, " ")
-      .replace(/[\\uFE0F\\u200D]/g, "")
-      .replace(/[*_~`#>|]/g, " ")
-      .replace(/\\s+/g, " ")
       .trim();
   }
 
