@@ -31,6 +31,10 @@ export async function POST(request: Request) {
   const prompt = body && typeof body === "object" ? (body as { prompt?: unknown }).prompt : undefined;
   const requestedSize = body && typeof body === "object" ? (body as { size?: unknown }).size : undefined;
   const imageDataUrl = body && typeof body === "object" ? (body as { imageDataUrl?: unknown }).imageDataUrl : undefined;
+  const requestedService = body && typeof body === "object" ? (body as { service?: unknown }).service : undefined;
+  const requestedTitle = body && typeof body === "object" ? (body as { title?: unknown }).title : undefined;
+  const serviceName = requestedService === "AI Interyer & Eksteryer Design" ? requestedService : "AI Rasm";
+  const projectTitle = typeof requestedTitle === "string" && requestedTitle.trim() ? requestedTitle.trim().slice(0, 120) : prompt.trim().slice(0, 120);
   const size = requestedSize === "1024x1536" || requestedSize === "1536x1024" ? requestedSize : "1024x1024";
   if (typeof prompt !== "string" || prompt.trim().length < 3) {
     return NextResponse.json({ error: "Rasm tavsifini kamida 3 ta belgi bilan kiriting." }, { status: 400 });
@@ -79,7 +83,7 @@ export async function POST(request: Request) {
     } catch (saveError) { console.error("AI image asset upload failed:", saveError); }
     try {
       const { error: saveError } = await serviceClient.from("ai_projects").insert({
-        user_id: user.id, title: prompt.trim().slice(0, 120), service: "AI Rasm",
+        user_id: user.id, title: projectTitle, service: serviceName,
         result_text: prompt.trim(), asset_url: assetUrl, prompt: prompt.trim(),
       });
       if (saveError) console.error("AI image project save failed:", saveError.message);
