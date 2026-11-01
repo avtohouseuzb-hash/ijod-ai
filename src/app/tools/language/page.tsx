@@ -60,6 +60,12 @@ export default function LanguageTutorPage() {
   const [lessonsLoading, setLessonsLoading] = useState(true);
   const [lessonError, setLessonError] = useState("");
   const currentLessonIdRef = useRef<string | null>(null);
+  const realtimePcRef = useRef<RTCPeerConnection | null>(null);
+  const realtimeStreamRef = useRef<MediaStream | null>(null);
+  const realtimeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [realtimeActive, setRealtimeActive] = useState(false);
+  const [realtimeBusy, setRealtimeBusy] = useState(false);
+  const [realtimeStatus, setRealtimeStatus] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [voiceGender, setVoiceGender] = useState<VoiceGender>("female");
@@ -75,6 +81,104 @@ export default function LanguageTutorPage() {
   const [voiceNotice, setVoiceNotice] = useState("");
   const [listening, setListening] = useState(false);
   const activeMood = moods.find((item) => item.id === mood) ?? moods[0];
+
+  async function stopRealtime() {
+    realtimePcRef.current?.close();
+    realtimePcRef.current = null;
+    realtimeStreamRef.current?.getTracks().forEach((track) => track.stop());
+    realtimeStreamRef.current = null;
+    if (realtimeAudioRef.current) {
+      realtimeAudioRef.current.pause();
+      realtimeAudioRef.current.srcObject = null;
+      realtimeAudioRef.current = null;
+    }
+    setRealtimeActive(false);
+    setRealtimeBusy(false);
+    setRealtimeStatus("Ovozli suhbat tugatildi.");
+  }
+
+  async function startRealtime() {
+    if (realtimeBusy || realtimeActive) return;
+    if (!navigator.mediaDevices?.getUserMedia || !window.RTCPeerConnection) {
+      setRealtimeStatus("Jonli ovoz uchun HTTPS va WebRTC qo‘llaydigan zamonaviy brauzer kerak.");
+      return;
+    }
+    setRealtimeBusy(true);
+    setRealtimeStatus("Mikrofon ruxsati kutilmoqda…");
+    let stream: MediaStream | null = null;
+    let pc: RTCPeerConnection | null = null;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { window.location.href = "/login"; return; }
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const tokenResponse = await fetch("/api/language-tutor/realtime", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+        body: JSON.stringify({ language, level, personality, topic, mood, voice: voiceGender === "male" ? "ash" : "coral" }),
+      });
+      const tokenData = await tokenResponse.json();
+      if (!tokenResponse.ok) throw new Error(tokenData.error || "Jonli ovoz sessiyasini ochib bo‘lmadi.");
+      pc = new RTCPeerConnection();
+      realtimePcRef.current = pc;
+      realtimeStreamRef.current = stream;
+      const audio = new Audio();
+      audio.autoplay = true;
+      realtimeAudioRef.current = audio;
+      pc.ontrack = (event) => {
+        audio.srcObject = event.streams[0];
+        void audio.play().catch(() => setRealtimeStatus("Ovoz chiqishi uchun sahifaga bir marta bosing."));
+      };
+      stream.getTracks().forEach((track) => pc?.addTrack(track, stream!));
+      const channel = pc.createDataChannel("oai-events");
+      channel.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.type === "session.created" || payload.type === "session.updated") {
+            setRealtimeStatus("Jonli suhbat ulandi. Bemalol gapiring.");
+          } else if (payload.type === "input_audio_buffer.speech_started") {
+            setRealtimeStatus("Siz gapiryapsiz…");
+          } else if (payload.type === "response.created") {
+            setRealtimeStatus("AI Ustoz javob bermoqda…");
+          } else if (payload.type === "response.done") {
+            setRealtimeStatus("Tinglayapman. Gapirishda davom eting.");
+          } else if (payload.type === "error") {
+            setRealtimeStatus(payload.error?.message || "Ovozli suhbatda xatolik.");
+          }
+        } catch { /* Ignore non-JSON realtime events. */ }
+      };
+      pc.onconnectionstatechange = () => {
+        if (pc?.connectionState === "connected") {
+          setRealtimeActive(true);
+          setRealtimeStatus("Jonli suhbat ulandi. Bemalol gapiring.");
+        } else if (pc?.connectionState === "failed" || pc?.connectionState === "disconnected") {
+          setRealtimeStatus("Ovozli aloqa uzildi. Qayta ulaning.");
+          void stopRealtime();
+        }
+      };
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      const response = await fetch("https://api.openai.com/v1/realtime/calls", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + tokenData.value, "Content-Type": "application/sdp" },
+        body: offer.sdp,
+      });
+      if (!response.ok) {
+        const detail = await response.text();
+        throw new Error("OpenAI ulanish xatosi (" + response.status + "): " + detail.slice(0, 240));
+      }
+      await pc.setRemoteDescription({ type: "answer", sdp: await response.text() });
+      setRealtimeStatus("Ovozli aloqa o‘rnatilmoqda…");
+    } catch (err) {
+      pc?.close();
+      stream?.getTracks().forEach((track) => track.stop());
+      realtimePcRef.current = null;
+      realtimeStreamRef.current = null;
+      setRealtimeActive(false);
+      setRealtimeStatus(err instanceof Error ? err.message : "Jonli ovozli suhbatni boshlashda xatolik.");
+    } finally {
+      setRealtimeBusy(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -378,6 +482,13 @@ export default function LanguageTutorPage() {
           </div>)}
           {loading && <div className="flex justify-start"><div className="rounded-2xl bg-violet-50 px-4 py-3 text-sm text-violet-700">AI Ustoz o‘ylayapti…</div></div>}
           {error && <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+        </div>
+        <div className="border-t border-violet-100 bg-violet-50/60 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0 flex-1"><p className="text-sm font-bold text-violet-900">Jonli ovozli suhbat</p><p className="mt-1 text-xs text-violet-700">{realtimeStatus || "AI Ustoz bilan yozmasdan, bevosita gaplashing."}</p></div>
+            {realtimeActive ? <button onClick={() => void stopRealtime()} className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white">Suhbatni tugatish ■</button> : <button disabled={realtimeBusy} onClick={() => void startRealtime()} className="rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{realtimeBusy ? "Ulanmoqda…" : "🎙 Jonli suhbatni boshlash"}</button>}
+          </div>
+          <p className="mt-2 text-[10px] text-violet-600">OpenAI Realtime API ishlatiladi. Mikrofon ruxsati va internet kerak; audio foydalanishi API hisobingizda alohida narxlanadi.</p>
         </div>
         <div className="border-t border-gray-100 bg-white p-3 sm:p-4">
           <div className="flex items-end gap-2 rounded-2xl border border-gray-200 bg-gray-50 p-2 focus-within:border-violet-300">
