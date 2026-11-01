@@ -71,7 +71,7 @@ export default function LanguageTutorPage() {
   const [voiceGender, setVoiceGender] = useState<VoiceGender>("female");
 
   const [autoSpeak, setAutoSpeak] = useState(false);
-  const voiceFeaturesEnabled = false; // Paid audio APIs remain disabled under the free-budget constraint.
+  const voiceFeaturesEnabled = true; // Voice features use the existing server-side OpenAI API key.
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const [transcribing, setTranscribing] = useState(false);
   const [audioLoadingIndex, setAudioLoadingIndex] = useState<number | null>(null);
@@ -114,7 +114,7 @@ export default function LanguageTutorPage() {
       const tokenResponse = await fetch("/api/language-tutor/realtime", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
-        body: JSON.stringify({ language, level, personality, topic, mood, voice: voiceGender === "male" ? "ash" : "coral" }),
+        body: JSON.stringify({ language, level, personality, topic, mood, voice: voiceGender === "male" ? "ash" : voiceGender === "auto" ? "marin" : "coral" }),
       });
       const tokenData = await tokenResponse.json();
       if (!tokenResponse.ok) throw new Error(tokenData.error || "Jonli ovoz sessiyasini ochib bo‘lmadi.");
@@ -469,7 +469,7 @@ export default function LanguageTutorPage() {
           <label className="mt-3 block text-xs font-semibold text-gray-500">Ovoz turi</label>
           <select value={voiceGender} disabled={!voiceFeaturesEnabled} onChange={(e) => setVoiceGender(e.target.value as VoiceGender)} className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-100 p-3 text-sm text-gray-500 disabled:cursor-not-allowed"><option value="female">Ayol ovozi</option><option value="male">Erkak ovozi</option><option value="auto">Avtomatik ovoz</option></select>
           <label className="mt-3 flex items-center gap-2 text-sm text-gray-500"><input type="checkbox" checked={autoSpeak} disabled={!voiceFeaturesEnabled} onChange={(e) => setAutoSpeak(e.target.checked)} className="accent-violet-600 disabled:opacity-50" /> AI javobini avtomatik ovoz chiqarib o‘qish</label>
-          <p className="mt-2 rounded-lg bg-amber-50 p-2 text-[11px] leading-4 text-amber-800">Ovozli AI hozircha o‘chirilgan. Tabiiy ovoz va nutqni matnga aylantirish OpenAI audio API xarajatini talab qiladi. Bepul budjet cheklovi sababli mikrofon transkripsiyasi va ovoz ijrosi faollashtirilmagan.</p>
+          <p className="mt-2 rounded-lg bg-amber-50 p-2 text-[11px] leading-4 text-amber-800">Ovozli AI faol. Mikrofon transkripsiyasi va tabiiy ovoz OpenAI API orqali ishlaydi; foydalanish hajmiga qarab API hisobingizdan haq olinadi.</p>
           {voiceNotice && <p className="mt-2 rounded-lg bg-violet-50 p-2 text-[11px] leading-4 text-violet-700">{voiceNotice}</p>}
           <label className="mt-3 block text-xs font-semibold text-gray-500">Suhbat mavzusi</label>
           <select value={topic} onChange={(e) => setTopic(e.target.value)} className="mt-1 w-full rounded-xl border border-gray-200 bg-white p-3 text-sm">
