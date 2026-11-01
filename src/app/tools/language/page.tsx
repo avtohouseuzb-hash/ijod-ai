@@ -130,6 +130,9 @@ export default function LanguageTutorPage() {
       };
       stream.getTracks().forEach((track) => pc?.addTrack(track, stream!));
       const channel = pc.createDataChannel("oai-events");
+      channel.onopen = () => {
+        channel.send(JSON.stringify({ type: "response.create" }));
+      };
       channel.onmessage = (event) => {
         try {
           const payload = JSON.parse(event.data);
@@ -157,6 +160,20 @@ export default function LanguageTutorPage() {
       };
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
+      if (pc.iceGatheringState !== "complete") {
+        await new Promise<void>((resolve, reject) => {
+          const timeout = window.setTimeout(() => reject(new Error("Ovozli aloqa uchun tarmoq ulanishi vaqtida tayyor bo‘lmadi. Qayta urinib ko‘ring.")), 12000);
+          const checkIce = () => {
+            if (pc?.iceGatheringState === "complete") {
+              window.clearTimeout(timeout);
+              pc.removeEventListener("icegatheringstatechange", checkIce);
+              resolve();
+            }
+          };
+          pc?.addEventListener("icegatheringstatechange", checkIce);
+          checkIce();
+        });
+      }
       const response = await fetch("https://api.openai.com/v1/realtime/calls", {
         method: "POST",
         headers: { Authorization: "Bearer " + tokenData.value, "Content-Type": "application/sdp" },
