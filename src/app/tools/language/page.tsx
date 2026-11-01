@@ -59,6 +59,7 @@ export default function LanguageTutorPage() {
   const [voiceGender, setVoiceGender] = useState<VoiceGender>("female");
 
   const [autoSpeak, setAutoSpeak] = useState(false);
+  const voiceFeaturesEnabled = false; // Paid audio APIs remain disabled under the free-budget constraint.
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const [transcribing, setTranscribing] = useState(false);
   const [audioLoadingIndex, setAudioLoadingIndex] = useState<number | null>(null);
@@ -191,7 +192,7 @@ export default function LanguageTutorPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Javob olishda xatolik yuz berdi.");
       setMessages((current) => [...current, { role: "assistant" as const, content: data.text }]);
-      if (autoSpeak) void speak(data.text, messages.length + 1);
+      if (autoSpeak && voiceFeaturesEnabled) void speak(data.text, messages.length + 1);
     } catch (err) {
       setMessages((current) => current.slice(0, -1));
       setInput(text);
@@ -229,8 +230,9 @@ export default function LanguageTutorPage() {
           <label className="mt-3 block text-xs font-semibold text-gray-500">O‘qituvchi xarakteri</label>
           <select value={personality} onChange={(e) => setPersonality(e.target.value)} className="mt-1 w-full rounded-xl border border-gray-200 bg-white p-3 text-sm">{personalities.map((p) => <option key={p.id} value={p.id}>{p.emoji} {p.label}</option>)}</select>
           <label className="mt-3 block text-xs font-semibold text-gray-500">Ovoz turi</label>
-          <select value={voiceGender} onChange={(e) => setVoiceGender(e.target.value as VoiceGender)} className="mt-1 w-full rounded-xl border border-gray-200 bg-white p-3 text-sm"><option value="female">Ayol ovozi</option><option value="male">Erkak ovozi</option><option value="auto">Avtomatik ovoz</option></select>
-          <label className="mt-3 flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" checked={autoSpeak} onChange={(e) => setAutoSpeak(e.target.checked)} className="accent-violet-600" /> AI javobini avtomatik ovoz chiqarib o‘qish</label>
+          <select value={voiceGender} disabled={!voiceFeaturesEnabled} onChange={(e) => setVoiceGender(e.target.value as VoiceGender)} className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-100 p-3 text-sm text-gray-500 disabled:cursor-not-allowed"><option value="female">Ayol ovozi</option><option value="male">Erkak ovozi</option><option value="auto">Avtomatik ovoz</option></select>
+          <label className="mt-3 flex items-center gap-2 text-sm text-gray-500"><input type="checkbox" checked={autoSpeak} disabled={!voiceFeaturesEnabled} onChange={(e) => setAutoSpeak(e.target.checked)} className="accent-violet-600 disabled:opacity-50" /> AI javobini avtomatik ovoz chiqarib o‘qish</label>
+          <p className="mt-2 rounded-lg bg-amber-50 p-2 text-[11px] leading-4 text-amber-800">Ovozli AI hozircha o‘chirilgan. Tabiiy ovoz va nutqni matnga aylantirish OpenAI audio API xarajatini talab qiladi. Bepul budjet cheklovi sababli mikrofon transkripsiyasi va ovoz ijrosi faollashtirilmagan.</p>
           {voiceNotice && <p className="mt-2 rounded-lg bg-violet-50 p-2 text-[11px] leading-4 text-violet-700">{voiceNotice}</p>}
           <label className="mt-3 block text-xs font-semibold text-gray-500">Suhbat mavzusi</label>
           <select value={topic} onChange={(e) => setTopic(e.target.value)} className="mt-1 w-full rounded-xl border border-gray-200 bg-white p-3 text-sm">
