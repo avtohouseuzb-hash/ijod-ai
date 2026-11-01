@@ -50,6 +50,18 @@ const exteriorStyles: Style[] = [
 ];
 
 const roomTypes = ["Mehmonxona", "Yotoqxona", "Oshxona", "Hammom", "Bolalar xonasi", "Ish xonasi", "Koridor", "Boshqa"];
+
+// Xona turiga qarab interyer namunalarining rasmlari almashadi.
+const roomPreviewImages: Record<string, string[]> = {
+  "Mehmonxona": ["https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=700&q=85", "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=700&q=85", "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=700&q=85", "https://images.unsplash.com/photo-1600210491892-03d54c0aaf87?w=700&q=85"],
+  "Yotoqxona": ["https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=700&q=85", "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=700&q=85", "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=700&q=85", "https://images.unsplash.com/photo-1617325247661-675ab4b64ae2?w=700&q=85"],
+  "Oshxona": ["https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=700&q=85", "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=700&q=85", "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=700&q=85", "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=700&q=85"],
+  "Hammom": ["https://images.unsplash.com/photo-1620626011761-996317b8d101?w=700&q=85", "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=700&q=85", "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=700&q=85", "https://images.unsplash.com/photo-1620626011761-996317b8d101?w=700&q=85"],
+  "Bolalar xonasi": ["https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=700&q=85", "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=700&q=85", "https://images.unsplash.com/photo-1600210491892-03d54c0aaf87?w=700&q=85", "https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=700&q=85"],
+  "Ish xonasi": ["https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=700&q=85", "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=700&q=85", "https://images.unsplash.com/photo-1497366216548-37526070297c?w=700&q=85", "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=700&q=85"],
+  "Koridor": ["https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=700&q=85", "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=700&q=85", "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=700&q=85", "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=700&q=85"],
+  "Boshqa": ["https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=700&q=85", "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=700&q=85", "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=700&q=85", "https://images.unsplash.com/photo-1600210491892-03d54c0aaf87?w=700&q=85"],
+};
 const budgets: { name: Budget; hint: string }[] = [
   { name: "Tejamkor", hint: "Oddiy va hamyonbop materiallar" },
   { name: "O‘rtacha", hint: "Narx va sifat muvozanati" },
@@ -202,12 +214,12 @@ export default function InteriorExteriorDesignPage() {
                 {categories.map((category) => <button key={category} type="button" onClick={() => setStyleCategory(category)} className={`shrink-0 rounded-full border px-3 py-2 text-[11px] font-semibold transition ${styleCategory === category ? "border-violet-500 bg-violet-600/20 text-violet-100" : "border-white/10 bg-[#202027] text-gray-400 hover:text-white"}`}>{category}</button>)}
               </div>
               <div className="mt-3 flex w-full min-w-0 snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Dizayn uslublari karuseli">
-                {visibleStyles.map((item) => <button key={item.name} type="button" onClick={() => setStyle(item.name)} aria-pressed={style === item.name} className={`group w-[78%] shrink-0 snap-start overflow-hidden rounded-2xl border text-left transition sm:w-[46%] lg:w-[42%] ${style === item.name ? "border-violet-500 ring-2 ring-violet-500/50" : "border-white/10 hover:border-white/30"}`}>
-                  <div className="relative aspect-[1.55] overflow-hidden bg-[#25252d]"><img src={item.image} alt={item.name + " namunasi"} loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />{style === item.name && <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-violet-600 text-xs font-black">✓</span>}</div>
+                {visibleStyles.map((item, index) => { const roomImages = roomPreviewImages[room] ?? roomPreviewImages["Boshqa"]; const previewImage = mode === "interior" ? roomImages[index % roomImages.length] : item.image; return <button key={item.name} type="button" onClick={() => setStyle(item.name)} aria-pressed={style === item.name} className={`group w-[78%] shrink-0 snap-start overflow-hidden rounded-2xl border text-left transition sm:w-[46%] lg:w-[42%] ${style === item.name ? "border-violet-500 ring-2 ring-violet-500/50" : "border-white/10 hover:border-white/30"}`}>
+                  <div className="relative aspect-[1.55] overflow-hidden bg-[#25252d]"><img src={previewImage} alt={room + " · " + item.name + " dizayn namunasi"} loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />{style === item.name && <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-violet-600 text-xs font-black">✓</span>}</div>
                   <div className={`p-2.5 ${style === item.name ? "bg-violet-950/70" : "bg-[#202027]"}`}><div className="flex items-center justify-between gap-2"><p className="text-xs font-bold sm:text-sm">{item.name}</p><span className="shrink-0 rounded-full bg-white/5 px-2 py-1 text-[9px] text-gray-400">{item.category}</span></div><p className="mt-1 line-clamp-2 text-[10px] leading-4 text-gray-400">{item.description}</p></div>
-                </button>)}
+                </button>; })}
               </div>
-              <p className="mt-1 text-[10px] text-gray-500">← Namunalarni yon tomonga surib ko‘ring →</p>
+              <p className="mt-1 text-[10px] text-gray-500">{mode === "interior" ? room + " uchun namunalar · yon tomonga suring →" : "Namunalarni yon tomonga surib ko‘ring →"}</p>
             </div>
 
             <div className="mt-5">
