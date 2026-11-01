@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 type Mood = "neutral" | "kind" | "happy" | "angry" | "thinking" | "sleepy";
@@ -57,25 +57,21 @@ export default function LanguageTutorPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [voiceGender, setVoiceGender] = useState<VoiceGender>("female");
-  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+
   const [autoSpeak, setAutoSpeak] = useState(false);
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
+  const [transcribing, setTranscribing] = useState(false);
+  const [audioLoadingIndex, setAudioLoadingIndex] = useState<number | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const activeAudioRef = useRef<HTMLAudioElement | null>(null);
   const [voiceNotice, setVoiceNotice] = useState("");
   const [listening, setListening] = useState(false);
   const activeMood = moods.find((item) => item.id === mood) ?? moods[0];
 
-  useEffect(() => {
-    if (!("speechSynthesis" in window)) {
-      setVoiceNotice("Bu brauzer ovozli o‘qishni qo‘llab-quvvatlamaydi.");
-      return;
-    }
-    const refresh = () => setAvailableVoices(window.speechSynthesis.getVoices());
-    refresh();
-    window.speechSynthesis.addEventListener("voiceschanged", refresh);
-    return () => {
-      window.speechSynthesis.removeEventListener("voiceschanged", refresh);
-      window.speechSynthesis.cancel();
-    };
+  useEffect(() => () => {
+    activeAudioRef.current?.pause();
+    if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
   }, []);
 
 
@@ -89,67 +85,118 @@ export default function LanguageTutorPage() {
       .trim();
   }
 
-  function startMicrophone() {
-    const SpeechRecognitionCtor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognitionCtor) {
-      setVoiceNotice("Mikrofon bu brauzerda qo‘llab-quvvatlanmaydi. Chrome yoki Edge brauzeridan foydalaning.");
+  async function transcribeRecording(blob: Blob) {
+    if (blob.size < 1500) {
+      setVoiceNotice("Ovoz juda qisqa yozildi. Qayta gapirib ko‘ring.");
       return;
     }
-    const recognition = new SpeechRecognitionCtor();
-    recognition.lang = language === "English" ? "en-US" : "ru-RU";
-    recognition.interimResults = true;
-    recognition.continuous = false;
-    recognition.onstart = () => { setListening(true); setVoiceNotice("Tinglayapman… gapiring."); };
-    recognition.onresult = (event: any) => {
-      let finalText = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) finalText += event.results[i][0].transcript;
-      }
-      if (finalText) setInput((current) => (current ? current.trimEnd() + " " : "") + finalText.trim());
-    };
-    recognition.onerror = (event: any) => {
-      setListening(false);
-      setVoiceNotice(event.error === "not-allowed" ? "Mikrofon ruxsati berilmadi. Brauzer sozlamalaridan mikrofonni yoqing." : "Ovozni aniqlashda xatolik: " + event.error);
-    };
-    recognition.onend = () => setListening(false);
-    try { recognition.start(); }
-    catch { setListening(false); setVoiceNotice("Mikrofonni qayta ishga tushirish uchun biroz kuting."); }
+    setTranscribing(true);
+    setVoiceNotice("Nutqingiz matnga aylantirilmoqda…");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { window.location.href = "/login"; return; }
+      const form = new FormData();
+      form.append("audio", blob, "recording.webm");
+      form.append("language", language);
+      const response = await fetch("/api/language-tutor/transcribe", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + session.access_token },
+        body: form,
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Ovozni matnga aylantirib bo‘lmadi.");
+      setInput((current) => (current ? current.trimEnd() + " " : "") + data.text);
+      setVoiceNotice("Nutqingiz matnga aylantirildi. Yuborishdan oldin tekshirib oling.");
+    } catch (err) {
+      setVoiceNotice(err instanceof Error ? err.message : "Mikrofon yozuvini qayta ishlashda xatolik.");
+    } finally { setTranscribing(false); }
   }
 
-  function speak(text: string, index: number) {
-    if (!("speechSynthesis" in window)) {
-      setVoiceNotice("Brauzeringiz ovozli o‘qishni qo‘llab-quvvatlamaydi.");
+  async function startMicrophone() {
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      setVoiceNotice("Bu qurilmada mikrofon yozuvi qo‘llab-quvvatlanmaydi. Saytni HTTPS orqali Chrome yoki Safari'da oching.");
       return;
     }
-    window.speechSynthesis.cancel();
-    const spokenText = cleanSpeechText(text);
-    if (!spokenText) { setVoiceNotice("O‘qish uchun matn topilmadi."); return; }
-    const utterance = new SpeechSynthesisUtterance(spokenText);
-    const prefix = language === "English" ? "en" : "ru";
-    const candidates = availableVoices.filter((v) => v.lang.toLowerCase().startsWith(prefix));
-    const hints = voiceGender === "female"
-      ? /female|woman|zira|samantha|victoria|karen|susan|aria|jenny|natasha|milena|alena|irina|svetlana/i
-      : voiceGender === "male"
-        ? /male|man|david|mark|guy|alex|daniel|george|andrew|thomas|pavel|dmitry|yuri/i
-        : null;
-    const voice = (hints ? candidates.find((v) => hints.test(v.name)) : undefined)
-      || candidates.find((v) => v.default) || candidates[0]
-      || availableVoices.find((v) => v.default) || availableVoices[0];
-    if (voice) {
-      utterance.voice = voice;
-      utterance.lang = voice.lang;
-      setVoiceNotice("Tanlangan ovoz: " + voice.name + " (" + voice.lang + ")");
-      if (hints && !hints.test(voice.name)) setVoiceNotice("Tanlangan jinsdagi ovoz qurilmada topilmadi. Mavjud ovoz ishlatildi: " + voice.name);
-    } else {
-      utterance.lang = language === "English" ? "en-US" : "ru-RU";
-      setVoiceNotice("Maxsus ovoz topilmadi. Qurilmaning standart ovozi ishlatiladi.");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+      const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].find((type) => MediaRecorder.isTypeSupported(type));
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      audioChunksRef.current = [];
+      mediaRecorderRef.current = recorder;
+      recorder.ondataavailable = (event) => { if (event.data.size) audioChunksRef.current.push(event.data); };
+      recorder.onerror = () => {
+        setListening(false);
+        stream.getTracks().forEach((track) => track.stop());
+        setVoiceNotice("Mikrofon yozuvida xatolik yuz berdi.");
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
+        stream.getTracks().forEach((track) => track.stop());
+        setListening(false);
+        void transcribeRecording(blob);
+      };
+      recorder.start();
+      setListening(true);
+      setVoiceNotice("🔴 Yozilmoqda. Gapirib bo‘lgach, mikrofon tugmasini yana bosing.");
+    } catch (err) {
+      const name = err instanceof Error ? err.name : "";
+      setVoiceNotice(name === "NotAllowedError" ? "Mikrofonga ruxsat berilmadi. Brauzer manzil satridagi qulf belgisidan mikrofonni yoqing." : "Mikrofonni ochib bo‘lmadi. Qurilma ruxsati va boshqa ilovalar mikrofonni band qilmaganini tekshiring.");
     }
-    utterance.rate = level === "A1" || level === "A2" ? 0.88 : 0.96;
-    utterance.pitch = voiceGender === "female" ? 1.04 : voiceGender === "male" ? 0.92 : 1;
-    utterance.onstart = () => setSpeakingIndex(index);
-    utterance.onend = () => setSpeakingIndex(null);
-    utterance.onerror = () => { setSpeakingIndex(null); setVoiceNotice("Ovoz ijro etilmadi. Brauzer ovoz sozlamalarini tekshiring."); };
-    window.speechSynthesis.speak(utterance);
+  }
+
+  function stopMicrophone() {
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop();
+      setVoiceNotice("Yozuv yakunlanmoqda…");
+    }
+  }
+
+  function cleanSpeechText(value: string) {
+    return value
+      .replace(/!\\[[^\\]]*\\]\\([^)]+\\)/g, " ")
+      .replace(/\\[([^\\]]+)\\]\\([^)]+\\)/g, "$1")
+      .replace(/\\p{Extended_Pictographic}/gu, " ")
+      .replace(/[\\uFE0F\\u200D]/g, "")
+      .replace(/[*_~`#>|]/g, " ")
+      .replace(/\\s+/g, " ")
+      .trim();
+  }
+
+  async function speak(text: string, index: number) {
+    const spokenText = cleanSpeechText(text);
+    if (!spokenText) return;
+    setAudioLoadingIndex(index);
+    setVoiceNotice("Tabiiy AI ovozi tayyorlanmoqda…");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { window.location.href = "/login"; return; }
+      const response = await fetch("/api/language-tutor/speech", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+        body: JSON.stringify({
+          text: spokenText,
+          voice: voiceGender === "female" ? "coral" : voiceGender === "male" ? "ash" : "marin",
+          language,
+          mood,
+        }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Tabiiy ovoz yaratilmadi.");
+      }
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      activeAudioRef.current?.pause();
+      const audio = new Audio(audioUrl);
+      activeAudioRef.current = audio;
+      audio.onended = () => { setSpeakingIndex(null); URL.revokeObjectURL(audioUrl); };
+      audio.onerror = () => { setSpeakingIndex(null); URL.revokeObjectURL(audioUrl); setVoiceNotice("Audio ijro etilmadi."); };
+      setSpeakingIndex(index);
+      setVoiceNotice("OpenAI tabiiy AI ovozi · " + (voiceGender === "female" ? "Coral" : voiceGender === "male" ? "Ash" : "Marin"));
+      await audio.play();
+    } catch (err) {
+      setVoiceNotice(err instanceof Error ? err.message : "Ovoz yaratishda xatolik.");
+    } finally { setAudioLoadingIndex(null); }
   }
 
   async function sendMessage() {
@@ -170,7 +217,8 @@ export default function LanguageTutorPage() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Javob olishda xatolik yuz berdi.");
-      setMessages((current) => { const updated = [...current, { role: "assistant" as const, content: data.text }]; if (autoSpeak) window.setTimeout(() => speak(data.text, updated.length - 1), 120); return updated; });
+      setMessages((current) => [...current, { role: "assistant" as const, content: data.text }]);
+      if (autoSpeak) void speak(data.text, messages.length + 1);
     } catch (err) {
       setMessages((current) => current.slice(0, -1));
       setInput(text);
@@ -210,7 +258,7 @@ export default function LanguageTutorPage() {
           <label className="mt-3 block text-xs font-semibold text-gray-500">Ovoz turi</label>
           <select value={voiceGender} onChange={(e) => setVoiceGender(e.target.value as VoiceGender)} className="mt-1 w-full rounded-xl border border-gray-200 bg-white p-3 text-sm"><option value="female">Ayol ovozi</option><option value="male">Erkak ovozi</option><option value="auto">Avtomatik ovoz</option></select>
           <label className="mt-3 flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" checked={autoSpeak} onChange={(e) => setAutoSpeak(e.target.checked)} className="accent-violet-600" /> AI javobini avtomatik ovoz chiqarib o‘qish</label>
-          {voiceNotice && <p className="mt-2 text-[11px] leading-4 text-gray-500">{voiceNotice}</p>}
+          {voiceNotice && <p className="mt-2 rounded-lg bg-violet-50 p-2 text-[11px] leading-4 text-violet-700">{voiceNotice}</p>}
           <label className="mt-3 block text-xs font-semibold text-gray-500">Suhbat mavzusi</label>
           <select value={topic} onChange={(e) => setTopic(e.target.value)} className="mt-1 w-full rounded-xl border border-gray-200 bg-white p-3 text-sm">
             {["Everyday conversation","Travel","School & study","Business & finance","Medicine & healthcare","IT & technology","Work interview","Culture & art"].map((v) => <option key={v}>{v}</option>)}
@@ -234,7 +282,7 @@ export default function LanguageTutorPage() {
           {messages.map((message, index) => <div key={index} className={"flex " + (message.role === "user" ? "justify-end" : "justify-start")}>
             <div className={"max-w-[88%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-6 " + (message.role === "user" ? "rounded-br-md bg-violet-600 text-white" : "rounded-bl-md border border-violet-100 bg-white text-gray-800 shadow-sm")}>
               {message.content}
-              {message.role === "assistant" && <button onClick={() => speakingIndex === index ? window.speechSynthesis.cancel() : speak(message.content, index)} className="mt-3 flex items-center gap-2 rounded-lg border border-violet-200 px-3 py-1.5 text-xs font-semibold text-violet-700 hover:bg-violet-50">{speakingIndex === index ? "To‘xtatish ■" : "Eshitish 🔊"}</button>}
+              {message.role === "assistant" && <button onClick={() => { if (speakingIndex === index) { activeAudioRef.current?.pause(); setSpeakingIndex(null); } else void speak(message.content, index); }} disabled={audioLoadingIndex === index} className="mt-3 flex items-center gap-2 rounded-lg border border-violet-200 px-3 py-1.5 text-xs font-semibold text-violet-700 hover:bg-violet-50 disabled:opacity-50">{audioLoadingIndex === index ? "Ovoz tayyorlanmoqda…" : speakingIndex === index ? "To‘xtatish ■" : "Tabiiy ovozda eshitish 🔊"}</button>}
             </div>
           </div>)}
           {loading && <div className="flex justify-start"><div className="rounded-2xl bg-violet-50 px-4 py-3 text-sm text-violet-700">AI Ustoz o‘ylayapti…</div></div>}
@@ -243,10 +291,10 @@ export default function LanguageTutorPage() {
         <div className="border-t border-gray-100 bg-white p-3 sm:p-4">
           <div className="flex items-end gap-2 rounded-2xl border border-gray-200 bg-gray-50 p-2 focus-within:border-violet-300">
             <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void sendMessage(); } }} rows={2} maxLength={2000} placeholder="Xabaringizni yozing..." className="max-h-32 min-h-12 flex-1 resize-y bg-transparent p-2 text-sm outline-none" />
-            <button type="button" disabled={loading || listening} onClick={startMicrophone} title="Ovoz bilan gapirish" aria-label="Mikrofon" className={"rounded-xl border px-3 py-3 text-lg transition " + (listening ? "border-red-300 bg-red-50 text-red-600 animate-pulse" : "border-violet-200 bg-white text-violet-700 hover:bg-violet-50")}>{listening ? "■" : "🎙️"}</button>
+            <button type="button" disabled={loading || transcribing} onClick={() => listening ? stopMicrophone() : void startMicrophone()} title={listening ? "Yozuvni tugatish" : "Mikrofon orqali gapirish"} aria-label="Mikrofon" className={"flex min-w-[52px] items-center justify-center gap-1 rounded-xl border px-3 py-3 text-lg font-bold transition " + (listening ? "border-red-300 bg-red-50 text-red-600 animate-pulse" : "border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100")}><span>🎙️</span><span className="text-xs">{listening ? "STOP" : "Gapir"}</span></button>
             <button disabled={loading || !input.trim()} onClick={() => void sendMessage()} className="rounded-xl bg-violet-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40">Yuborish ↑</button>
           </div>
-          <p className="mt-2 text-[10px] text-gray-400">🎙️ Mikrofon bilan gapiring — matn avtomatik yoziladi. AI ovozi brauzer ovozlaridan foydalanadi; emoji va belgilar ovoz chiqarib o‘qilmaydi. Har bir AI javobi 1 kredit.</p>
+          <p className="mt-2 text-[10px] text-gray-400">Mikrofon: gapirishni boshlash va tugatish uchun tugmani bosing. Audio OpenAI orqali matnga aylantiriladi. Tabiiy ovoz OpenAI API orqali yaratiladi (alohida API xarajati bor); AI ovozi ekanligi foydalanuvchiga oshkor qilinadi. Emoji va format belgilari o‘qilmaydi.</p>
         </div>
       </section>
     </div>
