@@ -19,12 +19,6 @@ const moods: Record<string, string> = {
 };
 
 export async function POST(request: Request) {
-  if (process.env.IJOD_AI_REALTIME_ENABLED !== "true") {
-    return NextResponse.json({
-      error: "Jonli ovozli suhbat hozircha o‘chiq. Realtime API pulli; bepul budjet cheklovini saqlash uchun alohida ruxsat talab qilinadi.",
-      code: "REALTIME_DISABLED",
-    }, { status: 503 });
-  }
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "OPENAI_API_KEY Vercel sozlamalarida topilmadi." }, { status: 503 });
 
