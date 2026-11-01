@@ -61,6 +61,7 @@ export default function LanguageTutorPage() {
   const [autoSpeak, setAutoSpeak] = useState(false);
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const [voiceNotice, setVoiceNotice] = useState("");
+  const [listening, setListening] = useState(false);
   const activeMood = moods.find((item) => item.id === mood) ?? moods[0];
 
   useEffect(() => {
@@ -77,13 +78,53 @@ export default function LanguageTutorPage() {
     };
   }, []);
 
+
+  function cleanSpeechText(value: string) {
+    return value
+      .replace(/\p{Extended_Pictographic}/gu, " ")
+      .replace(/\uFE0F|\u200D/g, "")
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .replace(/[*_~`#>|]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function startMicrophone() {
+    const SpeechRecognitionCtor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognitionCtor) {
+      setVoiceNotice("Mikrofon bu brauzerda qo‘llab-quvvatlanmaydi. Chrome yoki Edge brauzeridan foydalaning.");
+      return;
+    }
+    const recognition = new SpeechRecognitionCtor();
+    recognition.lang = language === "English" ? "en-US" : "ru-RU";
+    recognition.interimResults = true;
+    recognition.continuous = false;
+    recognition.onstart = () => { setListening(true); setVoiceNotice("Tinglayapman… gapiring."); };
+    recognition.onresult = (event: any) => {
+      let finalText = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) finalText += event.results[i][0].transcript;
+      }
+      if (finalText) setInput((current) => (current ? current.trimEnd() + " " : "") + finalText.trim());
+    };
+    recognition.onerror = (event: any) => {
+      setListening(false);
+      setVoiceNotice(event.error === "not-allowed" ? "Mikrofon ruxsati berilmadi. Brauzer sozlamalaridan mikrofonni yoqing." : "Ovozni aniqlashda xatolik: " + event.error);
+    };
+    recognition.onend = () => setListening(false);
+    try { recognition.start(); }
+    catch { setListening(false); setVoiceNotice("Mikrofonni qayta ishga tushirish uchun biroz kuting."); }
+  }
+
   function speak(text: string, index: number) {
     if (!("speechSynthesis" in window)) {
       setVoiceNotice("Brauzeringiz ovozli o‘qishni qo‘llab-quvvatlamaydi.");
       return;
     }
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
+    const spokenText = cleanSpeechText(text);
+    if (!spokenText) { setVoiceNotice("O‘qish uchun matn topilmadi."); return; }
+    const utterance = new SpeechSynthesisUtterance(spokenText);
     const prefix = language === "English" ? "en" : "ru";
     const candidates = availableVoices.filter((v) => v.lang.toLowerCase().startsWith(prefix));
     const hints = voiceGender === "female"
@@ -103,7 +144,8 @@ export default function LanguageTutorPage() {
       utterance.lang = language === "English" ? "en-US" : "ru-RU";
       setVoiceNotice("Maxsus ovoz topilmadi. Qurilmaning standart ovozi ishlatiladi.");
     }
-    utterance.rate = level === "A1" || level === "A2" ? 0.88 : 0.98;
+    utterance.rate = level === "A1" || level === "A2" ? 0.88 : 0.96;
+    utterance.pitch = voiceGender === "female" ? 1.04 : voiceGender === "male" ? 0.92 : 1;
     utterance.onstart = () => setSpeakingIndex(index);
     utterance.onend = () => setSpeakingIndex(null);
     utterance.onerror = () => { setSpeakingIndex(null); setVoiceNotice("Ovoz ijro etilmadi. Brauzer ovoz sozlamalarini tekshiring."); };
@@ -201,9 +243,10 @@ export default function LanguageTutorPage() {
         <div className="border-t border-gray-100 bg-white p-3 sm:p-4">
           <div className="flex items-end gap-2 rounded-2xl border border-gray-200 bg-gray-50 p-2 focus-within:border-violet-300">
             <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void sendMessage(); } }} rows={2} maxLength={2000} placeholder="Xabaringizni yozing..." className="max-h-32 min-h-12 flex-1 resize-y bg-transparent p-2 text-sm outline-none" />
+            <button type="button" disabled={loading || listening} onClick={startMicrophone} title="Ovoz bilan gapirish" aria-label="Mikrofon" className={"rounded-xl border px-3 py-3 text-lg transition " + (listening ? "border-red-300 bg-red-50 text-red-600 animate-pulse" : "border-violet-200 bg-white text-violet-700 hover:bg-violet-50")}>{listening ? "■" : "🎙️"}</button>
             <button disabled={loading || !input.trim()} onClick={() => void sendMessage()} className="rounded-xl bg-violet-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40">Yuborish ↑</button>
           </div>
-          <p className="mt-2 text-[10px] text-gray-400">Har bir AI javobi 1 kredit sarflaydi. Ovoz brauzer orqali ijro etiladi; alohida AI audio API xarajati yo‘q.</p>
+          <p className="mt-2 text-[10px] text-gray-400">🎙️ Mikrofon bilan gapiring — matn avtomatik yoziladi. AI ovozi brauzer ovozlaridan foydalanadi; emoji va belgilar ovoz chiqarib o‘qilmaydi. Har bir AI javobi 1 kredit.</p>
         </div>
       </section>
     </div>
