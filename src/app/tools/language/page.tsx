@@ -282,12 +282,25 @@ export default function LanguageTutorPage() {
       if (!response.ok) throw new Error(data.error || "Javob olishda xatolik yuz berdi.");
       const completedMessages: Message[] = [...nextMessages, { role: "assistant", content: data.text }];
       setMessages(completedMessages);
-      await persistLesson(completedMessages);
+      // A lesson-history write must never erase a successful AI reply.
+      try {
+        await persistLesson(completedMessages);
+        setLessonError("");
+      } catch (saveError) {
+        const detail = saveError && typeof saveError === "object" && "message" in saveError
+          ? String((saveError as { message: unknown }).message)
+          : saveError instanceof Error ? saveError.message : String(saveError);
+        console.error("Language lesson save failed:", detail);
+        setLessonError("AI javob berdi, ammo dars tarixini saqlashda xatolik: " + detail);
+      }
       if (autoSpeak && voiceFeaturesEnabled) void speak(data.text, completedMessages.length - 1);
     } catch (err) {
-      setMessages((current) => current.slice(0, -1));
+      setMessages(nextMessages);
       setInput(text);
-      setError(err instanceof Error ? err.message : "Noma’lum xatolik.");
+      const detail = err && typeof err === "object" && "message" in err
+        ? String((err as { message: unknown }).message)
+        : err instanceof Error ? err.message : String(err);
+      setError(detail || "AI bilan bog‘lanishda noma’lum xatolik.");
     } finally { setLoading(false); }
   }
 
@@ -347,15 +360,15 @@ export default function LanguageTutorPage() {
       <section className="flex min-h-[680px] flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm">
         <div className="flex items-center gap-3 border-b border-gray-100 p-4 sm:p-5">
           <MoodAvatar mood={mood} className="h-12 w-12" />
-          <div className="min-w-0 flex-1"><h2 className="font-bold">AI Ustoz bilan suhbat</h2><p className="text-xs text-gray-500">{language} · {level} · {personalities.find((p) => p.id === personality)?.label}</p></div>
+          <div className="min-w-0 flex-1"><h2 className="font-bold">{language === "English" ? "Chat with AI Tutor" : "Разговор с AI-учителем"}</h2><p className="text-xs text-gray-500">{language} · {level} · {personalities.find((p) => p.id === personality)?.label}</p></div>
           <button onClick={completeCurrentLesson} className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50">{currentLessonId ? "Darsni yakunlash" : "Yangi dars"}</button>
         </div>
         <div className="flex-1 space-y-4 overflow-y-auto bg-[#fcfbff] p-4 sm:p-6">
           {messages.length === 0 && <div className="mx-auto mt-12 max-w-md text-center">
             <MoodAvatar mood={mood} className="mx-auto h-20 w-20" />
             <h3 className="mt-5 text-xl font-black">Salom! Men sizning AI Ustozingizman.</h3>
-            <p className="mt-2 text-sm leading-6 text-gray-500">Bugun {language === "English" ? "ingliz" : "rus"} tilida gaplashamiz. O‘zingizni tanishtiring yoki quyidagi mavzulardan birini boshlang.</p>
-            <div className="mt-5 flex flex-wrap justify-center gap-2">{["Introduce yourself","My daily routine","At a restaurant"].map((v) => <button key={v} onClick={() => setInput(v)} className="rounded-full border border-violet-200 bg-white px-3 py-2 text-xs font-semibold text-violet-700 hover:bg-violet-50">{v}</button>)}</div>
+            <p className="mt-2 text-sm leading-6 text-gray-500">{language === "English" ? "Today we will practise English. Choose a topic or write your own message." : "Сегодня мы будем практиковать русский язык. Выберите тему или напишите своё сообщение."}</p>
+            <div className="mt-5 flex flex-wrap justify-center gap-2">{(language === "English" ? ["Introduce yourself","My daily routine","At a restaurant"] : ["Расскажите о себе","Мой распорядок дня","В ресторане"]).map((v) => <button key={v} onClick={() => setInput(v)} className="rounded-full border border-violet-200 bg-white px-3 py-2 text-xs font-semibold text-violet-700 hover:bg-violet-50">{v}</button>)}</div>
           </div>}
           {messages.map((message, index) => <div key={index} className={"flex " + (message.role === "user" ? "justify-end" : "justify-start")}>
             <div className={"max-w-[88%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-6 " + (message.role === "user" ? "rounded-br-md bg-violet-600 text-white" : "rounded-bl-md border border-violet-100 bg-white text-gray-800 shadow-sm")}>
@@ -368,9 +381,9 @@ export default function LanguageTutorPage() {
         </div>
         <div className="border-t border-gray-100 bg-white p-3 sm:p-4">
           <div className="flex items-end gap-2 rounded-2xl border border-gray-200 bg-gray-50 p-2 focus-within:border-violet-300">
-            <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void sendMessage(); } }} rows={2} maxLength={2000} placeholder="Xabaringizni yozing..." className="max-h-32 min-h-12 flex-1 resize-y bg-transparent p-2 text-sm outline-none" />
+            <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void sendMessage(); } }} rows={2} maxLength={2000} placeholder={language === "English" ? "Write your message..." : "Напишите ваше сообщение..."} className="max-h-32 min-h-12 flex-1 resize-y bg-transparent p-2 text-sm outline-none" />
             <button type="button" disabled={loading || transcribing} onClick={() => listening ? stopMicrophone() : void startMicrophone()} title={listening ? "Yozuvni tugatish" : "Mikrofon orqali gapirish"} aria-label="Mikrofon" className={"flex min-w-[52px] items-center justify-center gap-1 rounded-xl border px-3 py-3 text-lg font-bold transition " + (listening ? "border-red-300 bg-red-50 text-red-600 animate-pulse" : "border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100")}><span>🎙️</span><span className="text-xs">{listening ? "STOP" : "Gapir"}</span></button>
-            <button disabled={loading || !input.trim()} onClick={() => void sendMessage()} className="rounded-xl bg-violet-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40">Yuborish ↑</button>
+            <button disabled={loading || !input.trim()} onClick={() => void sendMessage()} className="rounded-xl bg-violet-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40">{language === "English" ? "Send ↑" : "Отправить ↑"}</button>
           </div>
           <p className="mt-2 text-[10px] text-gray-400">Mikrofon: gapirishni boshlash va tugatish uchun tugmani bosing. Audio OpenAI orqali matnga aylantiriladi. Tabiiy ovoz OpenAI API orqali yaratiladi (alohida API xarajati bor); AI ovozi ekanligi foydalanuvchiga oshkor qilinadi. Emoji va format belgilari o‘qilmaydi.</p>
         </div>
