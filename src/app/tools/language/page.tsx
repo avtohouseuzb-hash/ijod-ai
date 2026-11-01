@@ -240,7 +240,7 @@ export default function LanguageTutorPage() {
       return data as TutorLesson;
     }
     const { data: previous, error: previousError } = await supabase.from("language_tutor_lessons")
-      .select("lesson_number").order("lesson_number", { ascending: false }).limit(1);
+      .select("lesson_number").eq("user_id", session.user.id).order("lesson_number", { ascending: false }).limit(1);
     if (previousError) throw previousError;
     const lessonNumber = (previous?.[0]?.lesson_number || 0) + 1;
     const title = nextMessages.find((m) => m.role === "user")?.content.slice(0, 48) || "Yangi dars";
