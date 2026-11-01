@@ -86,6 +86,55 @@ export default function LanguageTutorPage() {
       .trim();
   }
 
+  async function transcribeRecording(blob: Blob) {
+    if (blob.size < 1500) { setVoiceNotice("Ovoz juda qisqa yozildi. Qayta urinib ko‘ring."); return; }
+    setTranscribing(true);
+    setVoiceNotice("Nutqingiz matnga aylantirilmoqda…");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { window.location.href = "/login"; return; }
+      const form = new FormData();
+      form.append("audio", blob, "recording.webm");
+      form.append("language", language);
+      const response = await fetch("/api/language-tutor/transcribe", { method: "POST", headers: { Authorization: "Bearer " + session.access_token }, body: form });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Nutqni matnga aylantirib bo‘lmadi.");
+      setInput((current) => (current ? current.trimEnd() + " " : "") + data.text);
+      setVoiceNotice("Nutqingiz yozildi. Yuborishdan oldin tekshiring.");
+    } catch (err) { setVoiceNotice(err instanceof Error ? err.message : "Mikrofon xatosi."); }
+    finally { setTranscribing(false); }
+  }
+
+  async function startMicrophone() {
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      setVoiceNotice("Mikrofon bu brauzerda ishlamaydi. HTTPS orqali Chrome yoki Safari'da oching."); return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].find((type) => MediaRecorder.isTypeSupported(type));
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      audioChunksRef.current = [];
+      mediaRecorderRef.current = recorder;
+      recorder.ondataavailable = (event) => { if (event.data.size > 0) audioChunksRef.current.push(event.data); };
+      recorder.onerror = () => { setListening(false); stream.getTracks().forEach((track) => track.stop()); setVoiceNotice("Mikrofon yozuvida xatolik."); };
+      recorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
+        stream.getTracks().forEach((track) => track.stop());
+        setListening(false);
+        void transcribeRecording(audioBlob);
+      };
+      recorder.start();
+      setListening(true);
+      setVoiceNotice("Yozilmoqda. Tugatish uchun mikrofonni yana bosing.");
+    } catch (err) {
+      const name = err instanceof Error ? err.name : "";
+      setVoiceNotice(name === "NotAllowedError" ? "Mikrofon ruxsati berilmadi. Brauzer sozlamasidan ruxsat bering." : "Mikrofonni ishga tushirib bo‘lmadi.");
+    }
+  }
+
+  function stopMicrophone() {
+    if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
+  }
   async function speak(text: string, index: number) {
     const spokenText = cleanSpeechText(text);
     if (!spokenText) return;
