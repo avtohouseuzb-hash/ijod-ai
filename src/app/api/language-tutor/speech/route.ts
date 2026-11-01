@@ -18,9 +18,6 @@ async function authorizedUser(request: Request) {
 export async function POST(request: Request) {
   const user = await authorizedUser(request);
   if (!user) return NextResponse.json({ error: "Ovozli javob uchun hisobingizga qayta kiring." }, { status: 401 });
-  if (process.env.IJOD_AI_VOICE_BETA_ENABLED !== "true") {
-    return NextResponse.json({ error: "Tabiiy AI ovozi hozircha o‘chirilgan: audio API pulli bo‘lishi mumkin. Xarajatga ruxsat berilgach yoqiladi." }, { status: 503 });
-  }
   if (!process.env.OPENAI_API_KEY) return NextResponse.json({ error: "OpenAI API kaliti sozlanmagan." }, { status: 503 });
   try {
     const body = await request.json();
