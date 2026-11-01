@@ -66,7 +66,7 @@ export async function POST(request: Request) {
         expires_after: { anchor: "created_at", seconds: 600 },
         session: {
           type: "realtime",
-          model: "gpt-realtime-2.1-mini",
+          model: "gpt-realtime-2.1",
           instructions,
           output_modalities: ["audio"],
           audio: {
