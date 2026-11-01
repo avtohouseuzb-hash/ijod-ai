@@ -34,12 +34,12 @@ export async function POST(request: Request) {
   const requestedService = body && typeof body === "object" ? (body as { service?: unknown }).service : undefined;
   const requestedTitle = body && typeof body === "object" ? (body as { title?: unknown }).title : undefined;
   const serviceName = requestedService === "AI Interyer & Eksteryer Design" ? requestedService : "AI Rasm";
-  const projectTitle = typeof requestedTitle === "string" && requestedTitle.trim() ? requestedTitle.trim().slice(0, 120) : prompt.trim().slice(0, 120);
   const size = requestedSize === "1024x1536" || requestedSize === "1536x1024" ? requestedSize : "1024x1024";
   if (typeof prompt !== "string" || prompt.trim().length < 3) {
     return NextResponse.json({ error: "Rasm tavsifini kamida 3 ta belgi bilan kiriting." }, { status: 400 });
   }
   if (prompt.length > 2000) return NextResponse.json({ error: "Rasm tavsifi 2000 belgidan oshmasin." }, { status: 400 });
+  const projectTitle = typeof requestedTitle === "string" && requestedTitle.trim() ? requestedTitle.trim().slice(0, 120) : prompt.trim().slice(0, 120);
   let inputImage: File | null = null;
   if (imageDataUrl !== undefined && imageDataUrl !== null && imageDataUrl !== "") {
     if (typeof imageDataUrl !== "string") return NextResponse.json({ error: "Yuklangan rasm formati noto‘g‘ri." }, { status: 400 });
