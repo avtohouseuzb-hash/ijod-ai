@@ -124,7 +124,7 @@ export default function LanguageTutorPage() {
     const lessonNumber = (previous?.[0]?.lesson_number || 0) + 1;
     const title = nextMessages.find((m) => m.role === "user")?.content.slice(0, 48) || "Yangi dars";
     const { data, error } = await supabase.from("language_tutor_lessons")
-      .insert({ lesson_number: lessonNumber, title, language, level, personality, topic, mood, messages: nextMessages, status: "in_progress" })
+      .insert({ user_id: session.user.id, lesson_number: lessonNumber, title, language, level, personality, topic, mood, messages: nextMessages, status: "in_progress" })
       .select("*").single();
     if (error) throw error;
     currentLessonIdRef.current = data.id;
@@ -145,7 +145,14 @@ export default function LanguageTutorPage() {
     setError("");
   }
 
-  function startNewLesson() {
+  async function startNewLesson() {
+    const id = currentLessonIdRef.current;
+    if (id) {
+      const { error } = await supabase.from("language_tutor_lessons")
+        .update({ status: "completed", updated_at: new Date().toISOString() }).eq("id", id);
+      if (error) { setLessonError("Oldingi darsni yakunlab bo‘lmadi."); return; }
+      setLessons((current) => current.map((lesson) => lesson.id === id ? { ...lesson, status: "completed" } : lesson));
+    }
     currentLessonIdRef.current = null;
     setCurrentLessonId(null);
     setMessages([]);
@@ -154,13 +161,7 @@ export default function LanguageTutorPage() {
   }
 
   async function completeCurrentLesson() {
-    if (!currentLessonIdRef.current) { startNewLesson(); return; }
-    const id = currentLessonIdRef.current;
-    const { error } = await supabase.from("language_tutor_lessons")
-      .update({ status: "completed", updated_at: new Date().toISOString() }).eq("id", id);
-    if (error) { setLessonError("Darsni yakunlab bo‘lmadi."); return; }
-    setLessons((current) => current.map((lesson) => lesson.id === id ? { ...lesson, status: "completed" } : lesson));
-    startNewLesson();
+    await startNewLesson();
   }
 
 
