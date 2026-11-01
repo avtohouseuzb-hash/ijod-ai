@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 
 type Mood = "neutral" | "kind" | "happy" | "angry" | "thinking" | "sleepy";
 type Message = { role: "user" | "assistant"; content: string };
+type TutorLesson = { id: string; lesson_number: number; title: string; language: string; level: string; personality: string; topic: string; mood: Mood; messages: Message[]; status: "in_progress" | "completed"; updated_at: string };
 type VoiceGender = "female" | "male" | "auto";
 const moods: { id: Mood; label: string; face: string; color: string; note: string }[] = [
   { id: "neutral", label: "Neytral", face: "•‿•", color: "from-violet-100 to-white border-violet-200 text-violet-700", note: "xotirjam va aniq" },
@@ -54,6 +55,11 @@ export default function LanguageTutorPage() {
   const [mood, setMood] = useState<Mood>("neutral");
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
+  const [lessons, setLessons] = useState<TutorLesson[]>([]);
+  const [currentLessonId, setCurrentLessonId] = useState<string | null>(null);
+  const [lessonsLoading, setLessonsLoading] = useState(true);
+  const [lessonError, setLessonError] = useState("");
+  const currentLessonIdRef = useRef<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [voiceGender, setVoiceGender] = useState<VoiceGender>("female");
@@ -70,10 +76,92 @@ export default function LanguageTutorPage() {
   const [listening, setListening] = useState(false);
   const activeMood = moods.find((item) => item.id === mood) ?? moods[0];
 
-  useEffect(() => () => {
-    activeAudioRef.current?.pause();
-    if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
+  useEffect(() => {
+    let cancelled = false;
+    async function loadLessons() {
+      setLessonsLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setLessonsLoading(false); return; }
+      const { data, error } = await supabase.from("language_tutor_lessons").select("*").order("updated_at", { ascending: false });
+      if (cancelled) return;
+      if (error) setLessonError("Darslar tarixini yuklab bo‘lmadi.");
+      else {
+        const rows = (data || []) as TutorLesson[];
+        setLessons(rows);
+        const active = rows.find((lesson) => lesson.status === "in_progress");
+        if (active) {
+          setCurrentLessonId(active.id);
+          currentLessonIdRef.current = active.id;
+          setMessages(Array.isArray(active.messages) ? active.messages : []);
+          setLanguage(active.language);
+          setLevel(active.level);
+          setPersonality(active.personality);
+          setTopic(active.topic);
+          setMood(active.mood || "neutral");
+        }
+      }
+      setLessonsLoading(false);
+    }
+    void loadLessons();
+    return () => { cancelled = true; };
   }, []);
+
+  async function persistLesson(nextMessages: Message[]) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error("Darsni saqlash uchun tizimga kiring.");
+    const existingId = currentLessonIdRef.current;
+    if (existingId) {
+      const { data, error } = await supabase.from("language_tutor_lessons")
+        .update({ messages: nextMessages, updated_at: new Date().toISOString() })
+        .eq("id", existingId).select("*").single();
+      if (error) throw error;
+      setLessons((current) => [data as TutorLesson, ...current.filter((item) => item.id !== existingId)].sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at)));
+      return data as TutorLesson;
+    }
+    const { data: previous, error: previousError } = await supabase.from("language_tutor_lessons")
+      .select("lesson_number").order("lesson_number", { ascending: false }).limit(1);
+    if (previousError) throw previousError;
+    const lessonNumber = (previous?.[0]?.lesson_number || 0) + 1;
+    const title = nextMessages.find((m) => m.role === "user")?.content.slice(0, 48) || "Yangi dars";
+    const { data, error } = await supabase.from("language_tutor_lessons")
+      .insert({ lesson_number: lessonNumber, title, language, level, personality, topic, mood, messages: nextMessages, status: "in_progress" })
+      .select("*").single();
+    if (error) throw error;
+    currentLessonIdRef.current = data.id;
+    setCurrentLessonId(data.id);
+    setLessons((current) => [data as TutorLesson, ...current]);
+    return data as TutorLesson;
+  }
+
+  function openLesson(lesson: TutorLesson) {
+    currentLessonIdRef.current = lesson.id;
+    setCurrentLessonId(lesson.id);
+    setMessages(Array.isArray(lesson.messages) ? lesson.messages : []);
+    setLanguage(lesson.language);
+    setLevel(lesson.level);
+    setPersonality(lesson.personality);
+    setTopic(lesson.topic);
+    setMood(lesson.mood || "neutral");
+    setError("");
+  }
+
+  function startNewLesson() {
+    currentLessonIdRef.current = null;
+    setCurrentLessonId(null);
+    setMessages([]);
+    setError("");
+    setInput("");
+  }
+
+  async function completeCurrentLesson() {
+    if (!currentLessonIdRef.current) { startNewLesson(); return; }
+    const id = currentLessonIdRef.current;
+    const { error } = await supabase.from("language_tutor_lessons")
+      .update({ status: "completed", updated_at: new Date().toISOString() }).eq("id", id);
+    if (error) { setLessonError("Darsni yakunlab bo‘lmadi."); return; }
+    setLessons((current) => current.map((lesson) => lesson.id === id ? { ...lesson, status: "completed" } : lesson));
+    startNewLesson();
+  }
 
 
   function cleanSpeechText(value: string) {
@@ -191,8 +279,10 @@ export default function LanguageTutorPage() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Javob olishda xatolik yuz berdi.");
-      setMessages((current) => [...current, { role: "assistant" as const, content: data.text }]);
-      if (autoSpeak && voiceFeaturesEnabled) void speak(data.text, messages.length + 1);
+      const completedMessages: Message[] = [...nextMessages, { role: "assistant", content: data.text }];
+      setMessages(completedMessages);
+      await persistLesson(completedMessages);
+      if (autoSpeak && voiceFeaturesEnabled) void speak(data.text, completedMessages.length - 1);
     } catch (err) {
       setMessages((current) => current.slice(0, -1));
       setInput(text);
@@ -222,6 +312,18 @@ export default function LanguageTutorPage() {
           </div>
         </section>
         <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between"><h2 className="font-bold">Mening darslarim</h2><button onClick={startNewLesson} className="text-xs font-bold text-violet-700">+ Yangi</button></div>
+          <p className="mt-1 text-xs text-gray-500">Darslar avtomatik saqlanadi.</p>
+          {lessonError && <p className="mt-2 text-xs text-red-600">{lessonError}</p>}
+          {lessonsLoading ? <p className="mt-3 text-xs text-gray-400">Darslar yuklanmoqda…</p> : lessons.length === 0 ? <p className="mt-3 rounded-xl bg-gray-50 p-3 text-xs text-gray-500">Hozircha darslar yo‘q. Birinchi darsni boshlang.</p> :
+            <div className="mt-3 max-h-72 space-y-2 overflow-y-auto">
+              {lessons.map((lesson) => <button key={lesson.id} onClick={() => openLesson(lesson)} className={"w-full rounded-xl border p-3 text-left transition " + (currentLessonId === lesson.id ? "border-violet-300 bg-violet-50" : "border-gray-100 hover:border-violet-200")}>
+                <div className="flex items-center justify-between gap-2"><span className="text-xs font-bold">{lesson.lesson_number}-dars · {lesson.title}</span><span className={"shrink-0 text-[10px] " + (lesson.status === "completed" ? "text-green-600" : "text-violet-600")}>{lesson.status === "completed" ? "Tugallangan" : "Davom etmoqda"}</span></div>
+                <p className="mt-1 text-[10px] text-gray-500">{lesson.language} · {lesson.level} · {new Date(lesson.updated_at).toLocaleDateString()}</p>
+              </button>)}
+            </div>}
+        </section>
+        <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
           <h2 className="font-bold">Dars sozlamalari</h2>
           <label className="mt-4 block text-xs font-semibold text-gray-500">O‘rganiladigan til</label>
           <select value={language} onChange={(e) => setLanguage(e.target.value)} className="mt-1 w-full rounded-xl border border-gray-200 bg-white p-3 text-sm"><option>English</option><option>Русский</option></select>
@@ -245,7 +347,7 @@ export default function LanguageTutorPage() {
         <div className="flex items-center gap-3 border-b border-gray-100 p-4 sm:p-5">
           <MoodAvatar mood={mood} className="h-12 w-12" />
           <div className="min-w-0 flex-1"><h2 className="font-bold">AI Ustoz bilan suhbat</h2><p className="text-xs text-gray-500">{language} · {level} · {personalities.find((p) => p.id === personality)?.label}</p></div>
-          <button onClick={() => { setMessages([]); setError(""); }} className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50">Yangi dars</button>
+          <button onClick={completeCurrentLesson} className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50">{currentLessonId ? "Darsni yakunlash" : "Yangi dars"}</button>
         </div>
         <div className="flex-1 space-y-4 overflow-y-auto bg-[#fcfbff] p-4 sm:p-6">
           {messages.length === 0 && <div className="mx-auto mt-12 max-w-md text-center">
