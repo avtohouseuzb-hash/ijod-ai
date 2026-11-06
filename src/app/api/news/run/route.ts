@@ -51,7 +51,6 @@ async function executePipeline(request: Request) {
     }
     return NextResponse.json({
       ok: Boolean(process.ok),
-      partial: !Boolean(collect.ok) || !Boolean(process.ok),
       steps
     });
   } catch (error) {
