@@ -128,12 +128,37 @@ export async function POST(request: Request) {
     await telegram(token, "sendMessage", { chat_id: chatId, text: messages.stopped });
   } else if (text.startsWith("/latest")) {
     const selected = Array.isArray(subscription?.categories) ? subscription.categories as string[] : [...categories];
-    const { data } = await db.from("news_articles").select("id,title,summary,source_url,category").eq("status", "published").in("category", selected).order("published_at", { ascending: false }).limit(5);
+    const { data } = await db.from("news_articles")
+      .select("id,title,summary,source_name,source_url,image_url,video_url,category")
+      .eq("status", "published").in("category", selected)
+      .order("published_at", { ascending: false }).limit(5);
     const ids = (data || []).map(a => a.id);
-    const { data: translations } = ids.length ? await db.from("news_translations").select("article_id,title,summary").eq("language", language).in("article_id", ids) : { data: [] };
+    const { data: translations } = ids.length
+      ? await db.from("news_translations").select("article_id,title,summary").eq("language", language).in("article_id", ids)
+      : { data: [] };
     const translated = new Map((translations || []).map(t => [t.article_id, t]));
-    const body = (data || []).map((a, i) => { const t = translated.get(a.id); return (i + 1) + ". " + (t?.title || a.title) + "\n" + (t?.summary || a.summary || "") + "\n" + a.source_url; }).join("\n\n") || messages.latestEmpty;
-    await telegram(token, "sendMessage", { chat_id: chatId, text: body.slice(0, 4000), disable_web_page_preview: false });
+    if (!data?.length) {
+      await telegram(token, "sendMessage", { chat_id: chatId, text: messages.latestEmpty });
+    } else {
+      for (let index = 0; index < data.length; index++) {
+        const article = data[index];
+        const translation = translated.get(article.id);
+        const title = translation?.title || article.title;
+        const summary = translation?.summary || article.summary || "";
+        const caption = (title + "\\n\\n" + summary + "\\n\\nManba: " + (article.source_name || "Manba")).slice(0, 1000);
+        const buttons = [
+          [{ text: "🔗 To‘liq yangilik", url: article.source_url }],
+          ...(article.video_url ? [[{ text: "▶️ Video", url: article.video_url }]] : []),
+          [{ text: "📰 IJOD AI News’da ochish", url: "https://ijod-ai.vercel.app/news" }]
+        ];
+        const method = article.image_url ? "sendPhoto" : "sendMessage";
+        const payload = article.image_url
+          ? { chat_id: chatId, photo: article.image_url, caption, reply_markup: { inline_keyboard: buttons } }
+          : { chat_id: chatId, text: caption, reply_markup: { inline_keyboard: buttons }, disable_web_page_preview: false };
+        await telegram(token, method, payload);
+        if (index < data.length - 1) await new Promise(resolve => setTimeout(resolve, 1100));
+      }
+    }
   }
   return NextResponse.json({ ok: true });
 }
