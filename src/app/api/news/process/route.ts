@@ -6,6 +6,25 @@ export const maxDuration = 60;
 type Translation = { title: string; summary: string };
 type EditorialResult = { publish: boolean; reason?: string; uz_latn: Translation; uz_cyrl: Translation; ru: Translation };
 type Article = { id: string; title: string; summary: string | null; source_name: string; source_url: string; image_url: string | null; video_url: string | null; category: string; status: string };
+type ArticleContext = { description: string; body: string };
+async function fetchArticleContext(articleUrl: string): Promise<ArticleContext> {
+  try {
+    const response = await fetch(articleUrl, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; IJODAI-NewsBot/1.0)", "Accept": "text/html,application/xhtml+xml" },
+      redirect: "follow", signal: AbortSignal.timeout(5000)
+    });
+    if (!response.ok) return { description: "", body: "" };
+    const html = (await response.text()).slice(0, 500000);
+    const meta = html.match(/<meta\\b[^>]*(?:name|property)=["'](?:description|og:description|twitter:description)["'][^>]*content=["']([^"']+)["'][^>]*>/i)
+      || html.match(/<meta\\b[^>]*content=["']([^"']+)["'][^>]*(?:name|property)=["'](?:description|og:description|twitter:description)["'][^>]*>/i);
+    const description = (meta?.[1] || "").replace(/<[^>]*>/g, " ").replace(/&amp;/g, "&").replace(/&quot;/g, '"').trim();
+    const articleHtml = html.match(/<article\\b[^>]*>([\\s\\S]*?)<\\/article>/i)?.[1] || "";
+    const body = articleHtml.replace(/<script[\\s\\S]*?<\\/script>/gi, " ").replace(/<style[\\s\\S]*?<\\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " ").replace(/&nbsp;|&#160;/g, " ").replace(/&amp;/g, "&")
+      .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/\\s+/g, " ").trim().slice(0, 7000);
+    return { description, body };
+  } catch { return { description: "", body: "" }; }
+}
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -40,7 +59,7 @@ export async function GET(request: Request) {
     .select("id,title,summary,source_name,source_url,image_url,video_url,category,status")
     .eq("status", "pending_translation").order("published_at", { ascending: false });
   if (interestedCategories.length) articleQuery = articleQuery.in("category", interestedCategories);
-  const { data: articles, error } = await articleQuery.limit(3);
+  const { data: articles, error } = await articleQuery.limit(10);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!articles?.length) return NextResponse.json({ ok: true, processed: 0, message: "Tanlangan mavzularda tarjima kutayotgan yangi maqola yo‘q." });
 
@@ -73,7 +92,7 @@ export async function GET(request: Request) {
           body: JSON.stringify({
             model,
             instructions: "You are IJOD AI News editor and strict quality gate. Reject fragments, codes/identifiers, incomplete RSS titles, vague headlines, empty context, malformed snippets, or stories that do not explain who did what. Never guess missing context. If not useful, return publish:false and a short reason. If useful, return publish:true and translate faithfully into Uzbek Latin, Uzbek Cyrillic and Russian. Each version needs a clear specific headline and factual 2-3 sentence summary. Preserve names, dates, numbers and uncertainty. Return valid json with publish, reason, uz_latn, uz_cyrl, ru; each translation has title and summary.",
-            input: "Evaluate quality first. Reject unclear or incomplete items. Do not infer missing facts. Return the result as json with publish, reason, uz_latn, uz_cyrl and ru fields. " + JSON.stringify({ source: raw.source_name, title: raw.title, summary: raw.summary || "" }),
+            input: "Evaluate quality using all supplied source material. RSS snippets can be short; do not reject only because they are short. Use the original-page description/body if supplied. Reject only if the headline and available article context are genuinely unrelated, vague, fragmentary, or do not establish a concrete event/finding. Do not invent missing facts. Return JSON with publish, reason, uz_latn, uz_cyrl and ru. " + JSON.stringify({ source: raw.source_name, title: raw.title, rss_summary: raw.summary || "", original_page_description: description, original_article_text: articleBody }),
             text: { format: { type: "json_object" } },
             max_output_tokens: 1800
           })
