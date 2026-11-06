@@ -15,7 +15,7 @@ function youtubeFrom(text: string) {
   return text.match(/https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=[\w-]+|youtu\.be\/[\w-]+)/i)?.[0] || null;
 }
 export async function GET(request: Request) {
-  const secret = process.env.NEWS_CRON_SECRET;
+  const secret = process.env.NEWS_CRON_SECRET || process.env.CRON_SECRET;
   if (!secret || request.headers.get("authorization") !== "Bearer " + secret) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SECRET_KEY;
@@ -53,9 +53,44 @@ export async function GET(request: Request) {
     const { data: subscribers } = await db.from("news_telegram_subscriptions").select("chat_id,language").eq("enabled", true);
     const chats = new Map<string, string>((subscribers || []).map(s => [String(s.chat_id), String(s.language || "uz-latn")]));
     if (process.env.NEWS_TELEGRAM_CHAT_ID) chats.set(process.env.NEWS_TELEGRAM_CHAT_ID, process.env.NEWS_TELEGRAM_CHANNEL_LANGUAGE || "uz-latn");
+    const openaiKey = process.env.OPENAI_API_KEY;
+    const translationModel = process.env.IJOD_NEWS_TRANSLATION_MODEL || process.env.IJOD_NEWS_MODEL || "gpt-6-luna";
     for (const article of newArticles) {
-      const { data: translations } = await db.from("news_translations").select("language,title,summary").eq("article_id", article.id);
-      const byLanguage = new Map<string, { title: string; summary: string | null }>((translations || []).map(t => [String(t.language), { title: t.title, summary: t.summary }]));
+      const { data: existingTranslations } = await db.from("news_translations").select("language,title,summary").eq("article_id", article.id);
+      const byLanguage = new Map<string, { title: string; summary: string | null }>((existingTranslations || []).map(t => [String(t.language), { title: t.title, summary: t.summary }]));
+      if (openaiKey) {
+        for (const language of new Set(chats.values())) {
+          if (language === "uz-latn" || byLanguage.has(language)) continue;
+          const languageLabel = language === "uz-cyrl" ? "Uzbek in Cyrillic script" : "Russian";
+          try {
+            const ai = await fetch("https://api.openai.com/v1/responses", {
+              method: "POST",
+              headers: { "content-type": "application/json", authorization: "Bearer " + openaiKey },
+              body: JSON.stringify({
+                model: translationModel,
+                instructions: "Translate news faithfully into " + languageLabel + ". Preserve names, numbers, dates and factual meaning. Do not add information. Return only valid JSON with string keys title and summary.",
+                input: JSON.stringify({ title: article.title, summary: article.summary || "" }),
+                max_output_tokens: 500,
+              }),
+            });
+            if (!ai.ok) { console.error("News translation failed", language, await ai.text()); continue; }
+            const result = await ai.json();
+            const output = (result.output || []).flatMap((item: {content?: Array<{type?:string;text?:string}>}) => item.content || []).filter((part: {type?:string}) => part.type === "output_text").map((part: {text?:string}) => part.text || "").join("\n").trim();
+            const clean = output.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+            const parsed = JSON.parse(clean) as {title?:string;summary?:string};
+            if (!parsed.title) continue;
+            const translation = { article_id: article.id, language, title: parsed.title.slice(0,500), summary: (parsed.summary || "").slice(0,1400) };
+            const { error: saveError } = await db.from("news_translations").upsert(translation, { onConflict: "article_id,language" });
+            if (!saveError) byLanguage.set(language, { title: translation.title, summary: translation.summary });
+            else console.error("News translation cache save failed", saveError.message);
+          } catch (translationError) { console.error("News translation error", language, translationError); }
+        }
+      }
+
+    const { data: subscribers } = await db.from("news_telegram_subscriptions").select("chat_id,language").eq("enabled", true);
+    const chats = new Map<string, string>((subscribers || []).map(s => [String(s.chat_id), String(s.language || "uz-latn")]));
+    if (process.env.NEWS_TELEGRAM_CHAT_ID) chats.set(process.env.NEWS_TELEGRAM_CHAT_ID, process.env.NEWS_TELEGRAM_CHANNEL_LANGUAGE || "uz-latn");
+    for (const article of newArticles) {
       const buttons = [[{ text: "🔗 To‘liq yangilik", url: article.source_url }], ...(article.video_url ? [[{ text: "▶️ Videoni ko‘rish", url: article.video_url }]] : []), [{ text: "IJOD AI’da ochish", url: (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app") + "/news" }]];
       for (const [chatId, language] of chats) {
         try {
