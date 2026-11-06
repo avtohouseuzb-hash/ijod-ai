@@ -1,102 +1,97 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+
 export const maxDuration = 60;
+
 function decodeXml(value: string) {
-  return value.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n))).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  return value.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'")
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 }
 function tag(xml: string, name: string) {
   const match = xml.match(new RegExp("<(?:\\w+:)?" + name + "(?:\\s[^>]*)?>([\\s\\S]*?)</(?:\\w+:)?" + name + ">", "i"));
   return match ? decodeXml(match[1]) : "";
 }
 function imageFrom(xml: string, description: string) {
-  return xml.match(/<(?:media:)?(?:content|thumbnail)[^>]+url=["']([^"']+)["']/i)?.[1] || xml.match(/<enclosure[^>]+url=["']([^"']+)["']/i)?.[1] || description.match(/<img[^>]+src=["']([^"']+)["']/i)?.[1] || null;
+  return xml.match(/<(?:media:)?(?:content|thumbnail)[^>]+url=["']([^"']+)["']/i)?.[1]
+    || xml.match(/<enclosure[^>]+url=["']([^"']+)["']/i)?.[1]
+    || description.match(/<img[^>]+src=["']([^"']+)["']/i)?.[1] || null;
 }
 function youtubeFrom(text: string) {
   return text.match(/https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=[\w-]+|youtu\.be\/[\w-]+)/i)?.[0] || null;
 }
+async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (true) {
+      const index = next++;
+      if (index >= items.length) return;
+      results[index] = await fn(items[index]);
+    }
+  }));
+  return results;
+}
+
 export async function GET(request: Request) {
   const secret = process.env.NEWS_CRON_SECRET || process.env.CRON_SECRET;
-  if (!secret || request.headers.get("authorization") !== "Bearer " + secret) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!secret || request.headers.get("authorization") !== "Bearer " + secret)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SECRET_KEY;
   if (!url || !key) return NextResponse.json({ error: "Supabase server config missing" }, { status: 500 });
   const db = createClient(url, key, { auth: { persistSession: false } });
-  const { data: sources, error } = await db.from("news_sources").select("*").eq("enabled", true);
+  const { data: sources, error } = await db.from("news_sources")
+    .select("id,name,feed_url,category,language").eq("enabled", true);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  let imported = 0;
-  const newArticles: Array<{id:string;title:string;summary:string;source_url:string;image_url:string|null;video_url:string|null;source_name:string;category:string}> = [];
-  for (const source of sources || []) {
+
+  const results = await mapLimit(sources || [], 10, async (source) => {
     try {
-      const response = await fetch(source.feed_url, { headers: { "User-Agent": "IJODAI-NewsBot/1.0", "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml" }, signal: AbortSignal.timeout(12000) });
-      if (!response.ok) continue;
+      const response = await fetch(source.feed_url, {
+        headers: { "User-Agent": "IJODAI-NewsBot/1.0", "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml" },
+        signal: AbortSignal.timeout(9000)
+      });
+      if (!response.ok) return { source: source.name, ok: false, reason: "HTTP " + response.status, found: 0, inserted: 0 };
       const xml = await response.text();
-      const entries = [...xml.matchAll(/<(?:item|entry)\b[^>]*>([\s\S]*?)<\/(?:item|entry)>/gi)].slice(0, 12);
-      for (const entry of entries) {
+      const entries = [...xml.matchAll(/<(?:item|entry)\b[^>]*>([\s\S]*?)<\/(?:item|entry)>/gi)].slice(0, 8);
+      const rows = entries.flatMap((entry) => {
         const block = entry[1];
         const title = tag(block, "title");
         const atomLink = block.match(/<link\b[^>]*href=["']([^"']+)["']/i)?.[1] || "";
         const link = tag(block, "link") || atomLink;
-        if (!title || !/^https?:\/\//i.test(link)) continue;
-        const descriptionRaw = tag(block, "description") || tag(block, "summary") || tag(block, "content");
-        const summary = descriptionRaw.slice(0, 1400);
+        if (!title || !/^https?:\/\//i.test(link)) return [];
+        const raw = tag(block, "description") || tag(block, "summary") || tag(block, "content");
         const published = tag(block, "pubDate") || tag(block, "published") || tag(block, "updated");
-        const publishedAt = published && !Number.isNaN(Date.parse(published)) ? new Date(published).toISOString() : new Date().toISOString();
-        const image = imageFrom(block, descriptionRaw);
-        const video = youtubeFrom(block + " " + descriptionRaw);
-        const { data, error: insertError } = await db.from("news_articles").upsert({ source_id: source.id, title: title.slice(0, 500), summary, source_name: source.name, source_url: link, image_url: image, video_url: video, category: source.category, language: source.language, published_at: publishedAt, status: "published" }, { onConflict: "source_url", ignoreDuplicates: true }).select("id,title,summary,source_url,image_url,video_url,source_name,category");
-        if (!insertError && data?.length) { imported += data.length; newArticles.push(...data); }
-      }
-    } catch (err) { console.error("News source failed", source.name, err); }
-  }
-  const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  if (newArticles.length) {
-    const { data: subscribers } = botToken ? await db.from("news_telegram_subscriptions").select("chat_id,language,categories").eq("enabled", true) : { data: [] };
-    const chats: Array<{ chatId: string; language: string; categories: string[] }> = (subscribers || []).map((s: { chat_id: string | number; language?: string | null; categories?: string[] | null }) => ({ chatId: String(s.chat_id), language: String(s.language || "uz-latn"), categories: Array.isArray(s.categories) ? s.categories : [] }));
-    if (botToken && process.env.NEWS_TELEGRAM_CHAT_ID) chats.push({ chatId: process.env.NEWS_TELEGRAM_CHAT_ID, language: process.env.NEWS_TELEGRAM_CHANNEL_LANGUAGE || "uz-latn", categories: [] });
-    const openaiKey = process.env.OPENAI_API_KEY;
-    const model = process.env.IJOD_NEWS_TRANSLATION_MODEL || process.env.IJOD_NEWS_MODEL || "gpt-6-luna";
-    for (const article of newArticles) {
-      const { data: cached } = await db.from("news_translations").select("language,title,summary").eq("article_id", article.id);
-      const variants = new Map<string, { title: string; summary: string }>((cached || []).map(t => [String(t.language), { title: String(t.title), summary: String(t.summary || "") }]));
-      if (openaiKey && ["uz-latn","uz-cyrl","ru"].some(lang => !variants.has(lang))) {
-        try {
-          const ai = await fetch("https://api.openai.com/v1/responses", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + openaiKey }, body: JSON.stringify({
-            model,
-            instructions: "You are IJOD AI News editor. Faithfully translate and rewrite this news in Uzbek Latin, Uzbek Cyrillic and Russian. For each language create a clear headline and concise 2-4 sentence summary, about 45-75 words maximum. Preserve names, dates, numbers, quotes and uncertainty. Do not invent facts, add opinions or unsupported context. Remove promotional fluff. Return only valid JSON with keys uz_latn, uz_cyrl, ru; each has string title and summary.",
-            input: JSON.stringify({ source: article.source_name, original_title: article.title, original_summary: article.summary || "" }),
-            max_output_tokens: 1200
-          }) });
-          if (ai.ok) {
-            const result = await ai.json();
-            const output = ((result.output || []) as Array<{ content?: Array<{ type?: string; text?: string }> }>).flatMap((item: { content?: Array<{ type?: string; text?: string }> }) => item.content || []).filter((part: { type?: string }) => part.type === "output_text").map((part: { text?: string }) => part.text || "").join("\n").trim();
-            const parsed = JSON.parse(output.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "")) as Record<string, { title?: string; summary?: string }>;
-            for (const pair of [["uz-latn","uz_latn"],["uz-cyrl","uz_cyrl"],["ru","ru"]] as const) {
-              const language = pair[0]; const item = parsed[pair[1]];
-              if (!item || !item.title || !item.summary) continue;
-              const translation = { article_id: article.id, language, title: String(item.title).slice(0,500), summary: String(item.summary).slice(0,1400) };
-              const { error: saveError } = await db.from("news_translations").upsert(translation, { onConflict: "article_id,language" });
-              if (!saveError) variants.set(language, { title: translation.title, summary: translation.summary });
-              else console.error("News editorial cache save failed", language, saveError.message);
-            }
-          } else console.error("IJOD AI news editing failed", await ai.text());
-        } catch (editorError) { console.error("IJOD AI news editing error", article.id, editorError); }
-      }
-      if (!botToken) continue;
-      const buttons = [[{ text: "🔗 To‘liq yangilik", url: article.source_url }], ...(article.video_url ? [[{ text: "▶️ Videoni ko‘rish", url: article.video_url }]] : []), [{ text: "📰 IJOD AI News’da ochish", url: (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app") + "/news" }]];
-      for (const subscriber of chats) {
-        const { chatId, language, categories } = subscriber;
-        if (categories.length && !categories.includes(article.category)) continue;
-        try {
-          const item = variants.get(language) || variants.get("uz-latn");
-          const caption = ("📰 " + (item?.title || article.title) + "\n\n" + (item?.summary || article.summary || "Batafsil ma’lumot manbada.") + "\n\nManba: " + article.source_name).slice(0,1000);
-          const method = article.image_url ? "sendPhoto" : "sendMessage";
-          const payload = article.image_url ? { chat_id: chatId, photo: article.image_url, caption, reply_markup: { inline_keyboard: buttons } } : { chat_id: chatId, text: caption, reply_markup: { inline_keyboard: buttons }, disable_web_page_preview: false };
-          const sent = await fetch("https://api.telegram.org/bot" + botToken + "/" + method, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
-          if (!sent.ok) console.error("Telegram send failed", await sent.text());
-        } catch (sendError) { console.error("Telegram delivery failed", sendError); }
-      }
+        return [{
+          source_id: source.id, title: title.slice(0, 500), summary: raw.slice(0, 1400),
+          source_name: source.name, source_url: link, image_url: imageFrom(block, raw),
+          video_url: youtubeFrom(block + " " + raw), category: source.category,
+          language: source.language || "en",
+          published_at: published && !Number.isNaN(Date.parse(published)) ? new Date(published).toISOString() : new Date().toISOString(),
+          status: "pending_translation"
+        }];
+      });
+      if (!rows.length) return { source: source.name, ok: true, found: 0, inserted: 0 };
+      const { data, error: upsertError } = await db.from("news_articles")
+        .upsert(rows, { onConflict: "source_url", ignoreDuplicates: true })
+        .select("id");
+      if (upsertError) return { source: source.name, ok: false, reason: upsertError.message, found: rows.length, inserted: 0 };
+      return { source: source.name, ok: true, found: rows.length, inserted: data?.length || 0 };
+    } catch (e) {
+      return { source: source.name, ok: false, reason: e instanceof Error ? e.message : "Fetch failed", found: 0, inserted: 0 };
     }
-    if (botToken) await db.from("news_articles").update({ telegram_sent_at: new Date().toISOString() }).in("id", newArticles.map(a => a.id));
-  }
-  return NextResponse.json({ ok: true, imported, telegramPosts: newArticles.length });
+  });
+
+  const okSources = results.filter(r => r.ok).length;
+  const inserted = results.reduce((sum, r) => sum + r.inserted, 0);
+  const found = results.reduce((sum, r) => sum + r.found, 0);
+  const failed = results.filter(r => !r.ok);
+  return NextResponse.json({
+    ok: failed.length === 0, phase: "collect",
+    sourcesTotal: sources?.length || 0, sourcesChecked: results.length, sourcesOk: okSources,
+    sourcesFailed: failed.length, itemsFound: found, articlesInserted: inserted,
+    duplicateItemsSkipped: Math.max(0, found - inserted), failedSources: failed
+  });
 }
