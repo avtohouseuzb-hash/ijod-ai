@@ -21,7 +21,34 @@ export default function NewsAdminPage(){
  async function load(){setLoading(true);try{const d=await call("GET");if(d)setSources(d.sources||[]);}catch(e){setNotice(e instanceof Error?e.message:"Manbalarni yuklab bo‘lmadi.");}finally{setLoading(false);}}
  useEffect(()=>{void load();},[]);
  async function save(e:React.FormEvent){e.preventDefault();setSaving(true);setNotice("");try{await call("POST",{name,feedUrl,category});setName("");setFeedUrl("");setNotice("Manba saqlandi.");await load();}catch(e){setNotice(e instanceof Error?e.message:"Saqlashda xatolik.");}finally{setSaving(false);}}
- async function runPipeline(){setPipelineBusy(true);setPipelineResult(null);setNotice("");try{const {data:{session}}=await supabase.auth.getSession();if(!session)throw new Error("Avval hisobingizga kiring.");const response=await fetch("/api/news/run",{method:"POST",headers:{authorization:"Bearer "+session.access_token}});const raw=await response.text();let data:any;try{data=raw?JSON.parse(raw):{};}catch{throw new Error("Yangiliklar serveri JSON qaytarmadi (HTTP "+response.status+"): "+raw.slice(0,220).replace(/\\s+/g," "));}if(!response.ok)throw new Error(data.error||data.message||"Jarayonni ishga tushirib bo‘lmadi (HTTP "+response.status+").");setPipelineResult(data);setNotice(data.ok?"Yangiliklarni yig‘ish va tarjima jarayoni bajarildi.":"Jarayon qisman bajarildi. Natijalarni quyida ko‘ring.");}catch(e){setNotice(e instanceof Error?e.message:"Jarayonda xatolik.");}finally{setPipelineBusy(false);}}
+ async function runPipeline(){
+  setPipelineBusy(true);setPipelineResult(null);setNotice("");
+  try{
+   const {data:{session}}=await supabase.auth.getSession();
+   if(!session)throw new Error("Avval hisobingizga kiring.");
+   const headers={authorization:"Bearer "+session.access_token};
+   const batches:any[]=[];
+   let offset=0;
+   for(let i=0;i<20;i++){
+    const response=await fetch("/api/news/run?phase=collect&offset="+offset,{method:"POST",headers});
+    const raw=await response.text();let data:any;
+    try{data=raw?JSON.parse(raw):{};}catch{throw new Error("Manbalarni yig‘ish serveri JSON qaytarmadi (HTTP "+response.status+").");}
+    if(!response.ok)throw new Error(data.error||data.message||"Manbalarni yig‘ishda xatolik (HTTP "+response.status+").");
+    batches.push(data.steps?.collect||data);
+    offset=Number(data.nextOffset||offset);
+    if(!data.hasMore)break;
+    if(i===19)throw new Error("Xavfsizlik limiti: 20 ta guruhdan keyin jarayon to‘xtatildi. Qolgan manbalarni keyingi urinishda davom ettiring.");
+   }
+   const response=await fetch("/api/news/run?phase=process",{method:"POST",headers});
+   const raw=await response.text();let processed:any;
+   try{processed=raw?JSON.parse(raw):{};}catch{throw new Error("Tarjima serveri JSON qaytarmadi (HTTP "+response.status+").");}
+   if(!response.ok)throw new Error(processed.error||processed.message||"Tarjima jarayonida xatolik (HTTP "+response.status+").");
+   const collectSummary={sourcesChecked:batches.reduce((n,x)=>n+Number(x.sourcesChecked||0),0),sourcesOk:batches.reduce((n,x)=>n+Number(x.sourcesOk||0),0),sourcesFailed:batches.reduce((n,x)=>n+Number(x.sourcesFailed||0),0),itemsFound:batches.reduce((n,x)=>n+Number(x.itemsFound||0),0),articlesInserted:batches.reduce((n,x)=>n+Number(x.articlesInserted||0),0),duplicateItemsSkipped:batches.reduce((n,x)=>n+Number(x.duplicateItemsSkipped||0),0),failedSources:batches.flatMap(x=>x.failedSources||[])};
+   setPipelineResult({collect:collectSummary,process:processed});
+   setNotice(collectSummary.sourcesFailed===0&&processed.ok?"Barcha manbalar tekshirildi, maqolalar qayta ishlandi.":"Jarayon tugadi, ayrim manba yoki maqolalarda xatolik bor. Natijalarni tekshiring.");
+  }catch(e){setNotice(e instanceof Error?e.message:"Jarayonda xatolik.");}
+  finally{setPipelineBusy(false);}
+ }
  async function setupWebhook(){try{const {data:{session}}=await supabase.auth.getSession();if(!session){setNotice("Avval hisobingizga kiring.");return;}const r=await fetch("/api/news/telegram/setup",{method:"POST",headers:{authorization:"Bearer "+session.access_token}});const raw=await r.text();let d:any;try{d=raw?JSON.parse(raw):{};}catch{throw new Error("Webhook serveri noto‘g‘ri javob qaytardi (HTTP "+r.status+").");}setNotice(d.ok?"Telegram webhook muvaffaqiyatli ulandi: "+d.webhookUrl:(d.error||"Webhook ulanmagan."));}catch{setNotice("Webhook sozlashda xatolik.");}}
  async function remove(id:string){if(!confirm("Ushbu manbani o‘chirasizmi?"))return;try{await call("POST",{action:"delete",id});setNotice("Manba o‘chirildi.");await load();}catch(e){setNotice(e instanceof Error?e.message:"O‘chirishda xatolik.");}}
  return <main className="min-h-screen bg-[#f7f7fb] p-4 text-[#191923]"><div className="mx-auto max-w-5xl"><Link href="/news" className="text-sm text-violet-700">← AI News</Link><h1 className="my-4 text-3xl font-black">AI News — Manbalar</h1><p className="mb-6 text-sm text-gray-600">Yangi RSS/API manbalarini kodni o‘zgartirmasdan boshqaring.</p>{notice&&<div className="mb-4 rounded-xl bg-amber-50 p-3 text-sm">{notice}</div>}
