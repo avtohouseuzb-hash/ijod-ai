@@ -61,7 +61,7 @@ export async function GET(request: Request) {
         });
         if (!ai.ok) throw new Error("GPT API: " + (await ai.text()).slice(0, 400));
         const result = await ai.json();
-        const output = (result.output || []).flatMap((item: { content?: Array<{ type?: string; text?: string }> }) => item.content || [])
+        const output = (result.output || []).flatMap((item: { content?: Array<{ type?: string; text?: string }> } | null | undefined) => item?.content || [])
           .filter((part: { type?: string }) => part.type === "output_text")
           .map((part: { text?: string }) => part.text || "").join("\n").trim();
         const parsed = JSON.parse(output) as Record<string, Translation>;
