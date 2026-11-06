@@ -41,15 +41,19 @@ export async function POST(request: Request) {
       headers: { "content-type": "application/json", authorization: "Bearer " + process.env.OPENAI_API_KEY },
       body: JSON.stringify({
         model,
-        instructions: "Translate and edit this news faithfully into Uzbek Latin, Uzbek Cyrillic and Russian. For each language provide a concise headline and factual 2-4 sentence summary. Preserve names, dates and numbers. Never invent facts. Return only JSON with keys uz_latn, uz_cyrl, ru, each with title and summary.",
-        input: JSON.stringify({ source: source.name, title, text: summary.slice(0, 4000) }),
-        max_output_tokens: 1200
+        instructions: "Translate and edit faithfully into Uzbek Latin, Uzbek Cyrillic and Russian. Each version needs a short headline and factual 2-sentence summary. Preserve names, dates and numbers; never invent facts. Return a complete JSON object with keys uz_latn, uz_cyrl, ru; each has title and summary strings. No markdown or commentary.",
+        input: JSON.stringify({ source: source.name, title, text: summary.slice(0, 2200) }),
+        text: { format: { type: "json_object" } },
+        max_output_tokens: 2200
       })
     });
     if (!ai.ok) return NextResponse.json({ error: "GPT API xatosi: " + (await ai.text()).slice(0, 600) }, { status: 502 });
     const result = await ai.json();
-    const output = (result.output || []).flatMap((item: { content?: Array<{ type?: string; text?: string }> }) => item.content || []).filter((part: { type?: string }) => part.type === "output_text").map((part: { text?: string }) => part.text || "").join("\n");
-    const translated = JSON.parse(output.replace(/^\`\`\`(?:json)?\s*/i, "").replace(/\s*\`\`\`$/, "")) as Record<string, { title?: string; summary?: string }>;
+    const output = (result.output || []).flatMap((item: { content?: Array<{ type?: string; text?: string }> }) => item.content || []).filter((part: { type?: string }) => part.type === "output_text").map((part: { text?: string }) => part.text || "").join("\n").trim();
+    if (!output) return NextResponse.json({ error: "GPT bo‘sh javob qaytardi. Qayta urinib ko‘ring." }, { status: 502 });
+    let translated: Record<string, { title?: string; summary?: string }>;
+    try { translated = JSON.parse(output) as Record<string, { title?: string; summary?: string }>; }
+    catch { return NextResponse.json({ error: "GPT tarjima matnini to‘liq JSON formatida qaytarmadi. Qayta urinib ko‘ring." }, { status: 502 }); }
     if (["uz_latn", "uz_cyrl", "ru"].some(k => !translated[k]?.title || !translated[k]?.summary)) return NextResponse.json({ error: "GPT barcha tillar uchun matn bermadi." }, { status: 502 });
     const image = entry.match(/<(?:media:)?(?:content|thumbnail)[^>]+url=["']([^"']+)["']/i)?.[1] || entry.match(/<enclosure[^>]+url=["']([^"']+)["']/i)?.[1] || null;
     const video = (entry + summary).match(/https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=[\w-]+|youtu\.be\/[\w-]+)/i)?.[0] || null;
