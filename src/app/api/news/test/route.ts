@@ -24,17 +24,17 @@ export async function POST(request: Request) {
     const feed = await fetch(source.feed_url, { headers: { "User-Agent": "IJODAI-NewsBot/1.0" }, signal: AbortSignal.timeout(12000) });
     if (!feed.ok) return NextResponse.json({ error: "RSS HTTP " + feed.status }, { status: 502 });
     const xml = await feed.text();
-    const entries = Array.from(xml.matchAll(/<(?:item|entry)\\b[^>]*>([\\s\\S]*?)<\\/(?:item|entry)>/gi));
+    const entries = Array.from(xml.matchAll(/<(?:item|entry)\b[^>]*>([\s\S]*?)<\/(?:item|entry)>/gi));
     if (!entries.length) return NextResponse.json({ error: "RSS item topilmadi." }, { status: 422 });
     const entry = entries[0][1];
     const get = (tag: string) => {
-      const match = entry.match(new RegExp("<(?:\\\\w+:)?" + tag + "(?:\\\\s[^>]*)?>([\\\\s\\\\S]*?)</(?:\\\\w+:)?" + tag + ">", "i"));
-      return match ? match[1].replace(/<!\\[CDATA\\[|\\]\\]>/g, "").replace(/<[^>]*>/g, " ").replace(/&amp;/g, "&").trim() : "";
+      const match = entry.match(new RegExp("<(?:\\w+:)?" + tag + "(?:\\s[^>]*)?>([\\s\\S]*?)</(?:\\w+:)?" + tag + ">", "i"));
+      return match ? match[1].replace(/<!\[CDATA\[|\]\]>/g, "").replace(/<[^>]*>/g, " ").replace(/&amp;/g, "&").trim() : "";
     };
     const title = get("title");
     const summary = get("description") || get("summary") || get("content");
-    const link = get("link") || entry.match(/<link\\b[^>]*href=["']([^"']+)["']/i)?.[1] || "";
-    if (!title || !/^https?:\\/\\//i.test(link)) return NextResponse.json({ error: "Maqola sarlavhasi yoki havolasi topilmadi." }, { status: 422 });
+    const link = get("link") || entry.match(/<link\b[^>]*href=["']([^"']+)["']/i)?.[1] || "";
+    if (!title || !/^https?:\/\//i.test(link)) return NextResponse.json({ error: "Maqola sarlavhasi yoki havolasi topilmadi." }, { status: 422 });
     const model = process.env.IJOD_NEWS_TRANSLATION_MODEL || process.env.IJOD_NEWS_MODEL || "gpt-6-luna";
     const ai = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
@@ -48,11 +48,11 @@ export async function POST(request: Request) {
     });
     if (!ai.ok) return NextResponse.json({ error: "GPT API xatosi: " + (await ai.text()).slice(0, 600) }, { status: 502 });
     const result = await ai.json();
-    const output = (result.output || []).flatMap((item: { content?: Array<{ type?: string; text?: string }> }) => item.content || []).filter((part: { type?: string }) => part.type === "output_text").map((part: { text?: string }) => part.text || "").join("\\n");
-    const translated = JSON.parse(output.replace(/^\`\`\`(?:json)?\\s*/i, "").replace(/\\s*\`\`\`$/, "")) as Record<string, { title?: string; summary?: string }>;
+    const output = (result.output || []).flatMap((item: { content?: Array<{ type?: string; text?: string }> }) => item.content || []).filter((part: { type?: string }) => part.type === "output_text").map((part: { text?: string }) => part.text || "").join("\n");
+    const translated = JSON.parse(output.replace(/^\`\`\`(?:json)?\s*/i, "").replace(/\s*\`\`\`$/, "")) as Record<string, { title?: string; summary?: string }>;
     if (["uz_latn", "uz_cyrl", "ru"].some(k => !translated[k]?.title || !translated[k]?.summary)) return NextResponse.json({ error: "GPT barcha tillar uchun matn bermadi." }, { status: 502 });
     const image = entry.match(/<(?:media:)?(?:content|thumbnail)[^>]+url=["']([^"']+)["']/i)?.[1] || entry.match(/<enclosure[^>]+url=["']([^"']+)["']/i)?.[1] || null;
-    const video = (entry + summary).match(/https?:\\/\\/(?:www\\.)?(?:youtube\\.com\\/watch\\?v=[\\w-]+|youtu\\.be\\/[\\w-]+)/i)?.[0] || null;
+    const video = (entry + summary).match(/https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=[\w-]+|youtu\.be\/[\w-]+)/i)?.[0] || null;
     return NextResponse.json({ ok: true, model, source: { name: source.name, category: source.category, title, summary, url: link }, media: { imageUrl: image, videoUrl: video }, translations: { "uz-latn": translated.uz_latn, "uz-cyrl": translated.uz_cyrl, ru: translated.ru }, delivery: "preview_only" });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Sinov bajarilmadi." }, { status: 502 });
