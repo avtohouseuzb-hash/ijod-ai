@@ -18,12 +18,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Server config missing: Supabase yoki OpenAI kaliti." }, { status: 500 });
 
   const db = createClient(url, key, { auth: { persistSession: false } });
-  const { data: articles, error } = await db.from("news_articles")
-    .select("id,title,summary,source_name,source_url,image_url,video_url,category,status")
-    .eq("status", "pending_translation").order("published_at", { ascending: false }).limit(5);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  if (!articles?.length) return NextResponse.json({ ok: true, processed: 0, message: "Tarjima kutayotgan yangi maqola yo‘q." });
-
   const { data: subscribers } = await db.from("news_telegram_subscriptions")
     .select("chat_id,language,categories").eq("enabled", true);
   const chats = (subscribers || []).map((s: { chat_id: string; language?: string | null; categories?: string[] | null }) => ({
@@ -31,10 +25,23 @@ export async function GET(request: Request) {
     categories: Array.isArray(s.categories) ? s.categories : []
   }));
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  if (botToken && process.env.NEWS_TELEGRAM_CHAT_ID) chats.push({
-    chatId: process.env.NEWS_TELEGRAM_CHAT_ID,
+  const channelChatId = process.env.NEWS_TELEGRAM_CHAT_ID;
+  if (botToken && channelChatId) chats.push({
+    chatId: channelChatId,
     language: process.env.NEWS_TELEGRAM_CHANNEL_LANGUAGE || "uz-latn", categories: []
   });
+
+  // Select news for subscriber interests first. A global LIMIT(5) used to let
+  // unrelated categories fill the queue, so private subscribers received only
+  // one matching story while the public channel received the whole batch.
+  const interestedCategories = [...new Set(chats.flatMap(chat => chat.categories))];
+  let articleQuery = db.from("news_articles")
+    .select("id,title,summary,source_name,source_url,image_url,video_url,category,status")
+    .eq("status", "pending_translation").order("published_at", { ascending: false });
+  if (interestedCategories.length) articleQuery = articleQuery.in("category", interestedCategories);
+  const { data: articles, error } = await articleQuery.limit(12);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!articles?.length) return NextResponse.json({ ok: true, processed: 0, message: "Tanlangan mavzularda tarjima kutayotgan yangi maqola yo‘q." });
 
   const model = process.env.IJOD_NEWS_TRANSLATION_MODEL || process.env.IJOD_NEWS_MODEL || "gpt-6-luna";
   const outcomes: Array<{ id: string; translated: boolean; telegramSent: number; error?: string }> = [];
