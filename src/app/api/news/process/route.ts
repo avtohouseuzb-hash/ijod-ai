@@ -20,7 +20,7 @@ export async function GET(request: Request) {
   const db = createClient(url, key, { auth: { persistSession: false } });
   const { data: articles, error } = await db.from("news_articles")
     .select("id,title,summary,source_name,source_url,image_url,video_url,category,status")
-    .eq("status", "pending_translation").order("created_at", { ascending: true }).limit(5);
+    .eq("status", "pending_translation").order("published_at", { ascending: false }).limit(5);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!articles?.length) return NextResponse.json({ ok: true, processed: 0, message: "Tarjima kutayotgan yangi maqola yo‘q." });
 
