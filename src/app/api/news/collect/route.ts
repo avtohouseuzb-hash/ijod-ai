@@ -87,10 +87,6 @@ export async function GET(request: Request) {
         }
       }
 
-    const { data: subscribers } = await db.from("news_telegram_subscriptions").select("chat_id,language").eq("enabled", true);
-    const chats = new Map<string, string>((subscribers || []).map(s => [String(s.chat_id), String(s.language || "uz-latn")]));
-    if (process.env.NEWS_TELEGRAM_CHAT_ID) chats.set(process.env.NEWS_TELEGRAM_CHAT_ID, process.env.NEWS_TELEGRAM_CHANNEL_LANGUAGE || "uz-latn");
-    for (const article of newArticles) {
       const buttons = [[{ text: "🔗 To‘liq yangilik", url: article.source_url }], ...(article.video_url ? [[{ text: "▶️ Videoni ko‘rish", url: article.video_url }]] : []), [{ text: "IJOD AI’da ochish", url: (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app") + "/news" }]];
       for (const [chatId, language] of chats) {
         try {
