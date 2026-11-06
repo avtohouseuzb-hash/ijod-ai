@@ -94,7 +94,7 @@ export async function GET(request: Request) {
         const published = tag(block, "pubDate") || tag(block, "published") || tag(block, "updated");
         return [{
           source_id: source.id, title: title.slice(0, 500), summary: raw.slice(0, 1400),
-          source_name: source.name, source_url: link, image_url: imageFrom(block) || imageFromMarkup(raw) || imageFrom(block, raw),
+          source_name: source.name, source_url: link, image_url: imageFrom(block, raw) || imageFromMarkup(raw),
           video_url: youtubeFrom(block + " " + raw), category: source.category,
           language: source.language || "en",
           published_at: published && !Number.isNaN(Date.parse(published)) ? new Date(published).toISOString() : new Date().toISOString(),
