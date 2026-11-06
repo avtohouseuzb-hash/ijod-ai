@@ -16,16 +16,27 @@ async function executePipeline(request: Request) {
   const headers = { authorization: authHeader };
   const steps: Record<string, unknown> = {};
   try {
-    const collectResponse = await fetch(base + "/api/news/collect", { headers, cache: "no-store" });
-    const collect = await collectResponse.json();
+    const readResponse = async (response: Response) => {
+      const raw = await response.text();
+      try { return JSON.parse(raw); }
+      catch {
+        return {
+          error: "Ichki API JSON qaytarmadi.",
+          httpStatus: response.status,
+          responsePreview: raw.slice(0, 700) || "(bo‘sh javob)"
+        };
+      }
+    };
+    const collectResponse = await fetch(base + "/api/news/collect", { headers, cache: "no-store", signal: AbortSignal.timeout(55000) });
+    const collect = await readResponse(collectResponse);
     steps.collect = collect;
-    if (!collectResponse.ok) {
+    if (!collectResponse.ok || collect.error) {
       return NextResponse.json({ ok: false, phase: "collect", steps }, { status: 502 });
     }
-    const processResponse = await fetch(base + "/api/news/process", { headers, cache: "no-store" });
-    const process = await processResponse.json();
+    const processResponse = await fetch(base + "/api/news/process", { headers, cache: "no-store", signal: AbortSignal.timeout(55000) });
+    const process = await readResponse(processResponse);
     steps.process = process;
-    if (!processResponse.ok) {
+    if (!processResponse.ok || process.error) {
       return NextResponse.json({ ok: false, phase: "process", steps }, { status: 502 });
     }
     return NextResponse.json({
