@@ -145,16 +145,19 @@ export async function POST(request: Request) {
         const translation = translated.get(article.id);
         const title = translation?.title || article.title;
         const summary = translation?.summary || article.summary || "";
-        const caption = (title + "\\n\\n" + summary + "\\n\\nManba: " + (article.source_name || "Manba")).slice(0, 1000);
+        const caption = (title + "\n\n" + summary + "\n\nManba: " + (article.source_name || "Manba")).slice(0, 1000);
         const buttons = [
           [{ text: "🔗 To‘liq yangilik", url: article.source_url }],
-          ...(article.video_url ? [[{ text: "▶️ Video", url: article.video_url }]] : []),
+          ...(article.video_url ? [[{ text: "▶️ Videoni ko‘rish", url: article.video_url }]] : []),
           [{ text: "📰 IJOD AI News’da ochish", url: "https://ijod-ai.vercel.app/news" }]
         ];
-        const method = article.image_url ? "sendPhoto" : "sendMessage";
-        const payload = article.image_url
-          ? { chat_id: chatId, photo: article.image_url, caption, reply_markup: { inline_keyboard: buttons } }
-          : { chat_id: chatId, text: caption, reply_markup: { inline_keyboard: buttons }, disable_web_page_preview: false };
+        const directVideo = Boolean(article.video_url && /\.(mp4|m4v|mov|webm)(?:[?#]|$)/i.test(article.video_url));
+        const method = directVideo ? "sendVideo" : article.image_url ? "sendPhoto" : "sendMessage";
+        const payload = directVideo
+          ? { chat_id: chatId, video: article.video_url, caption, reply_markup: { inline_keyboard: buttons } }
+          : article.image_url
+            ? { chat_id: chatId, photo: article.image_url, caption, reply_markup: { inline_keyboard: buttons } }
+            : { chat_id: chatId, text: caption, reply_markup: { inline_keyboard: buttons }, disable_web_page_preview: false };
         await telegram(token, method, payload);
         if (index < data.length - 1) await new Promise(resolve => setTimeout(resolve, 1100));
       }
