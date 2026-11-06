@@ -68,9 +68,9 @@ export async function GET(request: Request) {
           }) });
           if (ai.ok) {
             const result = await ai.json();
-            const output = (result.output || []).flatMap(item => item.content || []).filter(part => part.type === "output_text").map(part => part.text || "").join("\n").trim();
-            const parsed = JSON.parse(output.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, ""));
-            for (const pair of [["uz-latn","uz_latn"],["uz-cyrl","uz_cyrl"],["ru","ru"]]) {
+            const output = ((result.output || []) as Array<{ content?: Array<{ type?: string; text?: string }> }>).flatMap((item: { content?: Array<{ type?: string; text?: string }> }) => item.content || []).filter((part: { type?: string }) => part.type === "output_text").map((part: { text?: string }) => part.text || "").join("\n").trim();
+            const parsed = JSON.parse(output.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "")) as Record<string, { title?: string; summary?: string }>;
+            for (const pair of [["uz-latn","uz_latn"],["uz-cyrl","uz_cyrl"],["ru","ru"]] as const) {
               const language = pair[0]; const item = parsed[pair[1]];
               if (!item || !item.title || !item.summary) continue;
               const translation = { article_id: article.id, language, title: String(item.title).slice(0,500), summary: String(item.summary).slice(0,1400) };
