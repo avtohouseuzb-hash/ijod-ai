@@ -50,14 +50,16 @@ export async function GET(request: Request) {
   }
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (botToken && newArticles.length) {
-    const { data: subscribers } = await db.from("news_telegram_subscriptions").select("chat_id").eq("enabled", true);
-    const chats = new Set((subscribers || []).map(s => s.chat_id));
-    if (process.env.NEWS_TELEGRAM_CHAT_ID) chats.add(process.env.NEWS_TELEGRAM_CHAT_ID);
+    const { data: subscribers } = await db.from("news_telegram_subscriptions").select("chat_id,language").eq("enabled", true);
+    const chats = new Map((subscribers || []).map(s => [s.chat_id, s.language || "uz-latn"]));
+    if (process.env.NEWS_TELEGRAM_CHAT_ID) chats.set(process.env.NEWS_TELEGRAM_CHAT_ID, process.env.NEWS_TELEGRAM_CHANNEL_LANGUAGE || "uz-latn");
     for (const article of newArticles) {
       const caption = ("📰 " + article.title + "\n\n" + (article.summary || "Batafsil ma’lumot manbada.") + "\n\nManba: " + article.source_name).slice(0, 1000);
       const buttons = [[{ text: "🔗 To‘liq yangilik", url: article.source_url }], ...(article.video_url ? [[{ text: "▶️ Videoni ko‘rish", url: article.video_url }]] : []), [{ text: "IJOD AI’da ochish", url: (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app") + "/news" }]];
-      for (const chatId of chats) {
+      for (const [chatId, language] of chats) {
         try {
+          const translated = byLanguage.get(language);
+          const caption = ("📰 " + (translated?.title || article.title) + "\\n\\n" + (translated?.summary || article.summary || "Batafsil ma’lumot manbada.") + "\\n\\nManba: " + article.source_name).slice(0, 1000);
           const method = article.image_url ? "sendPhoto" : "sendMessage";
           const payload = article.image_url ? { chat_id: chatId, photo: article.image_url, caption, reply_markup: { inline_keyboard: buttons } } : { chat_id: chatId, text: caption, reply_markup: { inline_keyboard: buttons }, disable_web_page_preview: false };
           const sent = await fetch("https://api.telegram.org/bot" + botToken + "/" + method, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
