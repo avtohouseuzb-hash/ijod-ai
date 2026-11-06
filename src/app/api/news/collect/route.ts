@@ -24,7 +24,7 @@ export async function GET(request: Request) {
   const { data: sources, error } = await db.from("news_sources").select("*").eq("enabled", true);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   let imported = 0;
-  const newArticles: Array<{id:string;title:string;summary:string;source_url:string;image_url:string|null;video_url:string|null;source_name:string}> = [];
+  const newArticles: Array<{id:string;title:string;summary:string;source_url:string;image_url:string|null;video_url:string|null;source_name:string;category:string}> = [];
   for (const source of sources || []) {
     try {
       const response = await fetch(source.feed_url, { headers: { "User-Agent": "IJODAI-NewsBot/1.0", "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml" }, signal: AbortSignal.timeout(12000) });
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
         const publishedAt = published && !Number.isNaN(Date.parse(published)) ? new Date(published).toISOString() : new Date().toISOString();
         const image = imageFrom(block, descriptionRaw);
         const video = youtubeFrom(block + " " + descriptionRaw);
-        const { data, error: insertError } = await db.from("news_articles").upsert({ source_id: source.id, title: title.slice(0, 500), summary, source_name: source.name, source_url: link, image_url: image, video_url: video, category: source.category, language: source.language, published_at: publishedAt, status: "published" }, { onConflict: "source_url", ignoreDuplicates: true }).select("id,title,summary,source_url,image_url,video_url,source_name");
+        const { data, error: insertError } = await db.from("news_articles").upsert({ source_id: source.id, title: title.slice(0, 500), summary, source_name: source.name, source_url: link, image_url: image, video_url: video, category: source.category, language: source.language, published_at: publishedAt, status: "published" }, { onConflict: "source_url", ignoreDuplicates: true }).select("id,title,summary,source_url,image_url,video_url,source_name,category");
         if (!insertError && data?.length) { imported += data.length; newArticles.push(...data); }
       }
     } catch (err) { console.error("News source failed", source.name, err); }
@@ -51,7 +51,7 @@ export async function GET(request: Request) {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (newArticles.length) {
     const { data: subscribers } = botToken ? await db.from("news_telegram_subscriptions").select("chat_id,language,categories").eq("enabled", true) : { data: [] };
-    const chats = (subscribers || []).map(s => ({ chatId: String(s.chat_id), language: String(s.language || "uz-latn"), categories: Array.isArray(s.categories) ? s.categories as string[] : [] }));
+    const chats: Array<{ chatId: string; language: string; categories: string[] }> = (subscribers || []).map((s: { chat_id: string | number; language?: string | null; categories?: string[] | null }) => ({ chatId: String(s.chat_id), language: String(s.language || "uz-latn"), categories: Array.isArray(s.categories) ? s.categories : [] }));
     if (botToken && process.env.NEWS_TELEGRAM_CHAT_ID) chats.push({ chatId: process.env.NEWS_TELEGRAM_CHAT_ID, language: process.env.NEWS_TELEGRAM_CHANNEL_LANGUAGE || "uz-latn", categories: [] });
     const openaiKey = process.env.OPENAI_API_KEY;
     const model = process.env.IJOD_NEWS_TRANSLATION_MODEL || process.env.IJOD_NEWS_MODEL || "gpt-6-luna";
