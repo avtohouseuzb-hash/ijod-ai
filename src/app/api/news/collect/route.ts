@@ -51,13 +51,13 @@ export async function GET(request: Request) {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (newArticles.length) {
     const { data: subscribers } = botToken ? await db.from("news_telegram_subscriptions").select("chat_id,language").eq("enabled", true) : { data: [] };
-    const chats = new Map((subscribers || []).map(s => [String(s.chat_id), String(s.language || "uz-latn")]));
+    const chats = new Map<string, string>((subscribers || []).map(s => [String(s.chat_id), String(s.language || "uz-latn")]));
     if (botToken && process.env.NEWS_TELEGRAM_CHAT_ID) chats.set(process.env.NEWS_TELEGRAM_CHAT_ID, process.env.NEWS_TELEGRAM_CHANNEL_LANGUAGE || "uz-latn");
     const openaiKey = process.env.OPENAI_API_KEY;
     const model = process.env.IJOD_NEWS_TRANSLATION_MODEL || process.env.IJOD_NEWS_MODEL || "gpt-6-luna";
     for (const article of newArticles) {
       const { data: cached } = await db.from("news_translations").select("language,title,summary").eq("article_id", article.id);
-      const variants = new Map((cached || []).map(t => [String(t.language), { title: t.title, summary: t.summary || "" }]));
+      const variants = new Map<string, { title: string; summary: string }>((cached || []).map(t => [String(t.language), { title: String(t.title), summary: String(t.summary || "") }]));
       if (openaiKey && ["uz-latn","uz-cyrl","ru"].some(lang => !variants.has(lang))) {
         try {
           const ai = await fetch("https://api.openai.com/v1/responses", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + openaiKey }, body: JSON.stringify({
