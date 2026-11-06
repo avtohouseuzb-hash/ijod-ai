@@ -15,13 +15,13 @@ async function fetchArticleContext(articleUrl: string): Promise<ArticleContext> 
     });
     if (!response.ok) return { description: "", body: "" };
     const html = (await response.text()).slice(0, 500000);
-    const meta = html.match(/<meta\\b[^>]*(?:name|property)=["'](?:description|og:description|twitter:description)["'][^>]*content=["']([^"']+)["'][^>]*>/i)
-      || html.match(/<meta\\b[^>]*content=["']([^"']+)["'][^>]*(?:name|property)=["'](?:description|og:description|twitter:description)["'][^>]*>/i);
+    const meta = html.match(/<meta\b[^>]*(?:name|property)=["'](?:description|og:description|twitter:description)["'][^>]*content=["']([^"']+)["'][^>]*>/i)
+      || html.match(/<meta\b[^>]*content=["']([^"']+)["'][^>]*(?:name|property)=["'](?:description|og:description|twitter:description)["'][^>]*>/i);
     const description = (meta?.[1] || "").replace(/<[^>]*>/g, " ").replace(/&amp;/g, "&").replace(/&quot;/g, '"').trim();
-    const articleHtml = html.match(/<article\\b[^>]*>([\\s\\S]*?)<\\/article>/i)?.[1] || "";
-    const body = articleHtml.replace(/<script[\\s\\S]*?<\\/script>/gi, " ").replace(/<style[\\s\\S]*?<\\/style>/gi, " ")
+    const articleHtml = html.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i)?.[1] || "";
+    const body = articleHtml.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ")
       .replace(/<[^>]+>/g, " ").replace(/&nbsp;|&#160;/g, " ").replace(/&amp;/g, "&")
-      .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/\\s+/g, " ").trim().slice(0, 7000);
+      .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/\s+/g, " ").trim().slice(0, 7000);
     return { description, body };
   } catch { return { description: "", body: "" }; }
 }
@@ -71,8 +71,14 @@ export async function GET(request: Request) {
       const cleanTitle = raw.title.replace(/[^\p{L}\p{N}]+/gu, " ").trim();
       const titleWords = cleanTitle.split(/\s+/).filter(Boolean);
       const meaningfulWords = titleWords.filter(word => !/^\d+$/.test(word));
-      const description = (raw.summary || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-      if (meaningfulWords.length < 2 || description.length < 90 ||
+      let description = (raw.summary || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+      let articleBody = "";
+      if (description.length < 220) {
+        const extra = await fetchArticleContext(raw.source_url);
+        if (extra.description) description = [description, extra.description].filter(Boolean).join(" ");
+        articleBody = extra.body;
+      }
+      if (meaningfulWords.length < 2 ||
           /^(?:[A-Z]{2,6}\s*\(?[A-Z]{1,4}\)?\s*\d{1,4}|untitled|no title|news update)$/i.test(raw.title.trim())) {
         await db.from("news_articles").update({ status: "draft" }).eq("id", raw.id);
         outcomes.push({ id: raw.id, translated: false, telegramSent: 0, error: "Sarlavha yoki mazmun yetarlicha aniq emas — nashrdan chiqarildi." });
