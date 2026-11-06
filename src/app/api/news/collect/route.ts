@@ -15,9 +15,15 @@ function tag(xml: string, name: string) {
   return match ? decodeXml(match[1]) : "";
 }
 function imageFrom(xml: string, description: string) {
-  return xml.match(/<(?:media:)?(?:content|thumbnail)[^>]+url=["']([^"']+)["']/i)?.[1]
-    || xml.match(/<enclosure[^>]+url=["']([^"']+)["']/i)?.[1]
-    || description.match(/<img[^>]+src=["']([^"']+)["']/i)?.[1] || null;
+  const tags = xml.match(/<(?:media:)?(?:content|thumbnail|enclosure)\\b[^>]*>/gi) || [];
+  for (const item of tags) {
+    const type = item.match(/type=["']([^"']+)["']/i)?.[1]?.toLowerCase() || "";
+    const medium = item.match(/medium=["']([^"']+)["']/i)?.[1]?.toLowerCase() || "";
+    const candidate = item.match(/(?:url|href)=["']([^"']+)["']/i)?.[1];
+    if (candidate && !type.startsWith("video/") && medium !== "video" &&
+        /\\.(?:jpe?g|png|gif|webp|avif)(?:[?#]|$)/i.test(candidate)) return candidate;
+  }
+  return description.match(/<img[^>]+(?:src|data-src)=["']([^"']+)["']/i)?.[1] || null;
 }
 function imageFromMarkup(markup: string) {
   const unwrapped = markup.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
@@ -63,13 +69,16 @@ function youtubeFrom(text: string) {
   return text.match(/https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=[\w-]+|youtu\.be\/[\w-]+)/i)?.[0] || null;
 }
 function videoFrom(xml: string, description: string) {
-  const candidates = [
-    xml.match(/<(?:media:)?content[^>]+url=["']([^"']+)["'][^>]+type=["']video\//i)?.[1],
-    xml.match(/<enclosure[^>]+url=["']([^"']+)["'][^>]+type=["']video\//i)?.[1],
-    xml.match(/<link[^>]+type=["']video\/[^"']+["'][^>]+href=["']([^"']+)["']/i)?.[1],
-    youtubeFrom(xml + " " + description)
-  ];
-  return candidates.find(value => value && /^https?:\/\//i.test(value)) || null;
+  const tags = xml.match(/<(?:media:)?(?:content|player|enclosure)\\b[^>]*>/gi) || [];
+  const candidates = tags.map(item => {
+    const type = item.match(/type=["']([^"']+)["']/i)?.[1]?.toLowerCase() || "";
+    const medium = item.match(/medium=["']([^"']+)["']/i)?.[1]?.toLowerCase() || "";
+    const candidate = item.match(/(?:url|href)=["']([^"']+)["']/i)?.[1];
+    return candidate && (type.startsWith("video/") || medium === "video" ||
+      /\\.(?:mp4|m4v|mov|webm)(?:[?#]|$)/i.test(candidate)) ? candidate : null;
+  });
+  candidates.push(youtubeFrom(xml + " " + description));
+  return candidates.find(value => value && /^https?:\\/\\//i.test(value)) || null;
 }
 async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
   const results: R[] = new Array(items.length);
