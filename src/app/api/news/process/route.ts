@@ -55,7 +55,7 @@ export async function GET(request: Request) {
           body: JSON.stringify({
             model,
             instructions: "You are IJOD AI News editor. Translate and edit faithfully into Uzbek Latin, Uzbek Cyrillic and Russian. Each version must have a concise, attractive headline and factual 2-3 sentence summary. Preserve names, dates, numbers and uncertainty. Do not invent facts or add unsupported context. Return only valid JSON with keys uz_latn, uz_cyrl, ru; each has title and summary strings.",
-            input: JSON.stringify({ source: raw.source_name, title: raw.title, summary: raw.summary || "" }),
+            input: "Return the result as JSON. Translate this news item into Uzbek Latin, Uzbek Cyrillic and Russian. " + JSON.stringify({ source: raw.source_name, title: raw.title, summary: raw.summary || "" }),
             text: { format: { type: "json_object" } },
             max_output_tokens: 1800
           })
