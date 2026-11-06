@@ -14,13 +14,20 @@ const languageKeyboard = {
     { text: "Русский", callback_data: "news_lang:ru" },
   ]],
 };
+const aboutKeyboard = {
+  inline_keyboard: [[
+    { text: "📰 Yangiliklar / Новости", url: "https://ijod-ai.vercel.app/news" },
+  ], [
+    { text: "✨ IJOD AI Mini App", url: "https://ijod-ai.vercel.app/" },
+  ]],
+};
 const languageNames: Record<string, string> = {
   "uz-latn": "O‘zbekcha (Lotin)", "uz-cyrl": "Ўзбекча (Кирилл)", ru: "Русский",
 };
 const messages: Record<string, { saved: string; stopped: string; started: string; choose: string; latestEmpty: string; about: string; help: string }> = {
-  "uz-latn": { saved: "Til sozlamangiz saqlandi. Endi yangiliklar shu tilda yuboriladi.", stopped: "Yangiliklar yuborilishi to‘xtatildi. Qayta obuna uchun /start yuboring.", started: "IJOD AI News botiga xush kelibsiz!", choose: "Yangiliklarni qaysi tilda olishni xohlaysiz?", latestEmpty: "Hozircha yangilik yo‘q.", about: "IJOD AI News — O‘zbekiston va dunyodagi muhim yangiliklarni bir joyda kuzatish uchun bot. Yangiliklarni o‘zingiz tanlagan tilda oling, manba havolalarini oching va so‘nggi xabarlarni /latest orqali ko‘ring.", help: "Buyruqlar:\n/start — tilni tanlash va obunani yoqish\n/language — tilni o‘zgartirish\n/latest — so‘nggi 5 ta yangilik\n/about — bot haqida\n/stop — xabarlarni to‘xtatish" },
-  "uz-cyrl": { saved: "Тил созламаси сақланди. Энди янгиликлар шу тилда юборилади.", stopped: "Янгиликлар юборилиши тўхтатилди. Қайта обуна учун /start юборинг.", started: "IJOD AI News ботига хуш келибсиз!", choose: "Янгиликларни қайси тилда олишни хоҳлайсиз?", latestEmpty: "Ҳозирча янгилик йўқ.", about: "IJOD AI News — Ўзбекистон ва жаҳондаги муҳим янгиликларни бир жойда кузатиш учун бот. Янгиликларни танлаган тилингизда олинг, манба ҳаволаларини очинг ва сўнгги хабарларни /latest орқали кўринг.", help: "Буйруқлар:\n/start — тилни танлаш ва обунани ёқиш\n/language — тилни ўзгартириш\n/latest — сўнгги 5 та янгилик\n/about — бот ҳақида\n/stop — хабарларни тўхтатиш" },
-  ru: { saved: "Язык сохранён. Теперь новости будут приходить на этом языке.", stopped: "Рассылка остановлена. Чтобы подписаться снова, отправьте /start.", started: "Добро пожаловать в IJOD AI News!", choose: "На каком языке вы хотите получать новости?", latestEmpty: "Пока новостей нет.", about: "IJOD AI News — бот для отслеживания важных новостей Узбекистана и мира. Получайте новости на выбранном языке, открывайте ссылки на источники и смотрите последние публикации командой /latest.", help: "Команды:\n/start — выбрать язык и включить подписку\n/language — изменить язык\n/latest — последние 5 новостей\n/about — о боте\n/stop — остановить рассылку" },
+  "uz-latn": { saved: "Til sozlamangiz saqlandi. Endi yangiliklar shu tilda yuboriladi.", stopped: "Yangiliklar yuborilishi to‘xtatildi. Qayta obuna uchun /start yuboring.", started: "IJOD AI News botiga xush kelibsiz!", choose: "Yangiliklarni qaysi tilda olishni xohlaysiz?", latestEmpty: "Hozircha yangilik yo‘q.", about: "IJOD AI — bu faqat yangiliklar boti emas, balki ijodkorlar va bizneslar uchun yagona AI platforma. AI yordamida rasm, video, musiqa, ovoz va matn yarating, reklama va ijtimoiy tarmoqlar uchun kontent tayyorlang.\\n\\nIJOD AI News orqali O‘zbekiston va dunyo yangiliklarini tanlagan tilingizda kuzating, muhim xabarlarni o‘qing va manbalariga o‘ting.\\n\\nMini App orqali IJOD AI imkoniyatlaridan foydalaning.", help: "Buyruqlar:\n/start — tilni tanlash va obunani yoqish\n/language — tilni o‘zgartirish\n/latest — so‘nggi 5 ta yangilik\n/about — bot haqida\n/stop — xabarlarni to‘xtatish" },
+  "uz-cyrl": { saved: "Тил созламаси сақланди. Энди янгиликлар шу тилда юборилади.", stopped: "Янгиликлар юборилиши тўхтатилди. Қайта обуна учун /start юборинг.", started: "IJOD AI News ботига хуш келибсиз!", choose: "Янгиликларни қайси тилда олишни хоҳлайсиз?", latestEmpty: "Ҳозирча янгилик йўқ.", about: "IJOD AI — бу фақат янгиликлар боти эмас, балки ижодкорлар ва бизнеслар учун ягона AI платформа. AI ёрдамида расм, видео, мусиқа, овоз ва матн яратинг, реклама ҳамда ижтимоий тармоқлар учун контент тайёрланг.\\n\\nIJOD AI News орқали Ўзбекистон ва жаҳон янгиликларини танлаган тилингизда кузатинг, муҳим хабарларни ўқинг ва манбаларига ўтинг.\\n\\nMini App орқали IJOD AI имкониятларидан фойдаланинг.", help: "Буйруқлар:\n/start — тилни танлаш ва обунани ёқиш\n/language — тилни ўзгартириш\n/latest — сўнгги 5 та янгилик\n/about — бот ҳақида\n/stop — хабарларни тўхтатиш" },
+  ru: { saved: "Язык сохранён. Теперь новости будут приходить на этом языке.", stopped: "Рассылка остановлена. Чтобы подписаться снова, отправьте /start.", started: "Добро пожаловать в IJOD AI News!", choose: "На каком языке вы хотите получать новости?", latestEmpty: "Пока новостей нет.", about: "IJOD AI — это не только новостной бот, но и AI-платформа для творчества и бизнеса. Создавайте изображения, видео, музыку, голос и тексты с помощью ИИ, готовьте рекламу и контент для социальных сетей.\\n\\nВ IJOD AI News следите за новостями Узбекистана и мира на выбранном языке, читайте важные события и переходите к первоисточникам.\\n\\nОткройте Mini App, чтобы пользоваться возможностями IJOD AI.", help: "Команды:\n/start — выбрать язык и включить подписку\n/language — изменить язык\n/latest — последние 5 новостей\n/about — о боте\n/stop — остановить рассылку" },
 };
 
 export async function POST(request: Request) {
@@ -69,7 +76,7 @@ export async function POST(request: Request) {
       reply_markup: languageKeyboard,
     });
   } else if (text.startsWith("/about")) {
-    await telegram(token, "sendMessage", { chat_id: chatId, text: copy.about });
+    await telegram(token, "sendMessage", { chat_id: chatId, text: copy.about, reply_markup: aboutKeyboard });
   } else if (text.startsWith("/help")) {
     await telegram(token, "sendMessage", { chat_id: chatId, text: copy.help });
   } else if (text.startsWith("/language")) {
