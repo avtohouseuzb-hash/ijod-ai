@@ -102,11 +102,15 @@ export async function GET(request: Request) {
   const key = process.env.SUPABASE_SECRET_KEY;
   if (!url || !key) return NextResponse.json({ error: "Supabase server config missing" }, { status: 500 });
   const db = createClient(url, key, { auth: { persistSession: false } });
+  const requestUrl = new URL(request.url);
+  const offset = Math.max(0, Number(requestUrl.searchParams.get("offset") || 0));
+  const batchSize = Math.min(10, Math.max(1, Number(requestUrl.searchParams.get("limit") || 10)));
   const { data: sources, error } = await db.from("news_sources")
-    .select("id,name,feed_url,category,language").eq("enabled", true);
+    .select("id,name,feed_url,category,language").eq("enabled", true)
+    .order("id", { ascending: true }).range(offset, offset + batchSize - 1);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const results = await mapLimit(sources || [], 20, async (source) => {
+  const results = await mapLimit(sources || [], 8, async (source) => {
     try {
       const response = await fetch(source.feed_url, {
         headers: { "User-Agent": "IJODAI-NewsBot/1.0", "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml" },
@@ -133,9 +137,17 @@ export async function GET(request: Request) {
         }];
       });
       if (!rows.length) return { source: source.name, ok: true, found: 0, inserted: 0 };
-      const preparedRows = rows.map(row => ({
+      const preparedRows = await Promise.all(rows.map(async row => {
+        // Prefer the article's full Open Graph image when the feed only supplies a thumbnail.
+        const tinyHint = /(?:thumb|thumbnail|small|tiny|resize|\\b[wh]=[1-3]\\d\\d)/i.test(row.image_url || "") ||
+          /<(?:media:)?(?:content|thumbnail|enclosure)\\b[^>]*(?:width|height)=["'](?:[1-3]\\d{2})["']/i.test(entries.find(entry => tag(entry[1], "title") === row.title)?.[1] || "");
+        const image = (!row.image_url || tinyHint) ? await articleOgImage(row.source_url) : null;
+        const image_url = image || row.image_url;
+        return {
+        ...row, image_url,
         ...row,
-        media_type: row.image_url && row.video_url ? "both" : row.image_url ? "image" : row.video_url ? "video" : "none"
+        media_type: image_url && row.video_url ? "both" : image_url ? "image" : row.video_url ? "video" : "none"
+      };
       }));
       const { data, error: upsertError } = await db.from("news_articles")
         .upsert(preparedRows, { onConflict: "source_url", ignoreDuplicates: true })
@@ -154,6 +166,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     ok: failed.length === 0, phase: "collect",
     sourcesTotal: sources?.length || 0, sourcesChecked: results.length, sourcesOk: okSources,
+    offset, nextOffset: offset + results.length, hasMore: results.length === batchSize,
     sourcesFailed: failed.length, itemsFound: found, articlesInserted: inserted,
     duplicateItemsSkipped: Math.max(0, found - inserted), failedSources: failed
   });
