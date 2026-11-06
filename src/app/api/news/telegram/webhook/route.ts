@@ -68,7 +68,11 @@ export async function POST(request: Request) {
       chat_id: chatId, text: copy.started + "\n\n" + copy.choose,
       reply_markup: languageKeyboard,
     });
-  } else if (text.startsWith("/about")) {\n    await telegram(token, "sendMessage", { chat_id: chatId, text: copy.about });\n  } else if (text.startsWith("/help")) {\n    await telegram(token, "sendMessage", { chat_id: chatId, text: copy.help });\n  } else if (text.startsWith("/language")) {
+  } else if (text.startsWith("/about")) {
+    await telegram(token, "sendMessage", { chat_id: chatId, text: copy.about });
+  } else if (text.startsWith("/help")) {
+    await telegram(token, "sendMessage", { chat_id: chatId, text: copy.help });
+  } else if (text.startsWith("/language")) {
     await telegram(token, "sendMessage", { chat_id: chatId, text: copy.choose, reply_markup: languageKeyboard });
   } else if (text.startsWith("/stop")) {
     await db.from("news_telegram_subscriptions").update({ enabled: false, updated_at: new Date().toISOString() }).eq("chat_id", chatId);
