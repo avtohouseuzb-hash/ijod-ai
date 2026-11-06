@@ -106,11 +106,11 @@ export async function GET(request: Request) {
     .select("id,name,feed_url,category,language").eq("enabled", true);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const results = await mapLimit(sources || [], 10, async (source) => {
+  const results = await mapLimit(sources || [], 20, async (source) => {
     try {
       const response = await fetch(source.feed_url, {
         headers: { "User-Agent": "IJODAI-NewsBot/1.0", "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml" },
-        signal: AbortSignal.timeout(9000)
+        signal: AbortSignal.timeout(6500)
       });
       if (!response.ok) return { source: source.name, ok: false, reason: "HTTP " + response.status, found: 0, inserted: 0 };
       const xml = await response.text();
@@ -133,47 +133,19 @@ export async function GET(request: Request) {
         }];
       });
       if (!rows.length) return { source: source.name, ok: true, found: 0, inserted: 0 };
-      const rowsWithImages = await mapLimit(rows, 4, async (row, index) => {
-        const image = row.image_url || (index < 5 ? await articleOgImage(row.source_url) : null);
-        return {
-          ...row,
-          image_url: image,
-          media_type: image && row.video_url ? "both" : image ? "image" : row.video_url ? "video" : "none"
-        };
-      });
+      const preparedRows = rows.map(row => ({
+        ...row,
+        media_type: row.image_url && row.video_url ? "both" : row.image_url ? "image" : row.video_url ? "video" : "none"
+      }));
       const { data, error: upsertError } = await db.from("news_articles")
-        .upsert(rowsWithImages, { onConflict: "source_url", ignoreDuplicates: true })
+        .upsert(preparedRows, { onConflict: "source_url", ignoreDuplicates: true })
         .select("id");
       if (upsertError) return { source: source.name, ok: false, reason: upsertError.message, found: rows.length, inserted: 0 };
-      // Existing duplicate articles may have been collected before image extraction existed.
-      // Enrich only the image field so published/translated status and content remain untouched.
-      for (const row of rowsWithImages) {
-        if (!row.image_url) continue;
-        await db.from("news_articles").update({ image_url: row.image_url })
-          .eq("source_url", row.source_url).is("image_url", null);
-      }
       return { source: source.name, ok: true, found: rows.length, inserted: data?.length || 0 };
     } catch (e) {
       return { source: source.name, ok: false, reason: e instanceof Error ? e.message : "Fetch failed", found: 0, inserted: 0 };
     }
   });
-
-  // Backfill images for recently collected articles that had no image in their RSS feed.
-  // This also repairs older records that were stored before richer image extraction was added.
-  const { data: missingImages } = await db.from("news_articles")
-    .select("id,source_url").is("image_url", null)
-    .order("published_at", { ascending: false }).limit(30);
-  let imagesRecovered = 0;
-  if (missingImages?.length) {
-    const recovered = await mapLimit(missingImages, 4, async (article: { id: string; source_url: string }) => {
-      const image = await articleOgImage(article.source_url);
-      if (!image) return false;
-      const { error: imageError } = await db.from("news_articles").update({ image_url: image })
-        .eq("id", article.id).is("image_url", null);
-      return !imageError;
-    });
-    imagesRecovered = recovered.filter(Boolean).length;
-  }
 
   const okSources = results.filter(r => r.ok).length;
   const inserted = results.reduce((sum, r) => sum + r.inserted, 0);
