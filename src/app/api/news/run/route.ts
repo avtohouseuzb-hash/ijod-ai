@@ -3,13 +3,14 @@ import { NextResponse } from "next/server";
 export const maxDuration = 60;
 
 export async function GET(request: Request) {
-  const secret = process.env.NEWS_CRON_SECRET || process.env.CRON_SECRET;
-  if (!secret || request.headers.get("authorization") !== "Bearer " + secret) {
+  const authHeader = request.headers.get("authorization");
+  const validSecrets = [process.env.NEWS_CRON_SECRET, process.env.CRON_SECRET].filter((value): value is string => Boolean(value));
+  if (!validSecrets.some(secret => authHeader === "Bearer " + secret)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const base = new URL(request.url).origin;
-  const headers = { authorization: "Bearer " + secret };
+  const headers = { authorization: authHeader as string };
   const steps: Record<string, unknown> = {};
 
   try {
