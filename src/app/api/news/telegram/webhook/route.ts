@@ -17,10 +17,10 @@ const languageKeyboard = {
 const languageNames: Record<string, string> = {
   "uz-latn": "O‘zbekcha (Lotin)", "uz-cyrl": "Ўзбекча (Кирилл)", ru: "Русский",
 };
-const messages: Record<string, { saved: string; stopped: string; started: string; choose: string; latestEmpty: string }> = {
-  "uz-latn": { saved: "Til sozlamangiz saqlandi. Endi yangiliklar shu tilda yuboriladi.", stopped: "Yangiliklar yuborilishi to‘xtatildi. Qayta obuna uchun /start yuboring.", started: "IJOD AI News botiga xush kelibsiz!", choose: "Yangiliklarni qaysi tilda olishni xohlaysiz?", latestEmpty: "Hozircha yangilik yo‘q." },
-  "uz-cyrl": { saved: "Тил созламangiz сақланди. Энди янгиликлар шу тилда юборилади.", stopped: "Янгиликлар юборилиши тўхтатилди. Қайта обуна учун /start юборинг.", started: "IJOD AI News ботига хуш келибсиз!", choose: "Янгиликларни қайси тилда олишни хоҳлайсиз?", latestEmpty: "Ҳозирча янгилик йўқ." },
-  ru: { saved: "Язык сохранён. Теперь новости будут приходить на этом языке.", stopped: "Рассылка остановлена. Чтобы подписаться снова, отправьте /start.", started: "Добро пожаловать в IJOD AI News!", choose: "На каком языке вы хотите получать новости?", latestEmpty: "Пока новостей нет." },
+const messages: Record<string, { saved: string; stopped: string; started: string; choose: string; latestEmpty: string; about: string; help: string }> = {
+  "uz-latn": { saved: "Til sozlamangiz saqlandi. Endi yangiliklar shu tilda yuboriladi.", stopped: "Yangiliklar yuborilishi to‘xtatildi. Qayta obuna uchun /start yuboring.", started: "IJOD AI News botiga xush kelibsiz!", choose: "Yangiliklarni qaysi tilda olishni xohlaysiz?", latestEmpty: "Hozircha yangilik yo‘q.", about: "IJOD AI News — O‘zbekiston va dunyodagi muhim yangiliklarni bir joyda kuzatish uchun bot. Yangiliklarni o‘zingiz tanlagan tilda oling, manba havolalarini oching va so‘nggi xabarlarni /latest orqali ko‘ring.", help: "Buyruqlar:\n/start — tilni tanlash va obunani yoqish\n/language — tilni o‘zgartirish\n/latest — so‘nggi 5 ta yangilik\n/about — bot haqida\n/stop — xabarlarni to‘xtatish" },
+  "uz-cyrl": { saved: "Тил созламаси сақланди. Энди янгиликлар шу тилда юборилади.", stopped: "Янгиликлар юборилиши тўхтатилди. Қайта обуна учун /start юборинг.", started: "IJOD AI News ботига хуш келибсиз!", choose: "Янгиликларни қайси тилда олишни хоҳлайсиз?", latestEmpty: "Ҳозирча янгилик йўқ.", about: "IJOD AI News — Ўзбекистон ва жаҳондаги муҳим янгиликларни бир жойда кузатиш учун бот. Янгиликларни танлаган тилингизда олинг, манба ҳаволаларини очинг ва сўнгги хабарларни /latest орқали кўринг.", help: "Буйруқлар:\n/start — тилни танлаш ва обунани ёқиш\n/language — тилни ўзгартириш\n/latest — сўнгги 5 та янгилик\n/about — бот ҳақида\n/stop — хабарларни тўхтатиш" },
+  ru: { saved: "Язык сохранён. Теперь новости будут приходить на этом языке.", stopped: "Рассылка остановлена. Чтобы подписаться снова, отправьте /start.", started: "Добро пожаловать в IJOD AI News!", choose: "На каком языке вы хотите получать новости?", latestEmpty: "Пока новостей нет.", about: "IJOD AI News — бот для отслеживания важных новостей Узбекистана и мира. Получайте новости на выбранном языке, открывайте ссылки на источники и смотрите последние публикации командой /latest.", help: "Команды:\n/start — выбрать язык и включить подписку\n/language — изменить язык\n/latest — последние 5 новостей\n/about — о боте\n/stop — остановить рассылку" },
 };
 
 export async function POST(request: Request) {
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
       chat_id: chatId, text: copy.started + "\n\n" + copy.choose,
       reply_markup: languageKeyboard,
     });
-  } else if (text.startsWith("/language")) {
+  } else if (text.startsWith("/about")) {\n    await telegram(token, "sendMessage", { chat_id: chatId, text: copy.about });\n  } else if (text.startsWith("/help")) {\n    await telegram(token, "sendMessage", { chat_id: chatId, text: copy.help });\n  } else if (text.startsWith("/language")) {
     await telegram(token, "sendMessage", { chat_id: chatId, text: copy.choose, reply_markup: languageKeyboard });
   } else if (text.startsWith("/stop")) {
     await db.from("news_telegram_subscriptions").update({ enabled: false, updated_at: new Date().toISOString() }).eq("chat_id", chatId);
