@@ -20,7 +20,7 @@ function imageFrom(xml: string, description: string) {
     || description.match(/<img[^>]+src=["']([^"']+)["']/i)?.[1] || null;
 }
 function imageFromMarkup(markup: string) {
-  const unwrapped = markup.replace(/<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>/g, "$1")
+  const unwrapped = markup.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
     .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
   const candidates = [
     unwrapped.match(/<(?:media:)?(?:content|thumbnail)[^>]+url=["']([^"']+)["']/i)?.[1],
@@ -28,7 +28,7 @@ function imageFromMarkup(markup: string) {
     unwrapped.match(/<img[^>]+(?:src|data-src)=["']([^"']+)["']/i)?.[1],
     unwrapped.match(/<itunes:image[^>]+href=["']([^"']+)["']/i)?.[1]
   ];
-  return candidates.find(value => value && /^https?:\\/\\//i.test(value)) || null;
+  return candidates.find(value => value && /^https?:\/\//i.test(value)) || null;
 }
 async function articleOgImage(articleUrl: string) {
   try {
@@ -43,7 +43,7 @@ async function articleOgImage(articleUrl: string) {
       || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:image|twitter:image)["']/i);
     if (!match?.[1]) return null;
     const image = match[1].replace(/&amp;/g, "&");
-    return /^https?:\\/\\//i.test(image) ? image : null;
+    return /^https?:\/\//i.test(image) ? image : null;
   } catch { return null; }
 }
 function youtubeFrom(text: string) {
