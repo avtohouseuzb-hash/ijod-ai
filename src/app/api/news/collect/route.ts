@@ -50,9 +50,9 @@ export async function GET(request: Request) {
   }
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (newArticles.length) {
-    const { data: subscribers } = botToken ? await db.from("news_telegram_subscriptions").select("chat_id,language").eq("enabled", true) : { data: [] };
-    const chats = new Map<string, string>((subscribers || []).map(s => [String(s.chat_id), String(s.language || "uz-latn")]));
-    if (botToken && process.env.NEWS_TELEGRAM_CHAT_ID) chats.set(process.env.NEWS_TELEGRAM_CHAT_ID, process.env.NEWS_TELEGRAM_CHANNEL_LANGUAGE || "uz-latn");
+    const { data: subscribers } = botToken ? await db.from("news_telegram_subscriptions").select("chat_id,language,categories").eq("enabled", true) : { data: [] };
+    const chats = (subscribers || []).map(s => ({ chatId: String(s.chat_id), language: String(s.language || "uz-latn"), categories: Array.isArray(s.categories) ? s.categories as string[] : [] }));
+    if (botToken && process.env.NEWS_TELEGRAM_CHAT_ID) chats.push({ chatId: process.env.NEWS_TELEGRAM_CHAT_ID, language: process.env.NEWS_TELEGRAM_CHANNEL_LANGUAGE || "uz-latn", categories: [] });
     const openaiKey = process.env.OPENAI_API_KEY;
     const model = process.env.IJOD_NEWS_TRANSLATION_MODEL || process.env.IJOD_NEWS_MODEL || "gpt-6-luna";
     for (const article of newArticles) {
@@ -83,7 +83,7 @@ export async function GET(request: Request) {
       }
       if (!botToken) continue;
       const buttons = [[{ text: "🔗 To‘liq yangilik", url: article.source_url }], ...(article.video_url ? [[{ text: "▶️ Videoni ko‘rish", url: article.video_url }]] : []), [{ text: "📰 IJOD AI News’da ochish", url: (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app") + "/news" }]];
-      for (const [chatId, language] of chats) {
+      for (const subscriber of chats) {\n        const { chatId, language, categories } = subscriber;\n        if (categories.length && !categories.includes(article.category)) continue;
         try {
           const item = variants.get(language) || variants.get("uz-latn");
           const caption = ("📰 " + (item?.title || article.title) + "\n\n" + (item?.summary || article.summary || "Batafsil ma’lumot manbada.") + "\n\nManba: " + article.source_name).slice(0,1000);
