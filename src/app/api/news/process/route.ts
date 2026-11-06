@@ -86,7 +86,7 @@ export async function GET(request: Request) {
           [{ text: "📰 IJOD AI News’da ochish", url: (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app") + "/news" }]];
         for (const chat of chats) {
           if (chat.categories.length && !chat.categories.includes(raw.category)) continue;
-          const item = variants.get(chat.language) || variants.get("uz-latn");
+          const item = variants.get(chat.language) || variants.get("uz-latn") || { title: raw.title, summary: raw.summary || "" };
           const caption = ("📰 " + item.title + "\n\n" + item.summary + "\n\nManba: " + raw.source_name).slice(0, 1000);
           const method = raw.image_url ? "sendPhoto" : "sendMessage";
           const payload = raw.image_url
