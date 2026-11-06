@@ -72,8 +72,8 @@ export async function GET(request: Request) {
           headers: { "content-type": "application/json", authorization: "Bearer " + openaiKey },
           body: JSON.stringify({
             model,
-            instructions: "You are IJOD AI News editor and strict quality gate. Reject fragments, codes/identifiers, incomplete RSS titles, vague headlines, empty context, malformed snippets, or stories that do not explain who did what. Never guess missing context. If not useful, return publish:false and a short reason. If useful, return publish:true and translate faithfully into Uzbek Latin, Uzbek Cyrillic and Russian. Each version needs a clear specific headline and factual 2-3 sentence summary. Preserve names, dates, numbers and uncertainty. Return valid JSON with publish, reason, uz_latn, uz_cyrl, ru; each translation has title and summary.",
-            input: "Evaluate quality first. Reject unclear or incomplete items. Do not infer missing facts. Return the result as JSON with publish, reason, uz_latn, uz_cyrl and ru fields. " + JSON.stringify({ source: raw.source_name, title: raw.title, summary: raw.summary || "" }),
+            instructions: "You are IJOD AI News editor and strict quality gate. Reject fragments, codes/identifiers, incomplete RSS titles, vague headlines, empty context, malformed snippets, or stories that do not explain who did what. Never guess missing context. If not useful, return publish:false and a short reason. If useful, return publish:true and translate faithfully into Uzbek Latin, Uzbek Cyrillic and Russian. Each version needs a clear specific headline and factual 2-3 sentence summary. Preserve names, dates, numbers and uncertainty. Return valid json with publish, reason, uz_latn, uz_cyrl, ru; each translation has title and summary.",
+            input: "Evaluate quality first. Reject unclear or incomplete items. Do not infer missing facts. Return the result as json with publish, reason, uz_latn, uz_cyrl and ru fields. " + JSON.stringify({ source: raw.source_name, title: raw.title, summary: raw.summary || "" }),
             text: { format: { type: "json_object" } },
             max_output_tokens: 1800
           })
@@ -85,7 +85,7 @@ export async function GET(request: Request) {
           .map((part: { text?: string }) => part.text || "").join("\n").trim();
         const parsed = JSON.parse(output) as EditorialResult;
         if (parsed.publish !== true) {
-          await db.from("news_articles").update({ status: "filtered" }).eq("id", raw.id);
+          await db.from("news_articles").update({ status: "draft" }).eq("id", raw.id);
           outcomes.push({ id: raw.id, translated: false, telegramSent: 0, error: "Tahrir filtri: " + String(parsed.reason || "yangilik aniq va tushunarli emas").slice(0, 180) });
           continue;
         }
