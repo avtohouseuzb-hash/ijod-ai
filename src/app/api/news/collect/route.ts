@@ -110,6 +110,13 @@ export async function GET(request: Request) {
         .upsert(rowsWithImages, { onConflict: "source_url", ignoreDuplicates: true })
         .select("id");
       if (upsertError) return { source: source.name, ok: false, reason: upsertError.message, found: rows.length, inserted: 0 };
+      // Existing duplicate articles may have been collected before image extraction existed.
+      // Enrich only the image field so published/translated status and content remain untouched.
+      for (const row of rowsWithImages) {
+        if (!row.image_url) continue;
+        await db.from("news_articles").update({ image_url: row.image_url })
+          .eq("source_url", row.source_url).is("image_url", null);
+      }
       return { source: source.name, ok: true, found: rows.length, inserted: data?.length || 0 };
     } catch (e) {
       return { source: source.name, ok: false, reason: e instanceof Error ? e.message : "Fetch failed", found: 0, inserted: 0 };
