@@ -83,7 +83,9 @@ export async function GET(request: Request) {
       }
       if (!botToken) continue;
       const buttons = [[{ text: "🔗 To‘liq yangilik", url: article.source_url }], ...(article.video_url ? [[{ text: "▶️ Videoni ko‘rish", url: article.video_url }]] : []), [{ text: "📰 IJOD AI News’da ochish", url: (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app") + "/news" }]];
-      for (const subscriber of chats) {\n        const { chatId, language, categories } = subscriber;\n        if (categories.length && !categories.includes(article.category)) continue;
+      for (const subscriber of chats) {
+        const { chatId, language, categories } = subscriber;
+        if (categories.length && !categories.includes(article.category)) continue;
         try {
           const item = variants.get(language) || variants.get("uz-latn");
           const caption = ("📰 " + (item?.title || article.title) + "\n\n" + (item?.summary || article.summary || "Batafsil ma’lumot manbada.") + "\n\nManba: " + article.source_name).slice(0,1000);
