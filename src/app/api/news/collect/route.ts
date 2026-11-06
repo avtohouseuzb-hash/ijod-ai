@@ -46,37 +46,15 @@ async function articleOgImage(articleUrl: string) {
     });
     if (!response.ok) return null;
     const html = (await response.text()).slice(0, 400000);
-    const metas = [...html.matchAll(/<meta\\b[^>]*>/gi)].map(match => match[0]);
-    for (const meta of metas) {
-      const key = meta.match(/(?:property|name)\\s*=\\s*["']([^"']+)["']/i)?.[1]?.toLowerCase();
+    const metaTags = html.match(/<meta\b[^>]*>/gi) || [];
+    for (const meta of metaTags) {
+      const key = meta.match(/(?:property|name)\s*=\s*["']([^"']+)["']/i)?.[1]?.toLowerCase();
       if (!key || !["og:image", "og:image:url", "twitter:image", "twitter:image:src"].includes(key)) continue;
-      const content = meta.match(/content\\s*=\\s*["']([^"']+)["']/i)?.[1];
+      const content = meta.match(/content\s*=\s*["']([^"']+)["']/i)?.[1];
       if (content) {
         const image = absoluteImage(content, response.url || articleUrl);
         if (image) return image;
       }
-    }
-    const jsonLd = [...html.matchAll(/<script[^>]+type=["']application\\/ld\\+json["'][^>]*>([\\s\\S]*?)<\\/script>/gi)];
-    for (const block of jsonLd) {
-      try {
-        const parsed = JSON.parse(block[1]);
-        const queue: unknown[] = [parsed];
-        while (queue.length) {
-          const value = queue.shift();
-          if (Array.isArray(value)) { queue.push(...value); continue; }
-          if (!value || typeof value !== "object") continue;
-          const record = value as Record<string, unknown>;
-          const candidate = record.image;
-          const imageValue = typeof candidate === "string" ? candidate :
-            Array.isArray(candidate) ? candidate.find(item => typeof item === "string") :
-            candidate && typeof candidate === "object" ? (candidate as Record<string, unknown>).url : null;
-          if (typeof imageValue === "string") {
-            const image = absoluteImage(imageValue, response.url || articleUrl);
-            if (image) return image;
-          }
-          if (record["@graph"]) queue.push(record["@graph"]);
-        }
-      } catch { /* Ignore malformed JSON-LD */ }
     }
     return null;
   } catch { return null; }
