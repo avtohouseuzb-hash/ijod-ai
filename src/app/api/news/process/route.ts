@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 export const maxDuration = 60;
 
 type Translation = { title: string; summary: string };
+type EditorialResult = { publish: boolean; reason?: string; uz_latn: Translation; uz_cyrl: Translation; ru: Translation };
 type Article = { id: string; title: string; summary: string | null; source_name: string; source_url: string; image_url: string | null; video_url: string | null; category: string; status: string };
 
 export async function GET(request: Request) {
@@ -48,6 +49,16 @@ export async function GET(request: Request) {
 
   for (const raw of articles as Article[]) {
     try {
+      const cleanTitle = raw.title.replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+      const titleWords = cleanTitle.split(/\s+/).filter(Boolean);
+      const meaningfulWords = titleWords.filter(word => !/^\d+$/.test(word));
+      const description = (raw.summary || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+      if (meaningfulWords.length < 2 || description.length < 90 ||
+          /^(?:[A-Z]{2,6}\s*\(?[A-Z]{1,4}\)?\s*\d{1,4}|untitled|no title|news update)$/i.test(raw.title.trim())) {
+        await db.from("news_articles").update({ status: "filtered" }).eq("id", raw.id);
+        outcomes.push({ id: raw.id, translated: false, telegramSent: 0, error: "Sarlavha yoki mazmun yetarlicha aniq emas — nashrdan chiqarildi." });
+        continue;
+      }
       const { data: cached, error: cacheError } = await db.from("news_translations")
         .select("language,title,summary").eq("article_id", raw.id);
       if (cacheError) throw new Error(cacheError.message);
@@ -61,8 +72,8 @@ export async function GET(request: Request) {
           headers: { "content-type": "application/json", authorization: "Bearer " + openaiKey },
           body: JSON.stringify({
             model,
-            instructions: "You are IJOD AI News editor. Translate and edit faithfully into Uzbek Latin, Uzbek Cyrillic and Russian. Each version must have a concise, attractive headline and factual 2-3 sentence summary. Preserve names, dates, numbers and uncertainty. Do not invent facts or add unsupported context. Return only valid JSON with keys uz_latn, uz_cyrl, ru; each has title and summary strings.",
-            input: "Return the result as JSON. Translate this news item into Uzbek Latin, Uzbek Cyrillic and Russian. " + JSON.stringify({ source: raw.source_name, title: raw.title, summary: raw.summary || "" }),
+            instructions: "You are IJOD AI News editor and strict quality gate. Reject fragments, codes/identifiers, incomplete RSS titles, vague headlines, empty context, malformed snippets, or stories that do not explain who did what. Never guess missing context. If not useful, return publish:false and a short reason. If useful, return publish:true and translate faithfully into Uzbek Latin, Uzbek Cyrillic and Russian. Each version needs a clear specific headline and factual 2-3 sentence summary. Preserve names, dates, numbers and uncertainty. Return valid JSON with publish, reason, uz_latn, uz_cyrl, ru; each translation has title and summary.",
+            input: "Evaluate quality first. Reject unclear or incomplete items. Do not infer missing facts. " + JSON.stringify({ source: raw.source_name, title: raw.title, summary: raw.summary || "" }),
             text: { format: { type: "json_object" } },
             max_output_tokens: 1800
           })
@@ -72,7 +83,12 @@ export async function GET(request: Request) {
         const output = (result.output || []).flatMap((item: { content?: Array<{ type?: string; text?: string }> } | null | undefined) => item?.content || [])
           .filter((part: { type?: string }) => part.type === "output_text")
           .map((part: { text?: string }) => part.text || "").join("\n").trim();
-        const parsed = JSON.parse(output) as Record<string, Translation>;
+        const parsed = JSON.parse(output) as EditorialResult;
+        if (parsed.publish !== true) {
+          await db.from("news_articles").update({ status: "filtered" }).eq("id", raw.id);
+          outcomes.push({ id: raw.id, translated: false, telegramSent: 0, error: "Tahrir filtri: " + String(parsed.reason || "yangilik aniq va tushunarli emas").slice(0, 180) });
+          continue;
+        }
         const pairs = [["uz-latn", "uz_latn"], ["uz-cyrl", "uz_cyrl"], ["ru", "ru"]] as const;
         for (const [language, keyName] of pairs) {
           const item = parsed[keyName];
