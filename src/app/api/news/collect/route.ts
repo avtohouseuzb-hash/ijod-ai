@@ -6,7 +6,7 @@ export const maxDuration = 60;
 function decodeXml(value: string) {
   return value.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
     .replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'")
-    .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&nbsp;|&#160;/g, " ")
     .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
     .replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 }
@@ -18,6 +18,33 @@ function imageFrom(xml: string, description: string) {
   return xml.match(/<(?:media:)?(?:content|thumbnail)[^>]+url=["']([^"']+)["']/i)?.[1]
     || xml.match(/<enclosure[^>]+url=["']([^"']+)["']/i)?.[1]
     || description.match(/<img[^>]+src=["']([^"']+)["']/i)?.[1] || null;
+}
+function imageFromMarkup(markup: string) {
+  const unwrapped = markup.replace(/<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>/g, "$1")
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+  const candidates = [
+    unwrapped.match(/<(?:media:)?(?:content|thumbnail)[^>]+url=["']([^"']+)["']/i)?.[1],
+    unwrapped.match(/<enclosure[^>]+url=["']([^"']+)["']/i)?.[1],
+    unwrapped.match(/<img[^>]+(?:src|data-src)=["']([^"']+)["']/i)?.[1],
+    unwrapped.match(/<itunes:image[^>]+href=["']([^"']+)["']/i)?.[1]
+  ];
+  return candidates.find(value => value && /^https?:\\/\\//i.test(value)) || null;
+}
+async function articleOgImage(articleUrl: string) {
+  try {
+    const response = await fetch(articleUrl, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; IJODAI-NewsBot/1.0)", "Accept": "text/html" },
+      redirect: "follow",
+      signal: AbortSignal.timeout(4500)
+    });
+    if (!response.ok) return null;
+    const html = (await response.text()).slice(0, 250000);
+    const match = html.match(/<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image)["'][^>]+content=["']([^"']+)["']/i)
+      || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:image|twitter:image)["']/i);
+    if (!match?.[1]) return null;
+    const image = match[1].replace(/&amp;/g, "&");
+    return /^https?:\\/\\//i.test(image) ? image : null;
+  } catch { return null; }
 }
 function youtubeFrom(text: string) {
   return text.match(/https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=[\w-]+|youtu\.be\/[\w-]+)/i)?.[0] || null;
@@ -67,7 +94,7 @@ export async function GET(request: Request) {
         const published = tag(block, "pubDate") || tag(block, "published") || tag(block, "updated");
         return [{
           source_id: source.id, title: title.slice(0, 500), summary: raw.slice(0, 1400),
-          source_name: source.name, source_url: link, image_url: imageFrom(block, raw),
+          source_name: source.name, source_url: link, image_url: imageFrom(block) || imageFromMarkup(raw) || imageFrom(block, raw),
           video_url: youtubeFrom(block + " " + raw), category: source.category,
           language: source.language || "en",
           published_at: published && !Number.isNaN(Date.parse(published)) ? new Date(published).toISOString() : new Date().toISOString(),
@@ -75,8 +102,12 @@ export async function GET(request: Request) {
         }];
       });
       if (!rows.length) return { source: source.name, ok: true, found: 0, inserted: 0 };
+      const rowsWithImages = await Promise.all(rows.map(async (row, index) => ({
+        ...row,
+        image_url: row.image_url || (index < 2 ? await articleOgImage(row.source_url) : null)
+      })));
       const { data, error: upsertError } = await db.from("news_articles")
-        .upsert(rows, { onConflict: "source_url", ignoreDuplicates: true })
+        .upsert(rowsWithImages, { onConflict: "source_url", ignoreDuplicates: true })
         .select("id");
       if (upsertError) return { source: source.name, ok: false, reason: upsertError.message, found: rows.length, inserted: 0 };
       return { source: source.name, ok: true, found: rows.length, inserted: data?.length || 0 };
