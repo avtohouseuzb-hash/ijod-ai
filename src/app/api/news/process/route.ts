@@ -55,7 +55,7 @@ export async function GET(request: Request) {
       const description = (raw.summary || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
       if (meaningfulWords.length < 2 || description.length < 90 ||
           /^(?:[A-Z]{2,6}\s*\(?[A-Z]{1,4}\)?\s*\d{1,4}|untitled|no title|news update)$/i.test(raw.title.trim())) {
-        await db.from("news_articles").update({ status: "filtered" }).eq("id", raw.id);
+        await db.from("news_articles").update({ status: "draft" }).eq("id", raw.id);
         outcomes.push({ id: raw.id, translated: false, telegramSent: 0, error: "Sarlavha yoki mazmun yetarlicha aniq emas — nashrdan chiqarildi." });
         continue;
       }
@@ -73,7 +73,7 @@ export async function GET(request: Request) {
           body: JSON.stringify({
             model,
             instructions: "You are IJOD AI News editor and strict quality gate. Reject fragments, codes/identifiers, incomplete RSS titles, vague headlines, empty context, malformed snippets, or stories that do not explain who did what. Never guess missing context. If not useful, return publish:false and a short reason. If useful, return publish:true and translate faithfully into Uzbek Latin, Uzbek Cyrillic and Russian. Each version needs a clear specific headline and factual 2-3 sentence summary. Preserve names, dates, numbers and uncertainty. Return valid JSON with publish, reason, uz_latn, uz_cyrl, ru; each translation has title and summary.",
-            input: "Evaluate quality first. Reject unclear or incomplete items. Do not infer missing facts. " + JSON.stringify({ source: raw.source_name, title: raw.title, summary: raw.summary || "" }),
+            input: "Evaluate quality first. Reject unclear or incomplete items. Do not infer missing facts. Return the result as JSON with publish, reason, uz_latn, uz_cyrl and ru fields. " + JSON.stringify({ source: raw.source_name, title: raw.title, summary: raw.summary || "" }),
             text: { format: { type: "json_object" } },
             max_output_tokens: 1800
           })
