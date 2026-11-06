@@ -30,20 +30,55 @@ function imageFromMarkup(markup: string) {
   ];
   return candidates.find(value => value && /^https?:\/\//i.test(value)) || null;
 }
+function absoluteImage(value: string, baseUrl: string) {
+  const cleaned = value.replace(/&amp;/g, "&").replace(/&#x2F;/gi, "/").trim();
+  try {
+    const parsed = new URL(cleaned, baseUrl);
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? parsed.toString() : null;
+  } catch { return null; }
+}
 async function articleOgImage(articleUrl: string) {
   try {
     const response = await fetch(articleUrl, {
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; IJODAI-NewsBot/1.0)", "Accept": "text/html" },
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; IJODAI-NewsBot/1.0)", "Accept": "text/html,application/xhtml+xml" },
       redirect: "follow",
-      signal: AbortSignal.timeout(4500)
+      signal: AbortSignal.timeout(6000)
     });
     if (!response.ok) return null;
-    const html = (await response.text()).slice(0, 250000);
-    const match = html.match(/<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image)["'][^>]+content=["']([^"']+)["']/i)
-      || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:image|twitter:image)["']/i);
-    if (!match?.[1]) return null;
-    const image = match[1].replace(/&amp;/g, "&");
-    return /^https?:\/\//i.test(image) ? image : null;
+    const html = (await response.text()).slice(0, 400000);
+    const metas = [...html.matchAll(/<meta\\b[^>]*>/gi)].map(match => match[0]);
+    for (const meta of metas) {
+      const key = meta.match(/(?:property|name)\\s*=\\s*["']([^"']+)["']/i)?.[1]?.toLowerCase();
+      if (!key || !["og:image", "og:image:url", "twitter:image", "twitter:image:src"].includes(key)) continue;
+      const content = meta.match(/content\\s*=\\s*["']([^"']+)["']/i)?.[1];
+      if (content) {
+        const image = absoluteImage(content, response.url || articleUrl);
+        if (image) return image;
+      }
+    }
+    const jsonLd = [...html.matchAll(/<script[^>]+type=["']application\\/ld\\+json["'][^>]*>([\\s\\S]*?)<\\/script>/gi)];
+    for (const block of jsonLd) {
+      try {
+        const parsed = JSON.parse(block[1]);
+        const queue: unknown[] = [parsed];
+        while (queue.length) {
+          const value = queue.shift();
+          if (Array.isArray(value)) { queue.push(...value); continue; }
+          if (!value || typeof value !== "object") continue;
+          const record = value as Record<string, unknown>;
+          const candidate = record.image;
+          const imageValue = typeof candidate === "string" ? candidate :
+            Array.isArray(candidate) ? candidate.find(item => typeof item === "string") :
+            candidate && typeof candidate === "object" ? (candidate as Record<string, unknown>).url : null;
+          if (typeof imageValue === "string") {
+            const image = absoluteImage(imageValue, response.url || articleUrl);
+            if (image) return image;
+          }
+          if (record["@graph"]) queue.push(record["@graph"]);
+        }
+      } catch { /* Ignore malformed JSON-LD */ }
+    }
+    return null;
   } catch { return null; }
 }
 function youtubeFrom(text: string) {
@@ -102,10 +137,11 @@ export async function GET(request: Request) {
         }];
       });
       if (!rows.length) return { source: source.name, ok: true, found: 0, inserted: 0 };
-      const rowsWithImages = await Promise.all(rows.map(async (row, index) => ({
+      const rowsWithImages = await mapLimit(rows, 4, async (row, index) => ({
         ...row,
-        image_url: row.image_url || (index < 2 ? await articleOgImage(row.source_url) : null)
-      })));
+        // Check more entries, but cap per feed to keep collection fast and avoid excess requests.
+        image_url: row.image_url || (index < 5 ? await articleOgImage(row.source_url) : null)
+      }));
       const { data, error: upsertError } = await db.from("news_articles")
         .upsert(rowsWithImages, { onConflict: "source_url", ignoreDuplicates: true })
         .select("id");
@@ -122,6 +158,23 @@ export async function GET(request: Request) {
       return { source: source.name, ok: false, reason: e instanceof Error ? e.message : "Fetch failed", found: 0, inserted: 0 };
     }
   });
+
+  // Backfill images for recently collected articles that had no image in their RSS feed.
+  // This also repairs older records that were stored before richer image extraction was added.
+  const { data: missingImages } = await db.from("news_articles")
+    .select("id,source_url").is("image_url", null)
+    .order("published_at", { ascending: false }).limit(30);
+  let imagesRecovered = 0;
+  if (missingImages?.length) {
+    const recovered = await mapLimit(missingImages, 4, async (article: { id: string; source_url: string }) => {
+      const image = await articleOgImage(article.source_url);
+      if (!image) return false;
+      const { error: imageError } = await db.from("news_articles").update({ image_url: image })
+        .eq("id", article.id).is("image_url", null);
+      return !imageError;
+    });
+    imagesRecovered = recovered.filter(Boolean).length;
+  }
 
   const okSources = results.filter(r => r.ok).length;
   const inserted = results.reduce((sum, r) => sum + r.inserted, 0);
