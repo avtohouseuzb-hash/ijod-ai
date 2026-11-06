@@ -36,8 +36,9 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promis
 }
 
 export async function GET(request: Request) {
-  const secret = process.env.NEWS_CRON_SECRET || process.env.CRON_SECRET;
-  if (!secret || request.headers.get("authorization") !== "Bearer " + secret)
+  const authHeader = request.headers.get("authorization");
+  const validSecrets = [process.env.NEWS_CRON_SECRET, process.env.CRON_SECRET].filter((value): value is string => Boolean(value));
+  if (!validSecrets.some(secret => authHeader === "Bearer " + secret))
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SECRET_KEY;
