@@ -44,7 +44,7 @@ export async function POST(request: Request) {
         updated_at: new Date().toISOString(),
       }, { onConflict: "chat_id" });
       await telegram(token, "answerCallbackQuery", { callback_query_id: callback.id, text: "OK" });
-      await telegram(token, "sendMessage", { chat_id: chatId, text: messages[language].saved });
+      await telegram(token, "sendMessage", { chat_id: chatId, text: messages[language].saved + "\\n\\n" + messages[language].about + "\\n\\n" + messages[language].help });
     }
     return NextResponse.json({ ok: true });
   }
