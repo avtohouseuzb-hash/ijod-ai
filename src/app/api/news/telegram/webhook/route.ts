@@ -21,6 +21,12 @@ const aboutKeyboard = {
     { text: "✨ IJOD AI Mini App", url: "https://ijod-ai.vercel.app/" },
   ]],
 };
+const homeKeyboard = {
+  inline_keyboard: [
+    [{ text: "📰 Yangiliklar bo‘limi", url: "https://ijod-ai.vercel.app/news" }],
+    [{ text: "✨ IJOD AI Mini App", url: "https://ijod-ai.vercel.app/" }],
+  ],
+};
 const languageNames: Record<string, string> = {
   "uz-latn": "O‘zbekcha (Lotin)", "uz-cyrl": "Ўзбекча (Кирилл)", ru: "Русский",
 };
@@ -51,7 +57,7 @@ export async function POST(request: Request) {
         updated_at: new Date().toISOString(),
       }, { onConflict: "chat_id" });
       await telegram(token, "answerCallbackQuery", { callback_query_id: callback.id, text: "OK" });
-      await telegram(token, "sendMessage", { chat_id: chatId, text: messages[language].saved + "\\n\\n" + messages[language].about + "\\n\\n" + messages[language].help });
+      await telegram(token, "sendMessage", { chat_id: chatId, text: messages[language].saved + "\\n\\n" + messages[language].about + "\\n\\n" + messages[language].help, reply_markup: homeKeyboard });
     }
     return NextResponse.json({ ok: true });
   }
