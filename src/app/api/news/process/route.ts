@@ -39,7 +39,7 @@ export async function GET(request: Request) {
     .select("id,title,summary,source_name,source_url,image_url,video_url,category,status")
     .eq("status", "pending_translation").order("published_at", { ascending: false });
   if (interestedCategories.length) articleQuery = articleQuery.in("category", interestedCategories);
-  const { data: articles, error } = await articleQuery.limit(12);
+  const { data: articles, error } = await articleQuery.limit(3);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!articles?.length) return NextResponse.json({ ok: true, processed: 0, message: "Tanlangan mavzularda tarjima kutayotgan yangi maqola yo‘q." });
 
