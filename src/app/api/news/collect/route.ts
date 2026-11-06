@@ -62,6 +62,15 @@ async function articleOgImage(articleUrl: string) {
 function youtubeFrom(text: string) {
   return text.match(/https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=[\w-]+|youtu\.be\/[\w-]+)/i)?.[0] || null;
 }
+function videoFrom(xml: string, description: string) {
+  const candidates = [
+    xml.match(/<(?:media:)?content[^>]+url=["']([^"']+)["'][^>]+type=["']video\//i)?.[1],
+    xml.match(/<enclosure[^>]+url=["']([^"']+)["'][^>]+type=["']video\//i)?.[1],
+    xml.match(/<link[^>]+type=["']video\/[^"']+["'][^>]+href=["']([^"']+)["']/i)?.[1],
+    youtubeFrom(xml + " " + description)
+  ];
+  return candidates.find(value => value && /^https?:\/\//i.test(value)) || null;
+}
 async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
   const results: R[] = new Array(items.length);
   let next = 0;
@@ -108,18 +117,21 @@ export async function GET(request: Request) {
         return [{
           source_id: source.id, title: title.slice(0, 500), summary: raw.slice(0, 1400),
           source_name: source.name, source_url: link, image_url: imageFrom(block, raw) || imageFromMarkup(raw),
-          video_url: youtubeFrom(block + " " + raw), category: source.category,
+          video_url: videoFrom(block, raw), media_type: "none", category: source.category,
           language: source.language || "en",
           published_at: published && !Number.isNaN(Date.parse(published)) ? new Date(published).toISOString() : new Date().toISOString(),
           status: "pending_translation"
         }];
       });
       if (!rows.length) return { source: source.name, ok: true, found: 0, inserted: 0 };
-      const rowsWithImages = await mapLimit(rows, 4, async (row, index) => ({
-        ...row,
-        // Check more entries, but cap per feed to keep collection fast and avoid excess requests.
-        image_url: row.image_url || (index < 5 ? await articleOgImage(row.source_url) : null)
-      }));
+      const rowsWithImages = await mapLimit(rows, 4, async (row, index) => {
+        const image = row.image_url || (index < 5 ? await articleOgImage(row.source_url) : null);
+        return {
+          ...row,
+          image_url: image,
+          media_type: image && row.video_url ? "both" : image ? "image" : row.video_url ? "video" : "none"
+        };
+      });
       const { data, error: upsertError } = await db.from("news_articles")
         .upsert(rowsWithImages, { onConflict: "source_url", ignoreDuplicates: true })
         .select("id");
