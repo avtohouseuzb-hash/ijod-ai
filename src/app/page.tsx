@@ -124,6 +124,7 @@ export default function Home() {
     { name: "Bosh sahifa", icon: "⌂" },
     { name: "Tariflar", icon: "✦" },
     { name: "AI vositalar", icon: "✳" },
+    { name: "AI News", icon: "📰" },
     { name: "Mening loyihalarim", icon: "▤" },
     { name: "Sevimlilar", icon: "♡" },
   ];
@@ -141,7 +142,7 @@ export default function Home() {
           {menu.map((item) => (
             <button
               key={item.name}
-              onClick={() => { setActive(item.name); window.scrollTo({ top: 0, behavior: "smooth" }); setMobileMenuOpen(false); }}
+              onClick={() => { if (item.name === "AI News") { window.location.href = "/news"; return; } setActive(item.name); window.scrollTo({ top: 0, behavior: "smooth" }); setMobileMenuOpen(false); }}
               className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition ${
                 active === item.name
                   ? "bg-violet-50 text-violet-700"
@@ -180,7 +181,7 @@ export default function Home() {
         <aside className="absolute inset-y-0 left-0 flex w-[min(84vw,300px)] flex-col overflow-y-auto overscroll-contain touch-pan-y bg-white px-5 py-6 shadow-2xl">
           <div className="mb-8 flex items-center justify-between"><div className="flex items-center gap-2"><img src="/ijod-logo-v2.svg" alt="IJOD AI" className="h-11 w-[105px] object-contain" /></div><button onClick={() => setMobileMenuOpen(false)} aria-label="Yopish" className="rounded-lg px-3 py-1 text-2xl text-gray-500">×</button></div>
           <div className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.18em] text-gray-400">MENYU</div>
-          <nav className="space-y-1">{menu.map((item) => <button key={item.name} onClick={() => { setActive(item.name); setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); }} className={"flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium " + (active === item.name ? "bg-violet-50 text-violet-700" : "text-gray-600 hover:bg-gray-50")}><span className="w-5 text-center text-lg">{item.icon}</span>{item.name}{item.name === "AI vositalar" && <span className="ml-auto text-xs text-gray-400">{tools.length}</span>}</button>)}</nav>
+          <nav className="space-y-1">{menu.map((item) => <button key={item.name} onClick={() => { if (item.name === "AI News") { window.location.href = "/news"; return; } setActive(item.name); setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); }} className={"flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium " + (active === item.name ? "bg-violet-50 text-violet-700" : "text-gray-600 hover:bg-gray-50")}><span className="w-5 text-center text-lg">{item.icon}</span>{item.name}{item.name === "AI vositalar" && <span className="ml-auto text-xs text-gray-400">{tools.length}</span>}</button>)}</nav>
           <div className="mt-8 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-700 p-4 text-white"><div className="mb-2 text-xl">✦</div><div className="text-sm font-bold">Tasavvuringizni yarating</div><p className="mt-1 text-xs leading-5 text-violet-100">AI yordamida g‘oyalaringizni hayotga olib keling.</p><button onClick={() => { setActive("AI vositalar"); setMobileMenuOpen(false); document.getElementById("tools")?.scrollIntoView({ behavior: "smooth" }); }} className="mt-4 rounded-lg bg-white px-3 py-2 text-xs font-bold text-violet-700">Boshlash →</button></div>
           <div className="mt-auto border-t border-gray-100 pt-4"><div className="mb-2 px-2 text-sm font-semibold">{userEmail || "Mehmon"}</div>{userEmail ? <button onClick={handleSignOut} className="w-full rounded-xl px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-50">Hisobdan chiqish</button> : <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-50">Kirish / Ro‘yxatdan o‘tish ↗</Link>}</div>
         </aside>
