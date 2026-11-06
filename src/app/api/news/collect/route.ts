@@ -1,14 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
-export const runtime = "nodejs";
 export const maxDuration = 60;
 
 function decodeXml(value: string) {
-  return value.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n))).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  return value.replace(/<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>/g, "$1").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#(\\d+);/g, (_, n) => String.fromCodePoint(Number(n))).replace(/<[^>]*>/g, " ").replace(/\\s+/g, " ").trim();
 }
 function tag(xml: string, name: string) {
-  const match = xml.match(new RegExp("<(?:\\w+:)?" + name + "(?:\\s[^>]*)?>([\\s\\S]*?)</(?:\\w+:)?" + name + ">", "i"));
+  const match = xml.match(new RegExp("<(?:\\\\w+:)?" + name + "(?:\\\\s[^>]*)?>([\\\\s\\\\S]*?)</(?:\\\\w+:)?" + name + ">", "i"));
   return match ? decodeXml(match[1]) : "";
 }
 function imageFrom(xml: string, description: string) {
@@ -18,7 +17,7 @@ function imageFrom(xml: string, description: string) {
   return media || enclosure || htmlImage || null;
 }
 function youtubeFrom(text: string) {
-  return text.match(/https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=[\w-]+|youtu\.be\/[\w-]+)/i)?.[0] || null;
+  return text.match(/https?:\\/\\/(?:www\\.)?(?:youtube\\.com\\/watch\\?v=[\\w-]+|youtu\\.be\\/[\\w-]+)/i)?.[0] || null;
 }
 export async function GET(request: Request) {
   const secret = process.env.NEWS_CRON_SECRET;
@@ -36,12 +35,12 @@ export async function GET(request: Request) {
       const response = await fetch(source.feed_url, { headers: { "User-Agent": "IJODAI-NewsBot/1.0", "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml" }, signal: AbortSignal.timeout(12000) });
       if (!response.ok) continue;
       const xml = await response.text();
-      const entries = [...xml.matchAll(/<(?:item|entry)\b[^>]*>([\s\S]*?)<\/(?:item|entry)>/gi)].slice(0, 12);
+      const entries = [...xml.matchAll(/<(?:item|entry)\\b[^>]*>([\\s\\S]*?)<\\/(?:item|entry)>/gi)].slice(0, 12);
       for (const entry of entries) {
         const block = entry[1];
         const title = tag(block, "title");
         const link = tag(block, "link") || block.match(/<link[^>]+href=["']([^"']+)["']/i)?.[1] || "";
-        if (!title || !/^https?:\/\//i.test(link)) continue;
+        if (!title || !/^https?:\\/\\//i.test(link)) continue;
         const descriptionRaw = tag(block, "description") || tag(block, "summary") || tag(block, "content");
         const summary = decodeXml(descriptionRaw).slice(0, 1400);
         const published = tag(block, "pubDate") || tag(block, "published") || tag(block, "updated");
@@ -63,7 +62,7 @@ export async function GET(request: Request) {
     const chats = new Set((subscribers || []).map(s => s.chat_id));
     if (process.env.NEWS_TELEGRAM_CHAT_ID) chats.add(process.env.NEWS_TELEGRAM_CHAT_ID);
     for (const article of newArticles) {
-      const caption = ("📰 " + article.title + "\n\n" + (article.summary || "Batafsil ma’lumot manbada.") + "\n\nManba: " + article.source_name).slice(0, 1000);
+      const caption = ("📰 " + article.title + "\\n\\n" + (article.summary || "Batafsil ma’lumot manbada.") + "\\n\\nManba: " + article.source_name).slice(0, 1000);
       const buttons = [[{ text: "🔗 To‘liq yangilik", url: article.source_url }], ...(article.video_url ? [[{ text: "▶️ Videoni ko‘rish", url: article.video_url }]] : []), [{ text: "IJOD AI’da ochish", url: (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app") + "/news" }]];
       for (const chatId of chats) {
         try {
