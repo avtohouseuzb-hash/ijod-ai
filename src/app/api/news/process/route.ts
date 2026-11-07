@@ -213,7 +213,7 @@ export async function GET(request: Request) {
   if (irrelevant.length) await db.from("news_articles")
     .update({ status: "draft", processing_started_at: null, ai_analysis: "Avtomatik mavzu filtri: faol Telegram obunachilarining tanloviga mos kelmadi." })
     .in("id", irrelevant.map(article => article.id));
-  const selectedArticles = eligible.slice(0, 2);
+  const selectedArticles = eligible.slice(0, 1);
   if (!selectedArticles.length) {
     return NextResponse.json({ ok: true, processed: 0, skippedIrrelevant: irrelevant.length, pendingMatched: 0, message: "Tanlangan mavzularga mos, qayta ishlashga tayyor maqola topilmadi." });
   }
@@ -347,7 +347,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     ok: outcomes.every(x => x.translated), phase: "translate_and_deliver",
-    model, processed: outcomes.length, batchLimit: 2, pendingMatched: eligible.length, skippedIrrelevant: irrelevant.length, translated: outcomes.filter(x => x.translated).length,
+    model, processed: outcomes.length, batchLimit: 1, pendingMatched: eligible.length, skippedIrrelevant: irrelevant.length, translated: outcomes.filter(x => x.translated).length,
     telegramMessagesSent: outcomes.reduce((sum, x) => sum + x.telegramSent, 0),
     channelConfigured: Boolean(channelChatId),
     channelMessagesSent: outcomes.reduce((sum, x) => sum + Number(x.channelMessagesSent || 0), 0), outcomes
