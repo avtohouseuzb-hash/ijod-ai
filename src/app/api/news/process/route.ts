@@ -105,11 +105,26 @@ function parentCategories(selected: string[]) {
     mainCategoryParents[topic] || topicRules[topic]?.parents || [topic]
   ))];
 }
+const categoryExclusions: Record<string, string[]> = {
+  "Biznes": ["godzilla", "film critic", "best film", "movie", "movies", "cinema", "actor", "actress", "box office", "trailer", "tv show", "television series", "streaming series"],
+  "Iqtisodiyot": ["godzilla", "film critic", "best film", "movie review", "cinema", "football", "basketball", "tennis match"],
+  "AI va IT": ["godzilla", "film critic", "movie review", "football match", "basketball game"],
+  "O‘zbekiston": ["godzilla", "film critic", "movie review"],
+  "Jahon": ["godzilla", "film critic", "movie review"]
+};
+const topicTerms: Record<string, string[]> = {
+  "Kiberxavfsizlik": ["cybersecurity", "cyber security", "hacker", "ransomware", "data breach", "malware", "vulnerability", "kiberxavfsizlik"],
+  "Ko‘chmas mulk": ["real estate", "property", "housing", "mortgage", "rent", "apartment", "ko‘chmas mulk", "ipoteka", "uy-joy"],
+  "Texnika": ["technology", "tech", "device", "smartphone", "electronics", "automotive", "car", "maishiy texnika", "texnika"]
+};
 function matchesTopics(article: Article, selected: string[]) {
-  // No interests means no delivery; never interpret an empty selection as "all news".
-  if (!selected.length) return false;
-  const allowedParents = parentCategories(selected);
-  return allowedParents.includes(article.category);
+  if (!selected.length || !parentCategories(selected).includes(article.category)) return false;
+  const text = (article.title + " " + (article.summary || "")).toLocaleLowerCase();
+  if ((categoryExclusions[article.category] || []).some(term => text.includes(term))) return false;
+  const specific = selected.filter(topic => topicTerms[topic]);
+  const direct = selected.some(topic => mainCategoryParents[topic]?.includes(article.category));
+  if (!direct && specific.length && !specific.some(topic => topicTerms[topic].some(term => text.includes(term)))) return false;
+  return true;
 }
 
 async function fetchArticleContext(articleUrl: string): Promise<ArticleContext> {
@@ -157,18 +172,25 @@ export async function GET(request: Request) {
   // unrelated categories fill the queue, so private subscribers received only
   // one matching story while the public channel received the whole batch.
   const interestedCategories = [...new Set(chats.flatMap(chat => parentCategories(chat.categories)))];
-  let articleQuery = db.from("news_articles")
+  if (!interestedCategories.length) return NextResponse.json({ ok: true, processed: 0, message: "Faol obunachilar hali mavzu tanlamagan." });
+  const { data: candidates, error } = await db.from("news_articles")
     .select("id,title,summary,source_name,source_url,image_url,video_url,category,status")
-    .eq("status", "pending_translation").order("published_at", { ascending: false });
-  if (interestedCategories.length) articleQuery = articleQuery.in("category", interestedCategories);
-  const { data: articles, error } = await articleQuery.limit(1);
+    .eq("status", "pending_translation").in("category", interestedCategories)
+    .order("published_at", { ascending: false }).limit(40);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  if (!articles?.length) return NextResponse.json({ ok: true, processed: 0, message: "Tanlangan mavzularda tarjima kutayotgan yangi maqola yo‘q." });
+  const articles = (candidates || []) as Article[];
+  const eligible = articles.find(article => chats.some(chat => matchesTopics(article, chat.categories)));
+  if (!eligible) {
+    const irrelevant = articles.filter(article => !chats.some(chat => matchesTopics(article, chat.categories)));
+    if (irrelevant.length) await db.from("news_articles").update({ status: "draft", ai_analysis: "Avtomatik mavzu filtri: faol Telegram obunachilarining tanloviga mos kelmadi." }).in("id", irrelevant.map(article => article.id));
+    return NextResponse.json({ ok: true, processed: 0, skippedIrrelevant: irrelevant.length, message: "Tanlangan mavzularga mos maqola topilmadi." });
+  }
+  const selectedArticles = [eligible];
 
   const model = process.env.IJOD_NEWS_TRANSLATION_MODEL || process.env.IJOD_NEWS_MODEL || "gpt-6-luna";
   const outcomes: Array<{ id: string; translated: boolean; telegramSent: number; error?: string }> = [];
 
-  for (const raw of articles as Article[]) {
+  for (const raw of selectedArticles) {
     try {
       const cleanTitle = raw.title.replace(/[^\p{L}\p{N}]+/gu, " ").trim();
       const titleWords = cleanTitle.split(/\s+/).filter(Boolean);
