@@ -38,6 +38,28 @@ function selectedParentCategories(selected: string[]) {
     .map(group => parentCategory[group] || group);
   return [...new Set(parents)];
 }
+const categoryExclusions: Record<string, string[]> = {
+  "Biznes": ["godzilla", "film critic", "best film", "movie", "movies", "cinema", "actor", "actress", "box office", "trailer", "tv show", "television series", "streaming series"],
+  "Iqtisodiyot": ["godzilla", "film critic", "best film", "movie review", "cinema", "football", "basketball", "tennis match"],
+  "AI va IT": ["godzilla", "film critic", "movie review", "football match", "basketball game"],
+  "O‘zbekiston": ["godzilla", "film critic", "movie review"],
+  "Jahon": ["godzilla", "film critic", "movie review"]
+};
+const topicTerms: Record<string, string[]> = {
+  "Kiberxavfsizlik": ["cybersecurity", "cyber security", "hacker", "ransomware", "data breach", "malware", "vulnerability", "kiberxavfsizlik"],
+  "Ko‘chmas mulk": ["real estate", "property", "housing", "mortgage", "rent", "apartment", "ko‘chmas mulk", "ipoteka", "uy-joy"],
+  "Texnika": ["technology", "tech", "device", "smartphone", "electronics", "automotive", "car", "maishiy texnika", "texnika"]
+};
+function matchesSelectedArticle(article: {category: string; title: string; summary?: string | null}, selected: string[]) {
+  if (!selected.length || !selectedParentCategories(selected).includes(article.category)) return false;
+  const text = (article.title + " " + (article.summary || "")).toLocaleLowerCase();
+  const exclusions = categoryExclusions[article.category] || [];
+  if (exclusions.some(term => text.includes(term))) return false;
+  const specific = selected.filter(topic => topicTerms[topic]);
+  const selectedDirect = selected.some(topic => categories.includes(topic) && parentCategory[topic] === article.category);
+  if (!selectedDirect && specific.length && !specific.some(topic => topicTerms[topic].some(term => text.includes(term)))) return false;
+  return true;
+}
 const languageKeyboard = { inline_keyboard: [[
   { text: "O‘zbekcha (Lotin)", callback_data: "news_lang:uz-latn" },
   { text: "Ўзбекча (Кирилл)", callback_data: "news_lang:uz-cyrl" },
@@ -112,7 +134,7 @@ export async function POST(request: Request) {
     if (data.startsWith("news_lang:")) {
       const language = data.slice("news_lang:".length);
       if (!(language in languageNames)) return NextResponse.json({ ok: true });
-      await db.from("news_telegram_subscriptions").upsert({ chat_id: chatId, chat_type: callback.message?.chat?.type || "private", username: callback.from?.username || null, language, enabled: true, updated_at: new Date().toISOString() }, { onConflict: "chat_id" });
+      await db.from("news_telegram_subscriptions").upsert({ chat_id: chatId, chat_type: callback.message?.chat?.type || "private", username: callback.from?.username || null, language, categories: Array.isArray(subscription?.categories) ? subscription.categories as string[] : [], enabled: true, updated_at: new Date().toISOString() }, { onConflict: "chat_id" });
       const localized = copy[language];
       await telegram(token, "answerCallbackQuery", { callback_query_id: callback.id, text: "OK" });
       await telegram(token, "sendMessage", { chat_id: chatId, text: localized.saved + "\n\n" + localized.about, reply_markup: aboutKeyboard });
@@ -153,7 +175,7 @@ export async function POST(request: Request) {
   const language = String(subscription?.language || "uz-latn");
   const messages = copy[language] || copy["uz-latn"];
   if (text.startsWith("/start")) {
-    await db.from("news_telegram_subscriptions").upsert({ chat_id: chatId, chat_type: chat.type || "private", username: message.from?.username || null, enabled: true, updated_at: new Date().toISOString() }, { onConflict: "chat_id" });
+    await db.from("news_telegram_subscriptions").upsert({ chat_id: chatId, chat_type: chat.type || "private", username: message.from?.username || null, categories: Array.isArray(subscription?.categories) ? subscription.categories as string[] : [], enabled: true, updated_at: new Date().toISOString() }, { onConflict: "chat_id" });
     await telegram(token, "sendMessage", { chat_id: chatId, text: messages.started + "\n\n" + messages.choose, reply_markup: languageKeyboard });
   } else if (text.startsWith("/about")) {
     await telegram(token, "sendMessage", { chat_id: chatId, text: messages.about, reply_markup: aboutKeyboard });
@@ -169,16 +191,17 @@ export async function POST(request: Request) {
     await telegram(token, "sendMessage", { chat_id: chatId, text: messages.stopped });
   } else if (text.startsWith("/latest")) {
     const selected = Array.isArray(subscription?.categories) ? subscription.categories as string[] : [];
-    const { data } = selected.length ? await db.from("news_articles")
+    const { data: latestCandidates } = selected.length ? await db.from("news_articles")
       .select("id,title,summary,source_name,source_url,image_url,video_url,category")
       .eq("status", "published").in("category", selectedParentCategories(selected))
-      .order("published_at", { ascending: false }).limit(5) : { data: [] };
-    const ids = (data || []).map(a => a.id);
+      .order("published_at", { ascending: false }).limit(60) : { data: [] };
+    const data = (latestCandidates || []).filter(article => matchesSelectedArticle(article, selected)).slice(0, 5);
+    const ids = data.map(a => a.id);
     const { data: translations } = ids.length
       ? await db.from("news_translations").select("article_id,title,summary").eq("language", language).in("article_id", ids)
       : { data: [] };
     const translated = new Map((translations || []).map(t => [t.article_id, t]));
-    if (!data?.length) {
+    if (!data.length) {
       await telegram(token, "sendMessage", { chat_id: chatId, text: messages.latestEmpty });
     } else {
       for (let index = 0; index < data.length; index++) {
