@@ -19,8 +19,8 @@ async function authorizedCronRequest(request: Request) {
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
 
-async function executePipeline(request: Request) {
-  if (!await authorizedCronRequest(request)) {
+async function executePipeline(request: Request, skipCronAuth = false) {
+  if (!skipCronAuth && !await authorizedCronRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const base = new URL(request.url).origin;
@@ -116,5 +116,5 @@ export async function POST(request: Request) {
     method: "GET",
     headers: { authorization: "Bearer " + secret }
   });
-  return executePipeline(internalRequest);
+  return executePipeline(internalRequest, true);
 }
