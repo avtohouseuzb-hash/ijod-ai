@@ -18,7 +18,8 @@ const topicGroups:Record<string,string[]>={
  "Madaniyat":["Tarix","Kitoblar","Kino","San’at"],
  "Ko‘ngilochar":["Hajviya","Trendlar","Qiziqarli faktlar","Fantastika"],
  "Biznes":["Tadbirkorlik","Marketing","Menejment","Biznes yangiliklari"],
- "Salomatlik":["Tibbiyot","Ilmiy izlanishlar","Sog‘lom turmush"]
+ "Salomatlik":["Tibbiyot","Ilmiy izlanishlar","Sog‘lom turmush"],
+ "Sport":["Sport"]
 };
 const categories=Object.keys(topicGroups);
 const allTopics=Object.values(topicGroups).flat();
@@ -49,12 +50,12 @@ export default function NewsAdminPage(){
    if(!session)throw new Error("Avval hisobingizga kiring.");
    const headers={authorization:"Bearer "+session.access_token};
    const batches:any[]=[];
-   // Har bir bosishda ko‘pi bilan 20 ta 10-manbali guruh ishlanadi.
+   // Har bir bosishda ko‘pi bilan 5 ta 5-manbali guruh ishlanadi.
    // Qolgan manbalar brauzerda saqlangan offset orqali keyingi bosishda davom etadi.
    const progressKey="ijod-news-collect-offset";
    let offset=Number(window.localStorage.getItem(progressKey)||0);
    let hasMoreSources=false;
-   for(let i=0;i<20;i++){
+   for(let i=0;i<5;i++){
     const response=await fetch("/api/news/run?phase=collect&offset="+offset,{method:"POST",headers});
     const raw=await response.text();let data:any;
     try{data=raw?JSON.parse(raw):{};}catch{throw new Error("Manbalarni yig‘ish serveri JSON qaytarmadi (HTTP "+response.status+").");}
@@ -68,7 +69,7 @@ export default function NewsAdminPage(){
    }
    const processBatches:any[]=[];
    let pendingMayRemain=true;
-   for(let i=0;i<5&&pendingMayRemain;i++){
+   for(let i=0;i<1&&pendingMayRemain;i++){
     const response=await fetch("/api/news/run?phase=process",{method:"POST",headers});
     const raw=await response.text();let processed:any;
     try{processed=raw?JSON.parse(raw):{};}catch{throw new Error("Tarjima serveri JSON qaytarmadi (HTTP "+response.status+").");}
@@ -77,10 +78,10 @@ export default function NewsAdminPage(){
     processBatches.push(result);
     const count=Number(result.processed||0);
     const translated=Number(result.translated||0);
-    // The process endpoint takes up to 10 pending articles per call.
+    // The process endpoint takes up to 2 pending articles per call.
     // Stop when the queue is exhausted or when a batch made no progress,
     // so a repeatedly failing article cannot create an endless loop.
-    pendingMayRemain=count>=10&&translated>0;
+    pendingMayRemain=count>=2&&translated>0;
     if(count===0)pendingMayRemain=false;
    }
    const processedSummary={
@@ -93,7 +94,7 @@ export default function NewsAdminPage(){
    };
    const collectSummary={sourcesChecked:batches.reduce((n,x)=>n+Number(x.sourcesChecked||0),0),sourcesOk:batches.reduce((n,x)=>n+Number(x.sourcesOk||0),0),sourcesFailed:batches.reduce((n,x)=>n+Number(x.sourcesFailed||0),0),itemsFound:batches.reduce((n,x)=>n+Number(x.itemsFound||0),0),articlesInserted:batches.reduce((n,x)=>n+Number(x.articlesInserted||0),0),duplicateItemsSkipped:batches.reduce((n,x)=>n+Number(x.duplicateItemsSkipped||0),0),failedSources:batches.flatMap(x=>x.failedSources||[])};
    setPipelineResult({collect:collectSummary,process:processedSummary});
-   setNotice(hasMoreSources?"Birinchi 200 ta manba tekshirildi. Qolgan manbalarni davom ettirish uchun tugmani yana bosing — jarayon saqlangan joyidan davom etadi.":collectSummary.sourcesFailed===0&&!pendingMayRemain&&processedSummary.translated===processedSummary.processed?"Barcha manbalar tekshirildi va navbatdagi maqolalar qayta ishlandi.":"Manbalar tekshirildi. Ayrim manba yoki maqolalarda xatolik bor yoxud maqolalar navbati davom etmoqda.");
+   setNotice(hasMoreSources?"Birinchi 25 ta manba tekshirildi. Qolgan manbalarni davom ettirish uchun tugmani yana bosing — jarayon saqlangan joyidan davom etadi.":collectSummary.sourcesFailed===0&&!pendingMayRemain&&processedSummary.translated===processedSummary.processed?"Barcha manbalar tekshirildi va navbatdagi maqolalar qayta ishlandi.":"Manbalar tekshirildi. Ayrim manba yoki maqolalarda xatolik bor yoxud maqolalar navbati davom etmoqda. Davom ettirish uchun tugmani yana bosing.");
   }catch(e){setNotice(e instanceof Error?e.message:"Jarayonda xatolik.");}
   finally{setPipelineBusy(false);}
  }
