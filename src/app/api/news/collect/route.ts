@@ -21,9 +21,10 @@ function imageFrom(xml: string, description: string) {
     const medium = item.match(/medium=["']([^"']+)["']/i)?.[1]?.toLowerCase() || "";
     const candidate = item.match(/(?:url|href)=["']([^"']+)["']/i)?.[1];
     if (candidate && !type.startsWith("video/") && medium !== "video" &&
-        /\.(?:jpe?g|png|gif|webp|avif)(?:[?#]|$)/i.test(candidate)) return candidate;
+        (type.startsWith("image/") || medium === "image" || /\.(?:jpe?g|png|gif|webp|avif)(?:[?#]|$)/i.test(candidate))) return candidate;
   }
-  return description.match(/<img[^>]+(?:src|data-src)=["']([^"']+)["']/i)?.[1] || null;
+  const embedded = description.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+  return embedded.match(/<img[^>]+(?:src|data-src)=["']([^"']+)["']/i)?.[1] || null;
 }
 function imageFromMarkup(markup: string) {
   const unwrapped = markup.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
@@ -34,7 +35,7 @@ function imageFromMarkup(markup: string) {
     unwrapped.match(/<img[^>]+(?:src|data-src)=["']([^"']+)["']/i)?.[1],
     unwrapped.match(/<itunes:image[^>]+href=["']([^"']+)["']/i)?.[1]
   ];
-  return candidates.find(value => value && /^https?:\/\//i.test(value)) || null;
+  return candidates.find(value => value && !value.startsWith("data:")) || null;
 }
 function absoluteImage(value: string, baseUrl: string) {
   const cleaned = value.replace(/&amp;/g, "&").replace(/&#x2F;/gi, "/").trim();
@@ -139,10 +140,10 @@ export async function GET(request: Request) {
       if (!rows.length) return { source: source.name, ok: true, found: 0, inserted: 0 };
       const preparedRows = await Promise.all(rows.map(async row => {
         // Prefer the article's full Open Graph image when the feed only supplies a thumbnail.
-        const tinyHint = /(?:thumb|thumbnail|small|tiny|resize|\\b[wh]=[1-3]\\d\\d)/i.test(row.image_url || "") ||
+        const tinyHint = /(?:thumb|thumbnail|small|tiny|resize|\\b[wh]=[1-6]\\d\\d)/i.test(row.image_url || "") ||
           /<(?:media:)?(?:content|thumbnail|enclosure)\\b[^>]*(?:width|height)=["'](?:[1-3]\\d{2})["']/i.test(entries.find(entry => tag(entry[1], "title") === row.title)?.[1] || "");
         const image = (!row.image_url || tinyHint) ? await articleOgImage(row.source_url) : null;
-        const image_url = image || row.image_url;
+        const image_url = image || absoluteImage(row.image_url || "", row.source_url);
         return {
           ...row,
           image_url,
