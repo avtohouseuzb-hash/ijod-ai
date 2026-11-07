@@ -113,10 +113,24 @@ export async function GET(request: Request) {
 
   const results = await mapLimit(sources || [], 5, async (source) => {
     try {
-      const response = await fetch(source.feed_url, {
-        headers: { "User-Agent": "IJODAI-NewsBot/1.0", "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml" },
-        signal: AbortSignal.timeout(2500)
-      });
+      // Retry transient network/rate-limit failures before reporting a source as unavailable.
+      let response: Response | null = null;
+      let lastFetchError: unknown = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          response = await fetch(source.feed_url, {
+            headers: { "User-Agent": "Mozilla/5.0 (compatible; IJODAI-NewsBot/1.0)", "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml, */*" },
+            redirect: "follow",
+            signal: AbortSignal.timeout(8000)
+          });
+          if (![408, 425, 429, 500, 502, 503, 504].includes(response.status) || attempt === 2) break;
+        } catch (error) {
+          lastFetchError = error;
+          if (attempt === 2) throw error;
+        }
+        await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+      }
+      if (!response) throw lastFetchError instanceof Error ? lastFetchError : new Error("RSS manbaga ulanish amalga oshmadi");
       if (!response.ok) {
         if (response.status === 404 || response.status === 410) {
           // Keep historical articles intact, but detach them before removing a permanently dead feed.
@@ -133,6 +147,9 @@ export async function GET(request: Request) {
         return { source: source.name, ok: false, reason: "HTTP " + response.status, found: 0, inserted: 0 };
       }
       const xml = await response.text();
+      if (!/<(?:rss|feed|rdf:RDF)\b/i.test(xml)) {
+        return { source: source.name, ok: false, reason: "RSS/XML format emas", found: 0, inserted: 0 };
+      }
       const entries = [...xml.matchAll(/<(?:item|entry)\b[^>]*>([\s\S]*?)<\/(?:item|entry)>/gi)].slice(0, 8);
       const rows = entries.flatMap((entry) => {
         const block = entry[1];
