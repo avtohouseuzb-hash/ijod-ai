@@ -49,16 +49,22 @@ export default function NewsAdminPage(){
    if(!session)throw new Error("Avval hisobingizga kiring.");
    const headers={authorization:"Bearer "+session.access_token};
    const batches:any[]=[];
-   let offset=0;
+   // Har bir bosishda ko‘pi bilan 20 ta 10-manbali guruh ishlanadi.
+   // Qolgan manbalar brauzerda saqlangan offset orqali keyingi bosishda davom etadi.
+   const progressKey="ijod-news-collect-offset";
+   let offset=Number(window.localStorage.getItem(progressKey)||0);
+   let hasMoreSources=false;
    for(let i=0;i<20;i++){
     const response=await fetch("/api/news/run?phase=collect&offset="+offset,{method:"POST",headers});
     const raw=await response.text();let data:any;
     try{data=raw?JSON.parse(raw):{};}catch{throw new Error("Manbalarni yig‘ish serveri JSON qaytarmadi (HTTP "+response.status+").");}
     if(!response.ok)throw new Error(data.error||data.message||"Manbalarni yig‘ishda xatolik (HTTP "+response.status+").");
-    batches.push(data.steps?.collect||data);
-    offset=Number(data.nextOffset||offset);
-    if(!data.hasMore)break;
-    if(i===19)throw new Error("Xavfsizlik limiti: 20 ta guruhdan keyin jarayon to‘xtatildi. Qolgan manbalarni keyingi urinishda davom ettiring.");
+    const collect=data.steps?.collect||data;
+    batches.push(collect);
+    offset=Number(data.nextOffset??collect.nextOffset??offset);
+    hasMoreSources=Boolean(data.hasMore??collect.hasMore);
+    if(!hasMoreSources){window.localStorage.removeItem(progressKey);break;}
+    window.localStorage.setItem(progressKey,String(offset));
    }
    const processBatches:any[]=[];
    let pendingMayRemain=true;
@@ -87,7 +93,7 @@ export default function NewsAdminPage(){
    };
    const collectSummary={sourcesChecked:batches.reduce((n,x)=>n+Number(x.sourcesChecked||0),0),sourcesOk:batches.reduce((n,x)=>n+Number(x.sourcesOk||0),0),sourcesFailed:batches.reduce((n,x)=>n+Number(x.sourcesFailed||0),0),itemsFound:batches.reduce((n,x)=>n+Number(x.itemsFound||0),0),articlesInserted:batches.reduce((n,x)=>n+Number(x.articlesInserted||0),0),duplicateItemsSkipped:batches.reduce((n,x)=>n+Number(x.duplicateItemsSkipped||0),0),failedSources:batches.flatMap(x=>x.failedSources||[])};
    setPipelineResult({collect:collectSummary,process:processedSummary});
-   setNotice(collectSummary.sourcesFailed===0&&!pendingMayRemain&&processedSummary.translated===processedSummary.processed?"Barcha manbalar tekshirildi va navbatdagi maqolalar qayta ishlandi.":"Jarayon qisman bajarildi. Ayrim manba yoki maqolalarda xatolik bor yoxud navbat davom etmoqda.");
+   setNotice(hasMoreSources?"Birinchi 200 ta manba tekshirildi. Qolgan manbalarni davom ettirish uchun tugmani yana bosing — jarayon saqlangan joyidan davom etadi.":collectSummary.sourcesFailed===0&&!pendingMayRemain&&processedSummary.translated===processedSummary.processed?"Barcha manbalar tekshirildi va navbatdagi maqolalar qayta ishlandi.":"Manbalar tekshirildi. Ayrim manba yoki maqolalarda xatolik bor yoxud maqolalar navbati davom etmoqda.");
   }catch(e){setNotice(e instanceof Error?e.message:"Jarayonda xatolik.");}
   finally{setPipelineBusy(false);}
  }
