@@ -13,6 +13,13 @@ function localParts(date = new Date()) {
   }).formatToParts(date);
   return Object.fromEntries(parts.map(p => [p.type, p.value])) as Record<string,string>;
 }
+function toCyrillic(input: string) {
+  const pairs: Array<[string,string]> = [["o‘","ў"],["g‘","ғ"],["sh","ш"],["ch","ч"],["yo","йў"],["yu","ю"],["ya","я"],["ng","нг"],["a","а"],["b","б"],["d","д"],["e","е"],["f","ф"],["g","г"],["h","ҳ"],["i","и"],["j","ж"],["k","к"],["l","л"],["m","м"],["n","н"],["o","о"],["p","п"],["q","қ"],["r","р"],["s","с"],["t","т"],["u","у"],["v","в"],["x","х"],["y","й"],["z","з"],["c","ц"]];
+  let value=input;
+  for(const [latin,cyr] of pairs) value=value.replace(new RegExp(latin,"gi"),match=>match===match.toUpperCase()?cyr.toUpperCase():cyr);
+  return value;
+}
+function localized(text: string, language: string) { return language==="uz-cyrl" ? toCyrillic(text) : text; }
 function season(month: number) {
   if ([12,1,2].includes(month)) return "qish";
   if ([3,4,5].includes(month)) return "bahor";
@@ -86,7 +93,7 @@ async function run(request: Request) {
     let payload:Record<string,unknown>={};
     if(type==="motivation"){
       const month=Number(parts.month);
-      const messages=recipients.map(r=>({chatId:r.chatId,text:motivation(r.language,parts.weekday,month,r.categories)}));
+      const messages=recipients.map(r=>({chatId:r.chatId,text:localized(motivation(r.language,parts.weekday,month,r.categories),r.language)}));
       payload={kind:type,weekday:parts.weekday,season:season(month)};
       let sent=0,errors:string[]=[];
       for(const m of messages){try{await sendTelegram(token,m.chatId,m.text);sent++;}catch(e){errors.push(m.chatId+": "+(e instanceof Error?e.message:"send failed"));}}
@@ -100,7 +107,7 @@ async function run(request: Request) {
       const weather=await wx.json(), current=weather.current, daily=weather.daily;
       if(!current||!daily) throw new Error("Ob-havo ma’lumoti to‘liq emas.");
       let sent=0,errors:string[]=[];
-      for(const r of recipients){try{await sendTelegram(token,r.chatId,weatherText(r.language,city,current,daily));sent++;}catch(e){errors.push(r.chatId+": "+(e instanceof Error?e.message:"send failed"));}}
+      for(const r of recipients){try{await sendTelegram(token,r.chatId,localized(weatherText(r.language,city,current,daily),r.language));sent++;}catch(e){errors.push(r.chatId+": "+(e instanceof Error?e.message:"send failed"));}}
       payload={kind:type,city,current,daily,illustration:"weather emoji; AI image generation disabled to preserve free budget"};
       await db.from("news_daily_posts").update({status:errors.length?(sent?"partial":"failed"):"sent",recipients_sent:sent,payload:{...payload,errors},sent_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("id",postId);
       return NextResponse.json({ok:!errors.length,type,slot,sent,city,weather:current,aiImageGenerated:false,errors});
@@ -116,8 +123,8 @@ async function run(request: Request) {
       let sent=0,errors:string[]=[];
       for(const r of recipients){
         const text=r.language==="ru"
-          ?"💱 КУРС ВАЛЮТ ЦБ Узбекистана\n\n🇺🇸 1 USD = "+Number(usd.Rate).toLocaleString("ru-RU")+" сум\n\n"+lines.join("\n")+"\n\nДата курса: "+usd.Date
-          :"💱 O‘ZBEKISTONDA VALYUTA KURSLARI\n\n🇺🇸 1 AQSh dollari (USD)\n"+Number(usd.Rate).toLocaleString("uz-UZ")+" SO‘M\n\n"+lines.join("\n")+"\n\nManba: O‘zbekiston Markaziy banki · "+usd.Date;
+          ?"💱 КУРС ВАЛЮТ ЦБ Узбекистана\\n\\n🇺🇸 1 USD = "+Number(usd.Rate).toLocaleString("ru-RU")+" сум\\n\\n"+lines.join("\\n")+"\\n\\nДата курса: "+usd.Date
+          :localized("💱 O‘ZBEKISTONDA VALYUTA KURSLARI\\n\\n🇺🇸 1 AQSh dollari (USD)\\n"+Number(usd.Rate).toLocaleString("uz-UZ")+" SO‘M\\n\\n"+lines.join("\\n")+"\\n\\nManba: O‘zbekiston Markaziy banki · "+usd.Date,r.language);
         try{await sendTelegram(token,r.chatId,text);sent++;}catch(e){errors.push(r.chatId+": "+(e instanceof Error?e.message:"send failed"));}
       }
       payload={kind:type,usd,otherRates:lines};
