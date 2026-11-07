@@ -5,7 +5,7 @@ export const maxDuration = 60;
 
 type Translation = { title: string; summary: string };
 type EditorialResult = { publish: boolean; reason?: string; uz_latn: Translation; uz_cyrl: Translation; ru: Translation };
-type Article = { id: string; title: string; summary: string | null; source_name: string; source_url: string; image_url: string | null; video_url: string | null; category: string; status: string };
+type Article = { id: string; title: string; summary: string | null; source_name: string; source_url: string; image_url: string | null; video_url: string | null; category: string; status: string; processing_attempts: number; processing_started_at: string | null };
 type ArticleContext = { description: string; body: string };
 const topicRules: Record<string,{parents:string[];terms:string[]}> = {
  "O‘zbekiston qonunchiligi":{parents:["O‘zbekiston"],terms:["qonun","qonunchilik","kodeks","qaror","farmon","normativ"]},
@@ -198,24 +198,38 @@ export async function GET(request: Request) {
   // one matching story while the public channel received the whole batch.
   const interestedCategories = [...new Set(chats.flatMap(chat => parentCategories(chat.categories)))];
   if (!interestedCategories.length) return NextResponse.json({ ok: true, processed: 0, message: "Faol obunachilar hali mavzu tanlamagan." });
+  const nowIso = new Date().toISOString();
+  const staleBefore = new Date(Date.now() - 15 * 60 * 1000).toISOString();
   const { data: candidates, error } = await db.from("news_articles")
-    .select("id,title,summary,source_name,source_url,image_url,video_url,category,status")
+    .select("id,title,summary,source_name,source_url,image_url,video_url,category,status,processing_attempts,processing_started_at")
     .eq("status", "pending_translation").in("category", interestedCategories)
-    .order("published_at", { ascending: false }).limit(40);
+    .lte("processing_next_attempt_at", nowIso)
+    .or("processing_started_at.is.null,processing_started_at.lt." + staleBefore)
+    .order("published_at", { ascending: false }).limit(100);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   const articles = (candidates || []) as Article[];
-  const eligible = articles.find(article => chats.some(chat => matchesTopics(article, chat.categories)));
-  if (!eligible) {
-    const irrelevant = articles.filter(article => !chats.some(chat => matchesTopics(article, chat.categories)));
-    if (irrelevant.length) await db.from("news_articles").update({ status: "draft", ai_analysis: "Avtomatik mavzu filtri: faol Telegram obunachilarining tanloviga mos kelmadi." }).in("id", irrelevant.map(article => article.id));
-    return NextResponse.json({ ok: true, processed: 0, skippedIrrelevant: irrelevant.length, message: "Tanlangan mavzularga mos maqola topilmadi." });
+  const eligible = articles.filter(article => chats.some(chat => matchesTopics(article, chat.categories)));
+  const irrelevant = articles.filter(article => !chats.some(chat => matchesTopics(article, chat.categories)));
+  if (irrelevant.length) await db.from("news_articles")
+    .update({ status: "draft", processing_started_at: null, ai_analysis: "Avtomatik mavzu filtri: faol Telegram obunachilarining tanloviga mos kelmadi." })
+    .in("id", irrelevant.map(article => article.id));
+  const selectedArticles = eligible.slice(0, 2);
+  if (!selectedArticles.length) {
+    return NextResponse.json({ ok: true, processed: 0, skippedIrrelevant: irrelevant.length, pendingMatched: 0, message: "Tanlangan mavzularga mos, qayta ishlashga tayyor maqola topilmadi." });
   }
-  const selectedArticles = [eligible];
 
   const model = process.env.IJOD_NEWS_TRANSLATION_MODEL || process.env.IJOD_NEWS_MODEL || "gpt-6-luna";
   const outcomes: Array<{ id: string; translated: boolean; telegramSent: number; channelMessagesSent?: number; error?: string }> = [];
 
   for (const raw of selectedArticles) {
+    const claimTime = new Date().toISOString();
+    const claimStaleBefore = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    const { data: claim } = await db.from("news_articles")
+      .update({ processing_started_at: claimTime })
+      .eq("id", raw.id).eq("status", "pending_translation")
+      .or("processing_started_at.is.null,processing_started_at.lt." + claimStaleBefore)
+      .select("id").maybeSingle();
+    if (!claim) continue;
     try {
       const cleanTitle = raw.title.replace(/[^\p{L}\p{N}]+/gu, " ").trim();
       const titleWords = cleanTitle.split(/\s+/).filter(Boolean);
@@ -229,7 +243,7 @@ export async function GET(request: Request) {
       }
       if (meaningfulWords.length < 2 ||
           /^(?:[A-Z]{2,6}\s*\(?[A-Z]{1,4}\)?\s*\d{1,4}|untitled|no title|news update)$/i.test(raw.title.trim())) {
-        await db.from("news_articles").update({ status: "draft" }).eq("id", raw.id);
+        await db.from("news_articles").update({ status: "draft", processing_started_at: null, processing_last_error: "Sarlavha yoki mazmun yetarlicha aniq emas." }).eq("id", raw.id);
         outcomes.push({ id: raw.id, translated: false, telegramSent: 0, error: "Sarlavha yoki mazmun yetarlicha aniq emas — nashrdan chiqarildi." });
         continue;
       }
@@ -260,7 +274,7 @@ export async function GET(request: Request) {
           .map((part: { text?: string }) => part.text || "").join(" ").trim();
         const parsed = JSON.parse(output) as EditorialResult;
         if (parsed.publish !== true) {
-          await db.from("news_articles").update({ status: "draft" }).eq("id", raw.id);
+          await db.from("news_articles").update({ status: "draft", processing_started_at: null, processing_last_error: String(parsed.reason || "Tahrir filtri rad etdi.").slice(0, 500) }).eq("id", raw.id);
           outcomes.push({ id: raw.id, translated: false, telegramSent: 0, error: "Tahrir filtri: " + String(parsed.reason || "yangilik aniq va tushunarli emas").slice(0, 180) });
           continue;
         }
@@ -275,7 +289,7 @@ export async function GET(request: Request) {
         }
       }
 
-      const { error: publishError } = await db.from("news_articles").update({ status: "published" }).eq("id", raw.id);
+      const { error: publishError } = await db.from("news_articles").update({ status: "published", processing_started_at: null, processing_attempts: 0, processing_next_attempt_at: new Date().toISOString(), processing_last_error: null }).eq("id", raw.id);
       if (publishError) throw new Error("Maqolani nashr qilish: " + publishError.message);
 
       let telegramSent = 0;
@@ -319,13 +333,21 @@ export async function GET(request: Request) {
     } catch (e) {
       const message = e instanceof Error ? e.message : "Processing failed";
       console.error("News processing failed", raw.id, message);
+      const attempts = Number(raw.processing_attempts || 0) + 1;
+      const delayMinutes = Math.min(360, 5 * Math.pow(2, Math.min(attempts - 1, 6)));
+      await db.from("news_articles").update({
+        processing_attempts: attempts,
+        processing_next_attempt_at: new Date(Date.now() + delayMinutes * 60 * 1000).toISOString(),
+        processing_last_error: message.slice(0, 1000),
+        processing_started_at: null
+      }).eq("id", raw.id);
       outcomes.push({ id: raw.id, translated: false, telegramSent: 0, error: message });
     }
   }
 
   return NextResponse.json({
     ok: outcomes.every(x => x.translated), phase: "translate_and_deliver",
-    model, processed: outcomes.length, translated: outcomes.filter(x => x.translated).length,
+    model, processed: outcomes.length, batchLimit: 2, pendingMatched: eligible.length, skippedIrrelevant: irrelevant.length, translated: outcomes.filter(x => x.translated).length,
     telegramMessagesSent: outcomes.reduce((sum, x) => sum + x.telegramSent, 0),
     channelConfigured: Boolean(channelChatId),
     channelMessagesSent: outcomes.reduce((sum, x) => sum + Number(x.channelMessagesSent || 0), 0), outcomes
