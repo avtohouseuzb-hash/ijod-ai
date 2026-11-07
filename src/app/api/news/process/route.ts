@@ -6,7 +6,94 @@ export const maxDuration = 60;
 type Translation = { title: string; summary: string };
 type EditorialResult = { publish: boolean; reason?: string; uz_latn: Translation; uz_cyrl: Translation; ru: Translation };
 type Article = { id: string; title: string; summary: string | null; source_name: string; source_url: string; image_url: string | null; video_url: string | null; category: string; status: string };
-type ArticleContext = { description: string; body: string };
+type ArticleContext = { description: string; body: string };\nconst topicRules: Record<string,{parents:string[];terms:string[]}> = {
+ "O‘zbekiston qonunchiligi":{parents:["O‘zbekiston"],terms:["qonun","qonunchilik","kodeks","qaror","farmon","normativ"]},
+ "Xalqaro huquq":{parents:["Jahon"],terms:["xalqaro huquq","xalqaro sud","human rights","international law"]},
+ "Sud va huquqiy amaliyot":{parents:["O‘zbekiston","Jahon"],terms:["sud","sudya","sudlov","prokuror","advokat"]},
+ "Normativ hujjatlar":{parents:["O‘zbekiston"],terms:["qaror","farmon","nizom","normativ","hujjat"]},
+ "Fizika":{parents:["Fan"],terms:["fizika","physics","kvant","energiya"]},
+ "Kimyo":{parents:["Fan"],terms:["kimyo","chemical","molekula","reaksiya"]},
+ "Matematika":{parents:["Fan"],terms:["matematika","matematik","math","formula","polinom"]},
+ "Biologiya":{parents:["Fan"],terms:["biologiya","biologik","hujayra","gen","organizm"]},
+ "Astronomiya":{parents:["Fan"],terms:["astronomiya","kosmos","sayyora","yulduz","teleskop"]},
+ "Geologiya":{parents:["Fan"],terms:["geologiya","yer qobig‘i","mineral","vulqon"]},
+ "Ekologiya":{parents:["Fan"],terms:["ekologiya","iqlim","atrof-muhit","o‘rmon","ifloslanish"]},
+ "Sun’iy intellekt":{parents:["AI va IT"],terms:["sun’iy intellekt","artificial intelligence","ai model","gpt","gemini","machine learning"]},
+ "Dasturlash":{parents:["AI va IT"],terms:["dasturlash","programming","software","developer","kod"]},
+ "Kiberxavfsizlik":{parents:["AI va IT"],terms:["kiberxavfsizlik","cybersecurity","hacker","ma’lumotlar sizishi"]},
+ "Robototexnika":{parents:["AI va IT"],terms:["robot","robototexnika","robotics"]},
+ "IT kompaniyalar":{parents:["AI va IT","Biznes"],terms:["tech company","texnologiya kompaniyasi","apple","google","microsoft","nvidia"]},
+ "Startap texnologiyalari":{parents:["AI va IT","Biznes"],terms:["startap","startup","venture capital"]},
+ "Davlat":{parents:["O‘zbekiston"],terms:["hukumat","vazir","prezident","davlat","hokim"]},
+ "Jamiyat":{parents:["O‘zbekiston"],terms:["jamiyat","aholi","fuqaro","ijtimoiy"]},
+ "Hududlar":{parents:["O‘zbekiston"],terms:["viloyat","tuman","shahar","hudud"]},
+ "Ijtimoiy yangiliklar":{parents:["O‘zbekiston"],terms:["ijtimoiy","nafaqa","pensiya","bandlik"]},
+ "Siyosat":{parents:["O‘zbekiston","Jahon"],terms:["siyosat","saylov","parlament","siyosiy"]},
+ "Jahon yangiliklari":{parents:["Jahon"],terms:["xalqaro","dunyo","jahon"]},
+ "Geosiyosat":{parents:["Jahon"],terms:["geosiyosat","geopolitical","sanksiya","diplomatiya"]},
+ "Xalqaro munosabatlar":{parents:["Jahon"],terms:["xalqaro munosabat","elchi","sammit","tashqi ishlar"]},
+ "Davlatlar":{parents:["Jahon"],terms:["davlat","mamlakat","country"]},
+ "Jahon iqtisodiyoti":{parents:["Iqtisodiyot"],terms:["jahon iqtisodiyoti","global economy","iqtisodiyot"]},
+ "Bozorlar":{parents:["Iqtisodiyot"],terms:["bozor","birja","aksiyalar","market"]},
+ "Savdo":{parents:["Iqtisodiyot"],terms:["savdo","eksport","import","bojxona"]},
+ "Sanoat":{parents:["Iqtisodiyot"],terms:["sanoat","zavod","ishlab chiqarish"]},
+ "Makroiqtisodiyot":{parents:["Iqtisodiyot"],terms:["inflyatsiya","yalpi ichki mahsulot","foiz stavkasi","makroiqtisodiyot"]},
+ "Bank":{parents:["Iqtisodiyot"],terms:["bank","markaziy bank"]},
+ "Kredit":{parents:["Iqtisodiyot"],terms:["kredit","qarz","ipoteka"]},
+ "Investitsiya":{parents:["Iqtisodiyot","Biznes"],terms:["investitsiya","investor","investment"]},
+ "Soliq":{parents:["Iqtisodiyot"],terms:["soliq","soliqchi","tax"]},
+ "Sug‘urta":{parents:["Iqtisodiyot"],terms:["sug‘urta","insurance"]},
+ "Fintech":{parents:["Iqtisodiyot","AI va IT"],terms:["fintech","raqamli to‘lov","to‘lov tizimi"]},
+ "Qurilish texnologiyalari":{parents:["Iqtisodiyot"],terms:["qurilish","bino","inshoot"]},
+ "Kadastr":{parents:["O‘zbekiston","Iqtisodiyot"],terms:["kadastr","yer uchastkasi"]},
+ "Qurilish materiallari":{parents:["Iqtisodiyot"],terms:["sement","beton","qurilish materiali"]},
+ "Me’yorlar":{parents:["O‘zbekiston"],terms:["qurilish me’yori","standart","qurilish qoidasi"]},
+ "Uy-joy bozori":{parents:["Iqtisodiyot"],terms:["uy-joy","ko‘chmas mulk","kvartira"]},
+ "Ijara":{parents:["Iqtisodiyot"],terms:["ijara","rent"]},
+ "Ipoteka":{parents:["Iqtisodiyot"],terms:["ipoteka","mortgage"]},
+ "Arxitektura":{parents:["Iqtisodiyot"],terms:["arxitektura","me’morchilik"]},
+ "Mebel":{parents:["Iqtisodiyot"],terms:["mebel","furniture"]},
+ "Interyer":{parents:["Iqtisodiyot"],terms:["interyer","interior"]},
+ "Eksteryer":{parents:["Iqtisodiyot"],terms:["eksteryer","exterior"]},
+ "Dizayn materiallari":{parents:["Iqtisodiyot"],terms:["dizayn","design material"]},
+ "Avtomobil":{parents:["Iqtisodiyot"],terms:["avtomobil","mashina","car","auto"]},
+ "Maishiy texnika":{parents:["Iqtisodiyot"],terms:["maishiy texnika","kir yuvish","muzlatkich"]},
+ "Ishlab chiqarish":{parents:["Iqtisodiyot"],terms:["ishlab chiqarish","manufacturing"]},
+ "Transport":{parents:["Iqtisodiyot"],terms:["transport","temir yo‘l","aviatsiya"]},
+ "Ta’lim texnologiyalari":{parents:["Fan"],terms:["edtech","ta’lim texnologiyasi","onlayn ta’lim"]},
+ "Yangi metodlar":{parents:["Fan"],terms:["ta’lim metodi","pedagogika","o‘qitish usuli"]},
+ "Ilmiy tadqiqotlar":{parents:["Fan"],terms:["tadqiqot","research","ilmiy ish","study"]},
+ "Oliy ta’lim":{parents:["Fan","O‘zbekiston"],terms:["universitet","oliy ta’lim","talaba"]},
+ "Tarix":{parents:["Jahon","O‘zbekiston"],terms:["tarix","history"]},
+ "Kitoblar":{parents:["Jahon"],terms:["kitob","book","adabiyot"]},
+ "Kino":{parents:["Jahon"],terms:["kino","film","movie"]},
+ "San’at":{parents:["Jahon"],terms:["san’at","art","muzey"]},
+ "Hajviya":{parents:["Jahon"],terms:["hajviya","satira","komediya"]},
+ "Trendlar":{parents:["Jahon","AI va IT"],terms:["trend","viral","trendlar"]},
+ "Qiziqarli faktlar":{parents:["Fan","Jahon"],terms:["qiziqarli fakt","interesting fact"]},
+ "Fantastika":{parents:["Jahon"],terms:["fantastika","fantasy","science fiction"]},
+ "Tadbirkorlik":{parents:["Biznes"],terms:["tadbirkor","entrepreneur","biznes"]},
+ "Marketing":{parents:["Biznes"],terms:["marketing","reklama","brend"]},
+ "Menejment":{parents:["Biznes"],terms:["menejment","boshqaruv","management"]},
+ "Biznes yangiliklari":{parents:["Biznes"],terms:["kompaniya","biznes","korxona"]},
+ "Tibbiyot":{parents:["Fan"],terms:["tibbiyot","tibbiy","medical","kasallik"]},
+ "Ilmiy izlanishlar":{parents:["Fan"],terms:["ilmiy izlanish","tadqiqot","research"]},
+ "Sog‘lom turmush":{parents:["Fan"],terms:["sog‘lom turmush","salomatlik","nutrition","fitness"]}
+};
+function matchesTopics(article: Article, selected: string[]) {
+  if (!selected.length) return true;
+  const text = (article.title + " " + (article.summary || "")).toLocaleLowerCase();
+  return selected.some(topic => {
+    const rule = topicRules[topic];
+    if (!rule) return topic === article.category;
+    return rule.parents.includes(article.category) && rule.terms.some(term => text.includes(term.toLocaleLowerCase()));
+  });
+}
+function parentCategories(selected: string[]) {
+  const parents = selected.flatMap(topic => topicRules[topic]?.parents || [topic]);
+  return [...new Set(parents)];
+}
+
 async function fetchArticleContext(articleUrl: string): Promise<ArticleContext> {
   try {
     const response = await fetch(articleUrl, {
@@ -54,7 +141,7 @@ export async function GET(request: Request) {
   // Select news for subscriber interests first. A global LIMIT(5) used to let
   // unrelated categories fill the queue, so private subscribers received only
   // one matching story while the public channel received the whole batch.
-  const interestedCategories = [...new Set(chats.flatMap(chat => chat.categories))];
+  const interestedCategories = [...new Set(chats.flatMap(chat => parentCategories(chat.categories)))];
   let articleQuery = db.from("news_articles")
     .select("id,title,summary,source_name,source_url,image_url,video_url,category,status")
     .eq("status", "pending_translation").order("published_at", { ascending: false });
@@ -134,7 +221,7 @@ export async function GET(request: Request) {
           ...(raw.video_url ? [[{ text: "▶️ Videoni ko‘rish", url: raw.video_url }]] : []),
           [{ text: "📰 IJOD AI News’da ochish", url: (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app") + "/news" }]];
         for (const chat of chats) {
-          if (chat.categories.length && !chat.categories.includes(raw.category)) continue;
+          if (chat.categories.length && !matchesTopics(raw, chat.categories)) continue;
           const item = variants.get(chat.language) || variants.get("uz-latn") || { title: raw.title, summary: raw.summary || "" };
           const caption = ("📰 " + item.title + "\n\n" + item.summary + "\n\nManba: " + raw.source_name).slice(0, 1000);
           const method = raw.image_url ? "sendPhoto" : "sendMessage";
