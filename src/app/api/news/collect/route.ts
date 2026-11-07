@@ -49,7 +49,7 @@ async function articleOgImage(articleUrl: string) {
     const response = await fetch(articleUrl, {
       headers: { "User-Agent": "Mozilla/5.0 (compatible; IJODAI-NewsBot/1.0)", "Accept": "text/html,application/xhtml+xml" },
       redirect: "follow",
-      signal: AbortSignal.timeout(3500)
+      signal: AbortSignal.timeout(2500)
     });
     if (!response.ok) return null;
     const html = (await response.text()).slice(0, 400000);
@@ -105,7 +105,7 @@ export async function GET(request: Request) {
   const db = createClient(url, key, { auth: { persistSession: false } });
   const requestUrl = new URL(request.url);
   const offset = Math.max(0, Number(requestUrl.searchParams.get("offset") || 0));
-  const batchSize = Math.min(10, Math.max(1, Number(requestUrl.searchParams.get("limit") || 10)));
+  const batchSize = Math.min(5, Math.max(1, Number(requestUrl.searchParams.get("limit") || 5)));
   const { data: sources, error } = await db.from("news_sources")
     .select("id,name,feed_url,category,language").eq("enabled", true)
     .order("id", { ascending: true }).range(offset, offset + batchSize - 1);
@@ -115,7 +115,7 @@ export async function GET(request: Request) {
     try {
       const response = await fetch(source.feed_url, {
         headers: { "User-Agent": "IJODAI-NewsBot/1.0", "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml" },
-        signal: AbortSignal.timeout(3500)
+        signal: AbortSignal.timeout(2500)
       });
       if (!response.ok) return { source: source.name, ok: false, reason: "HTTP " + response.status, found: 0, inserted: 0 };
       const xml = await response.text();
