@@ -388,9 +388,6 @@ export async function GET(request: Request) {
       let telegramSent = 0;
       let channelMessagesSent = 0;
       if (botToken) {
-        const buttons = [[{ text: "🔗 To‘liq yangilik", url: raw.source_url }],
-          ...(raw.video_url ? [[{ text: "▶️ Videoni ko‘rish", url: raw.video_url }]] : []),
-          [{ text: "📰 IJOD AI News’da ochish", url: (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app") + "/news" }]];
         const privateRecipients = chats.filter(chat => matchesTopics(raw, chat.categories));
         const recipients = [
           ...privateRecipients.map(chat => ({ ...chat, isChannel: false })),
