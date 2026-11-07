@@ -39,13 +39,34 @@ export default function NewsAdminPage(){
     if(!data.hasMore)break;
     if(i===19)throw new Error("Xavfsizlik limiti: 20 ta guruhdan keyin jarayon to‘xtatildi. Qolgan manbalarni keyingi urinishda davom ettiring.");
    }
-   const response=await fetch("/api/news/run?phase=process",{method:"POST",headers});
-   const raw=await response.text();let processed:any;
-   try{processed=raw?JSON.parse(raw):{};}catch{throw new Error("Tarjima serveri JSON qaytarmadi (HTTP "+response.status+").");}
-   if(!response.ok)throw new Error(processed.error||processed.message||"Tarjima jarayonida xatolik (HTTP "+response.status+").");
+   const processBatches:any[]=[];
+   let pendingMayRemain=true;
+   for(let i=0;i<5&&pendingMayRemain;i++){
+    const response=await fetch("/api/news/run?phase=process",{method:"POST",headers});
+    const raw=await response.text();let processed:any;
+    try{processed=raw?JSON.parse(raw):{};}catch{throw new Error("Tarjima serveri JSON qaytarmadi (HTTP "+response.status+").");}
+    if(!response.ok)throw new Error(processed.error||processed.message||"Tarjima jarayonida xatolik (HTTP "+response.status+").");
+    const result=processed.steps?.process||processed;
+    processBatches.push(result);
+    const count=Number(result.processed||0);
+    const translated=Number(result.translated||0);
+    // The process endpoint takes up to 10 pending articles per call.
+    // Stop when the queue is exhausted or when a batch made no progress,
+    // so a repeatedly failing article cannot create an endless loop.
+    pendingMayRemain=count>=10&&translated>0;
+    if(count===0)pendingMayRemain=false;
+   }
+   const processedSummary={
+    batches:processBatches.length,
+    processed:processBatches.reduce((n,x)=>n+Number(x.processed||0),0),
+    translated:processBatches.reduce((n,x)=>n+Number(x.translated||0),0),
+    telegramMessagesSent:processBatches.reduce((n,x)=>n+Number(x.telegramMessagesSent||0),0),
+    remainingMayExist:pendingMayRemain,
+    outcomes:processBatches.flatMap(x=>x.outcomes||[])
+   };
    const collectSummary={sourcesChecked:batches.reduce((n,x)=>n+Number(x.sourcesChecked||0),0),sourcesOk:batches.reduce((n,x)=>n+Number(x.sourcesOk||0),0),sourcesFailed:batches.reduce((n,x)=>n+Number(x.sourcesFailed||0),0),itemsFound:batches.reduce((n,x)=>n+Number(x.itemsFound||0),0),articlesInserted:batches.reduce((n,x)=>n+Number(x.articlesInserted||0),0),duplicateItemsSkipped:batches.reduce((n,x)=>n+Number(x.duplicateItemsSkipped||0),0),failedSources:batches.flatMap(x=>x.failedSources||[])};
-   setPipelineResult({collect:collectSummary,process:processed});
-   setNotice(collectSummary.sourcesFailed===0&&processed.ok?"Barcha manbalar tekshirildi, maqolalar qayta ishlandi.":"Jarayon tugadi, ayrim manba yoki maqolalarda xatolik bor. Natijalarni tekshiring.");
+   setPipelineResult({collect:collectSummary,process:processedSummary});
+   setNotice(collectSummary.sourcesFailed===0&&!pendingMayRemain&&processedSummary.translated===processedSummary.processed?"Barcha manbalar tekshirildi va navbatdagi maqolalar qayta ishlandi.":"Jarayon qisman bajarildi. Ayrim manba yoki maqolalarda xatolik bor yoxud navbat davom etmoqda.");
   }catch(e){setNotice(e instanceof Error?e.message:"Jarayonda xatolik.");}
   finally{setPipelineBusy(false);}
  }
