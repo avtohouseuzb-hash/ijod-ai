@@ -68,12 +68,12 @@ async function executePipeline(request: Request, skipCronAuth = false) {
       }
     }
     const processResponse = await fetch(base + "/api/news/process", { headers, cache: "no-store", signal: AbortSignal.timeout(45000) });
-    const process = await readResponse(processResponse);
-    steps.process = process;
-    if (!processResponse.ok || process.error) {
+    const processResult = await readResponse(processResponse);
+    steps.process = processResult;
+    if (!processResponse.ok || processResult.error) {
       return NextResponse.json({ ok: false, phase, steps }, { status: 502 });
     }
-    return NextResponse.json({ ok: Boolean(process.ok), phase, steps });
+    return NextResponse.json({ ok: Boolean(processResult.ok), phase, steps });
   } catch (error) {
     return NextResponse.json({
       ok: false,
