@@ -81,18 +81,35 @@ const topicRules: Record<string,{parents:string[];terms:string[]}> = {
  "Ilmiy izlanishlar":{parents:["Fan"],terms:["ilmiy izlanish","tadqiqot","research"]},
  "Sog‘lom turmush":{parents:["Fan"],terms:["sog‘lom turmush","salomatlik","nutrition","fitness"]}
 };
-function matchesTopics(article: Article, selected: string[]) {
-  if (!selected.length) return true;
-  const text = (article.title + " " + (article.summary || "")).toLocaleLowerCase();
-  return selected.some(topic => {
-    const rule = topicRules[topic];
-    if (!rule) return topic === article.category;
-    return rule.parents.includes(article.category) && rule.terms.some(term => text.includes(term.toLocaleLowerCase()));
-  });
-}
+const mainCategoryParents: Record<string, string[]> = {
+  "Huquq": ["O‘zbekiston"],
+  "Fan": ["Fan"],
+  "AI va IT": ["AI va IT"],
+  "O‘zbekiston": ["O‘zbekiston"],
+  "Jahon": ["Jahon"],
+  "Iqtisodiyot": ["Iqtisodiyot"],
+  "Bank va moliya": ["Iqtisodiyot"],
+  "Qurilish": ["Iqtisodiyot"],
+  "Ko‘chmas mulk": ["Iqtisodiyot"],
+  "Mebel va dizayn": ["Iqtisodiyot"],
+  "Texnika": ["AI va IT"],
+  "Ta’lim": ["Fan"],
+  "Madaniyat": ["Jahon"],
+  "Ko‘ngilochar": ["Jahon"],
+  "Biznes": ["Biznes"],
+  "Salomatlik": ["Fan"],
+  "Sport": ["Sport"]
+};
 function parentCategories(selected: string[]) {
-  const parents = selected.flatMap(topic => topicRules[topic]?.parents || [topic]);
-  return [...new Set(parents)];
+  return [...new Set(selected.flatMap(topic =>
+    mainCategoryParents[topic] || topicRules[topic]?.parents || [topic]
+  ))];
+}
+function matchesTopics(article: Article, selected: string[]) {
+  // No interests means no delivery; never interpret an empty selection as "all news".
+  if (!selected.length) return false;
+  const allowedParents = parentCategories(selected);
+  return allowedParents.includes(article.category);
 }
 
 async function fetchArticleContext(articleUrl: string): Promise<ArticleContext> {
@@ -133,11 +150,8 @@ export async function GET(request: Request) {
     categories: Array.isArray(s.categories) ? s.categories : []
   }));
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  const channelChatId = process.env.NEWS_TELEGRAM_CHAT_ID;
-  if (botToken && channelChatId) chats.push({
-    chatId: channelChatId,
-    language: process.env.NEWS_TELEGRAM_CHANNEL_LANGUAGE || "uz-latn", categories: []
-  });
+  // Do not broadcast every article to a public channel: delivery must respect
+  // each subscriber's selected categories. Channel publishing needs a separate explicit opt-in.
 
   // Select news for subscriber interests first. A global LIMIT(5) used to let
   // unrelated categories fill the queue, so private subscribers received only
