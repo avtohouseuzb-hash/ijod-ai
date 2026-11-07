@@ -114,16 +114,28 @@ const categoryExclusions: Record<string, string[]> = {
 };
 const topicTerms: Record<string, string[]> = {
   "Kiberxavfsizlik": ["cybersecurity", "cyber security", "hacker", "ransomware", "data breach", "malware", "vulnerability", "kiberxavfsizlik"],
-  "Ko‘chmas mulk": ["real estate", "property", "housing", "mortgage", "rent", "apartment", "ko‘chmas mulk", "ipoteka", "uy-joy"],
-  "Texnika": ["technology", "tech", "device", "smartphone", "electronics", "automotive", "car", "maishiy texnika", "texnika"]
+  "Ko‘chmas mulk": ["real estate", "property market", "housing market", "mortgage", "rent", "apartment", "property prices", "ko‘chmas mulk", "ipoteka", "uy-joy bozori", "ijara"],
+  "Texnika": ["technology", "tech", "device", "smartphone", "electronics", "automotive", "car", "maishiy texnika", "gadjet", "texnika"],
+  "Bank va moliya": ["bank", "central bank", "interest rate", "loan", "credit", "finance", "fintech", "investment", "stock market", "soliq", "sug‘urta"],
+  "Qurilish": ["construction", "building", "infrastructure", "cement", "concrete", "real estate development", "qurilish", "kadastr"],
+  "Mebel va dizayn": ["furniture", "interior design", "exterior design", "architecture", "interyer", "mebel", "dizayn"],
+  "Ta’lim": ["education", "university", "school", "student", "teaching", "higher education", "ta’lim", "universitet"],
+  "Salomatlik": ["health", "medical", "medicine", "hospital", "disease", "healthcare", "tibbiyot", "salomatlik"],
+  "Madaniyat": ["culture", "history", "book", "literature", "art", "museum", "tarix", "madaniyat", "san’at"],
+  "Ko‘ngilochar": ["entertainment", "celebrity", "music", "film", "movie", "cinema", "tv show", "streaming", "ko‘ngilochar"],
+  "Huquq": ["law", "legal", "court", "judge", "legislation", "regulation", "qonun", "sud", "huquq"],
+  "Fan": ["science", "scientific", "research", "physics", "chemistry", "biology", "astronomy", "fan", "tadqiqot"],
+  "Sport": ["sport", "football", "soccer", "basketball", "tennis", "boxing", "formula 1", "cricket", "athlete", "championship"]
 };
+const broadTopics = new Set(["O‘zbekiston", "Jahon", "AI va IT", "Iqtisodiyot", "Biznes"]);
 function matchesTopics(article: Article, selected: string[]) {
   if (!selected.length || !parentCategories(selected).includes(article.category)) return false;
   const text = (article.title + " " + (article.summary || "")).toLocaleLowerCase();
   if ((categoryExclusions[article.category] || []).some(term => text.includes(term))) return false;
   const specific = selected.filter(topic => topicTerms[topic]);
-  const direct = selected.some(topic => mainCategoryParents[topic]?.includes(article.category));
+  const direct = selected.some(topic => broadTopics.has(topic) && mainCategoryParents[topic]?.includes(article.category));
   if (!direct && specific.length && !specific.some(topic => topicTerms[topic].some(term => text.includes(term)))) return false;
+  if (!direct && !specific.length) return false;
   return true;
 }
 
