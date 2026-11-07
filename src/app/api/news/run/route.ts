@@ -33,8 +33,8 @@ async function executePipeline(request: Request) {
     if (phase === "collect") {
       const collectUrl = new URL(base + "/api/news/collect");
       collectUrl.searchParams.set("offset", String(offset));
-      collectUrl.searchParams.set("limit", "10");
-      const collectResponse = await fetch(collectUrl, { headers, cache: "no-store", signal: AbortSignal.timeout(45000) });
+      collectUrl.searchParams.set("limit", "5");
+      const collectResponse = await fetch(collectUrl, { headers, cache: "no-store", signal: AbortSignal.timeout(20000) });
       const collect = await readResponse(collectResponse);
       steps.collect = collect;
       if (!collectResponse.ok || collect.error) {
@@ -43,7 +43,7 @@ async function executePipeline(request: Request) {
       return NextResponse.json({ ok: Boolean(collect.ok), phase: "collect", offset, nextOffset: collect.nextOffset, hasMore: collect.hasMore, steps });
     }
     if (phase !== "process") return NextResponse.json({ error: "Noto‘g‘ri phase" }, { status: 400 });
-    const processResponse = await fetch(base + "/api/news/process", { headers, cache: "no-store", signal: AbortSignal.timeout(55000) });
+    const processResponse = await fetch(base + "/api/news/process", { headers, cache: "no-store", signal: AbortSignal.timeout(45000) });
     const process = await readResponse(processResponse);
     steps.process = process;
     if (!processResponse.ok || process.error) {
