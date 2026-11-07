@@ -26,7 +26,7 @@ const topicGroups: Record<string,string[]> = {
   "Salomatlik":["Tibbiyot","Ilmiy izlanishlar","Sog‘lom turmush"]
 };
 const topicOptions = Object.entries(topicGroups).flatMap(([group, topics]) => topics.map(topic => ({group, topic})));
-const categories = Object.keys(topicGroups);
+const categories = [...Object.keys(topicGroups), "Sport"];
 const parentCategory: Record<string,string> = {
   "Huquq":"O‘zbekiston","Fan":"Fan","AI va IT":"AI va IT","O‘zbekiston":"O‘zbekiston","Jahon":"Jahon",
   "Iqtisodiyot":"Iqtisodiyot","Bank va moliya":"Iqtisodiyot","Qurilish":"Iqtisodiyot","Ko‘chmas mulk":"Iqtisodiyot",
@@ -116,12 +116,12 @@ export async function POST(request: Request) {
       const localized = copy[language];
       await telegram(token, "answerCallbackQuery", { callback_query_id: callback.id, text: "OK" });
       await telegram(token, "sendMessage", { chat_id: chatId, text: localized.saved + "\n\n" + localized.about, reply_markup: aboutKeyboard });
-      await telegram(token, "sendMessage", { chat_id: chatId, text: localized.topics, reply_markup: topicKeyboard(categories) });
+      await telegram(token, "sendMessage", { chat_id: chatId, text: localized.topics, reply_markup: topicKeyboard([]) });
     } else if (data.startsWith("news_group:")) {
       const index = Number(data.slice("news_group:".length));
       const category = categories[index];
       if (!Number.isInteger(index) || !category) return NextResponse.json({ ok: true });
-      const current = Array.isArray(subscription?.categories) ? subscription.categories as string[] : categories;
+      const current = Array.isArray(subscription?.categories) ? subscription.categories as string[] : [];
       const next = current.includes(category)
         ? current.filter(item => item !== category)
         : [...current, category];
@@ -130,11 +130,11 @@ export async function POST(request: Request) {
       await telegram(token, "editMessageReplyMarkup", { chat_id: chatId, message_id: callback.message?.message_id, reply_markup: topicKeyboard(next) });
     } else if (data === "news_topics_back" || data.startsWith("news_topic:")) {
       // Redraw old open keyboards using the main-category-only selection.
-      const selected = Array.isArray(subscription?.categories) ? subscription.categories as string[] : categories;
+      const selected = Array.isArray(subscription?.categories) ? subscription.categories as string[] : [];
       await telegram(token, "answerCallbackQuery", { callback_query_id: callback.id, text: "Mavzular / Темы" });
       await telegram(token, "editMessageReplyMarkup", { chat_id: chatId, message_id: callback.message?.message_id, reply_markup: topicKeyboard(selected) });
     } else if (data === "news_topics_done") {
-      const selected = Array.isArray(subscription?.categories) ? subscription.categories as string[] : categories;
+      const selected = Array.isArray(subscription?.categories) ? subscription.categories as string[] : [];
       if (!selected.length) {
         await telegram(token, "answerCallbackQuery", { callback_query_id: callback.id, text: "Kamida bitta mavzuni tanlang / Выберите хотя бы одну тему", show_alert: true });
       } else {
@@ -162,17 +162,17 @@ export async function POST(request: Request) {
   } else if (text.startsWith("/language")) {
     await telegram(token, "sendMessage", { chat_id: chatId, text: messages.choose, reply_markup: languageKeyboard });
   } else if (text.startsWith("/topics")) {
-    const selected = Array.isArray(subscription?.categories) ? subscription.categories as string[] : categories;
+    const selected = Array.isArray(subscription?.categories) ? subscription.categories as string[] : [];
     await telegram(token, "sendMessage", { chat_id: chatId, text: messages.topics, reply_markup: topicKeyboard(selected) });
   } else if (text.startsWith("/stop")) {
     await db.from("news_telegram_subscriptions").update({ enabled: false, updated_at: new Date().toISOString() }).eq("chat_id", chatId);
     await telegram(token, "sendMessage", { chat_id: chatId, text: messages.stopped });
   } else if (text.startsWith("/latest")) {
-    const selected = Array.isArray(subscription?.categories) ? subscription.categories as string[] : categories;
-    const { data } = await db.from("news_articles")
+    const selected = Array.isArray(subscription?.categories) ? subscription.categories as string[] : [];
+    const { data } = selected.length ? await db.from("news_articles")
       .select("id,title,summary,source_name,source_url,image_url,video_url,category")
       .eq("status", "published").in("category", selectedParentCategories(selected))
-      .order("published_at", { ascending: false }).limit(5);
+      .order("published_at", { ascending: false }).limit(5) : { data: [] };
     const ids = (data || []).map(a => a.id);
     const { data: translations } = ids.length
       ? await db.from("news_translations").select("article_id,title,summary").eq("language", language).in("article_id", ids)
