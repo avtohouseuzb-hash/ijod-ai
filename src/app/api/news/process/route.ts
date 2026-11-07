@@ -116,7 +116,7 @@ async function fetchArticleContext(articleUrl: string): Promise<ArticleContext> 
   try {
     const response = await fetch(articleUrl, {
       headers: { "User-Agent": "Mozilla/5.0 (compatible; IJODAI-NewsBot/1.0)", "Accept": "text/html,application/xhtml+xml" },
-      redirect: "follow", signal: AbortSignal.timeout(5000)
+      redirect: "follow", signal: AbortSignal.timeout(2500)
     });
     if (!response.ok) return { description: "", body: "" };
     const html = (await response.text()).slice(0, 500000);
@@ -161,7 +161,7 @@ export async function GET(request: Request) {
     .select("id,title,summary,source_name,source_url,image_url,video_url,category,status")
     .eq("status", "pending_translation").order("published_at", { ascending: false });
   if (interestedCategories.length) articleQuery = articleQuery.in("category", interestedCategories);
-  const { data: articles, error } = await articleQuery.limit(10);
+  const { data: articles, error } = await articleQuery.limit(2);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!articles?.length) return NextResponse.json({ ok: true, processed: 0, message: "Tanlangan mavzularda tarjima kutayotgan yangi maqola yo‘q." });
 
@@ -203,7 +203,8 @@ export async function GET(request: Request) {
             input: "Evaluate quality using all supplied source material. RSS snippets can be short; do not reject only because they are short. Use the original-page description/body if supplied. Reject only if the headline and available article context are genuinely unrelated, vague, fragmentary, or do not establish a concrete event/finding. Do not invent missing facts. Return JSON with publish, reason, uz_latn, uz_cyrl and ru. " + JSON.stringify({ source: raw.source_name, title: raw.title, rss_summary: raw.summary || "", original_page_description: description, original_article_text: articleBody }),
             text: { format: { type: "json_object" } },
             max_output_tokens: 1800
-          })
+          }),
+          signal: AbortSignal.timeout(18000)
         });
         if (!ai.ok) throw new Error("GPT API: " + (await ai.text()).slice(0, 400));
         const result = await ai.json();
@@ -244,7 +245,8 @@ export async function GET(request: Request) {
             ? { chat_id: chat.chatId, photo: raw.image_url, caption, reply_markup: { inline_keyboard: buttons } }
             : { chat_id: chat.chatId, text: caption, reply_markup: { inline_keyboard: buttons }, disable_web_page_preview: false };
           const sent = await fetch("https://api.telegram.org/bot" + botToken + "/" + method, {
-            method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload)
+            method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(4000)
           });
           const sentJson = await sent.json().catch(() => ({}));
           if (sent.ok && sentJson.ok) telegramSent++;
