@@ -14,7 +14,7 @@ function localParts(date = new Date()) {
   return Object.fromEntries(parts.map(p => [p.type, p.value])) as Record<string,string>;
 }
 function toCyrillic(input: string) {
-  const pairs: Array<[string,string]> = [["o‘","ў"],["g‘","ғ"],["sh","ш"],["ch","ч"],["yo","йў"],["yu","ю"],["ya","я"],["ng","нг"],["a","а"],["b","б"],["d","д"],["e","е"],["f","ф"],["g","г"],["h","ҳ"],["i","и"],["j","ж"],["k","к"],["l","л"],["m","м"],["n","н"],["o","о"],["p","п"],["q","қ"],["r","р"],["s","с"],["t","т"],["u","у"],["v","в"],["x","х"],["y","й"],["z","з"],["c","ц"]];
+  const pairs: Array<[string,string]> = [["o‘","ў"],["g‘","ғ"],["sh","ш"],["ch","ч"],["yo","ё"],["yu","ю"],["ya","я"],["ng","нг"],["a","а"],["b","б"],["d","д"],["e","е"],["f","ф"],["g","г"],["h","ҳ"],["i","и"],["j","ж"],["k","к"],["l","л"],["m","м"],["n","н"],["o","о"],["p","п"],["q","қ"],["r","р"],["s","с"],["t","т"],["u","у"],["v","в"],["x","х"],["y","й"],["z","з"],["c","ц"]];
   let value=input;
   for(const [latin,cyr] of pairs) value=value.replace(new RegExp(latin,"gi"),match=>match===match.toUpperCase()?cyr.toUpperCase():cyr);
   return value;
