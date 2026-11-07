@@ -24,7 +24,7 @@ async function executePipeline(request: Request, skipCronAuth = false) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const base = new URL(request.url).origin;
-  const headers = { authorization: authHeader };
+  const headers = { authorization: request.headers.get("authorization") || "" };
   const requestUrl = new URL(request.url);
   const phase = requestUrl.searchParams.get("phase") || "collect";
   const offset = Math.max(0, Number(requestUrl.searchParams.get("offset") || 0));
@@ -41,23 +41,11 @@ async function executePipeline(request: Request, skipCronAuth = false) {
         };
       }
     };
-    if (phase === "collect") {
-      const collectUrl = new URL(base + "/api/news/collect");
-      collectUrl.searchParams.set("offset", String(offset));
-      collectUrl.searchParams.set("limit", "5");
-      const collectResponse = await fetch(collectUrl, { headers, cache: "no-store", signal: AbortSignal.timeout(20000) });
-      const collect = await readResponse(collectResponse);
-      steps.collect = collect;
-      if (!collectResponse.ok || collect.error) {
-        return NextResponse.json({ ok: false, phase: "collect", steps }, { status: 502 });
-      }
-      return NextResponse.json({ ok: Boolean(collect.ok), phase: "collect", offset, nextOffset: collect.nextOffset, hasMore: collect.hasMore, steps });
-    }
-    if (phase !== "process" && phase !== "cycle") return NextResponse.json({ error: "Noto‘g‘ri phase" }, { status: 400 });
-    if (phase === "cycle") {
+    if (phase !== "collect" && phase !== "process" && phase !== "cycle") return NextResponse.json({ error: "Noto‘g‘ri phase" }, { status: 400 });
+    if (phase === "collect" || phase === "cycle") {
       const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!, { auth: { persistSession: false } });
       const { data: state } = await db.from("news_pipeline_state").select("source_offset").eq("id", true).maybeSingle();
-      const sourceOffset = Math.max(0, Number(state?.source_offset || 0));
+      const sourceOffset = requestUrl.searchParams.has("offset") ? offset : Math.max(0, Number(state?.source_offset || 0));
       const collectUrl = new URL(base + "/api/news/collect");
       collectUrl.searchParams.set("offset", String(sourceOffset));
       collectUrl.searchParams.set("limit", "10");
@@ -72,8 +60,12 @@ async function executePipeline(request: Request, skipCronAuth = false) {
       await db.from("news_pipeline_state").update({
         source_offset: hasMore ? nextOffset : 0,
         last_collect_at: new Date().toISOString(),
-        last_collect_result: collect
+        last_collect_result: collect,
+        updated_at: new Date().toISOString()
       }).eq("id", true);
+      if (phase === "collect") {
+        return NextResponse.json({ ok: Boolean(collect.ok), phase, offset: sourceOffset, nextOffset, hasMore, steps });
+      }
     }
     const processResponse = await fetch(base + "/api/news/process", { headers, cache: "no-store", signal: AbortSignal.timeout(45000) });
     const process = await readResponse(processResponse);
