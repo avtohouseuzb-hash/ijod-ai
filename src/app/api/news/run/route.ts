@@ -44,13 +44,13 @@ async function executePipeline(request: Request) {
     }
     if (phase !== "process") return NextResponse.json({ error: "Noto‘g‘ri phase" }, { status: 400 });
     const processResponse = await fetch(base + "/api/news/process", { headers, cache: "no-store", signal: AbortSignal.timeout(45000) });
-    const process = await readResponse(processResponse);
-    steps.process = process;
-    if (!processResponse.ok || process.error) {
+    const processResult = await readResponse(processResponse);
+    steps.process = processResult;
+    if (!processResponse.ok || processResult.error) {
       return NextResponse.json({ ok: false, phase: "process", steps }, { status: 502 });
     }
     return NextResponse.json({
-      ok: Boolean(process.ok),
+      ok: Boolean(processResult.ok),
       steps
     });
   } catch (error) {
