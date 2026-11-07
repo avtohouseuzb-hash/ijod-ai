@@ -195,8 +195,7 @@ export async function GET(request: Request) {
         const result = await ai.json();
         const output = (result.output || []).flatMap((item: { content?: Array<{ type?: string; text?: string }> } | null | undefined) => item?.content || [])
           .filter((part: { type?: string }) => part.type === "output_text")
-          .map((part: { text?: string }) => part.text || "").join("
-").trim();
+          .map((part: { text?: string }) => part.text || "").join(" ").trim();
         const parsed = JSON.parse(output) as EditorialResult;
         if (parsed.publish !== true) {
           await db.from("news_articles").update({ status: "draft" }).eq("id", raw.id);
