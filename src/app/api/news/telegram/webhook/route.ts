@@ -80,26 +80,16 @@ const copy: Record<string, { saved: string; stopped: string; started: string; ch
     help: "Команды:\n/start — выбрать язык и темы\n/language — изменить язык\n/topics — изменить темы\n/latest — последние новости\n/about — о боте\n/stop — остановить рассылку"
   }
 };
-function topicKeyboard(selected: string[], groupIndex?: number) {
-  if (groupIndex === undefined) return { inline_keyboard: [
-    ...categories.reduce((rows: Array<Array<{text:string;callback_data:string}>>, group, index) => {
-      if (index % 2 === 0) rows.push([]);
-      const count = topicGroups[group].filter(topic => selected.includes(topic)).length;
-      rows[rows.length - 1].push({ text: (count === topicGroups[group].length ? "✅ " : count ? "☑️ " : "▫️ ") + group, callback_data: "news_group:" + index });
-      return rows;
-    }, []),
-    [{ text: "✅ Tayyor / Готово", callback_data: "news_topics_done" }]
-  ]};
-  const group = categories[groupIndex];
-  const topics = topicGroups[group] || [];
+function topicKeyboard(selected: string[]) {
   return { inline_keyboard: [
-    ...topics.reduce((rows: Array<Array<{text:string;callback_data:string}>>, topic, index) => {
+    ...categories.reduce((rows: Array<Array<{text:string;callback_data:string}>>, category, index) => {
       if (index % 2 === 0) rows.push([]);
-      const flatIndex = topicOptions.findIndex(x => x.topic === topic);
-      rows[rows.length - 1].push({ text: (selected.includes(topic) ? "✅ " : "▫️ ") + topic, callback_data: "news_topic:" + flatIndex });
+      rows[rows.length - 1].push({
+        text: (selected.includes(category) ? "✅ " : "▫️ ") + category,
+        callback_data: "news_group:" + index
+      });
       return rows;
     }, []),
-    [{ text: "⬅️ Kategoriyalar", callback_data: "news_topics_back" }],
     [{ text: "✅ Tayyor / Готово", callback_data: "news_topics_done" }]
   ]};
 }
@@ -126,28 +116,25 @@ export async function POST(request: Request) {
       const localized = copy[language];
       await telegram(token, "answerCallbackQuery", { callback_query_id: callback.id, text: "OK" });
       await telegram(token, "sendMessage", { chat_id: chatId, text: localized.saved + "\n\n" + localized.about, reply_markup: aboutKeyboard });
-      await telegram(token, "sendMessage", { chat_id: chatId, text: localized.topics, reply_markup: topicKeyboard(topicOptions.map(x => x.topic)) });
+      await telegram(token, "sendMessage", { chat_id: chatId, text: localized.topics, reply_markup: topicKeyboard(categories) });
     } else if (data.startsWith("news_group:")) {
       const index = Number(data.slice("news_group:".length));
-      if (!Number.isInteger(index) || !categories[index]) return NextResponse.json({ ok: true });
-      const selected = Array.isArray(subscription?.categories) ? subscription.categories as string[] : topicOptions.map(x => x.topic);
-      await telegram(token, "answerCallbackQuery", { callback_query_id: callback.id, text: "OK" });
-      await telegram(token, "editMessageReplyMarkup", { chat_id: chatId, message_id: callback.message?.message_id, reply_markup: topicKeyboard(selected, index) });
-    } else if (data === "news_topics_back") {
-      const selected = Array.isArray(subscription?.categories) ? subscription.categories as string[] : topicOptions.map(x => x.topic);
-      await telegram(token, "answerCallbackQuery", { callback_query_id: callback.id, text: "OK" });
-      await telegram(token, "editMessageReplyMarkup", { chat_id: chatId, message_id: callback.message?.message_id, reply_markup: topicKeyboard(selected) });
-    } else if (data.startsWith("news_topic:")) {
-      const index = Number(data.slice("news_topic:".length));
-      const option = topicOptions[index];
-      if (!Number.isInteger(index) || !option) return NextResponse.json({ ok: true });
-      const current = Array.isArray(subscription?.categories) ? subscription.categories as string[] : topicOptions.map(x => x.topic);
-      const next = current.includes(option.topic) ? current.filter(x => x !== option.topic) : [...current, option.topic];
+      const category = categories[index];
+      if (!Number.isInteger(index) || !category) return NextResponse.json({ ok: true });
+      const current = Array.isArray(subscription?.categories) ? subscription.categories as string[] : categories;
+      const next = current.includes(category)
+        ? current.filter(item => item !== category)
+        : [...current, category];
       await db.from("news_telegram_subscriptions").update({ categories: next, updated_at: new Date().toISOString() }).eq("chat_id", chatId);
-      await telegram(token, "answerCallbackQuery", { callback_query_id: callback.id, text: "OK" });
-      await telegram(token, "editMessageReplyMarkup", { chat_id: chatId, message_id: callback.message?.message_id, reply_markup: topicKeyboard(next, categories.indexOf(option.group)) });
+      await telegram(token, "answerCallbackQuery", { callback_query_id: callback.id, text: next.includes(category) ? "Tanlandi / Выбрано" : "Bekor qilindi / Отменено" });
+      await telegram(token, "editMessageReplyMarkup", { chat_id: chatId, message_id: callback.message?.message_id, reply_markup: topicKeyboard(next) });
+    } else if (data === "news_topics_back" || data.startsWith("news_topic:")) {
+      // Redraw old open keyboards using the main-category-only selection.
+      const selected = Array.isArray(subscription?.categories) ? subscription.categories as string[] : categories;
+      await telegram(token, "answerCallbackQuery", { callback_query_id: callback.id, text: "Mavzular / Темы" });
+      await telegram(token, "editMessageReplyMarkup", { chat_id: chatId, message_id: callback.message?.message_id, reply_markup: topicKeyboard(selected) });
     } else if (data === "news_topics_done") {
-      const selected = Array.isArray(subscription?.categories) ? subscription.categories as string[] : topicOptions.map(x=>x.topic);
+      const selected = Array.isArray(subscription?.categories) ? subscription.categories as string[] : categories;
       if (!selected.length) {
         await telegram(token, "answerCallbackQuery", { callback_query_id: callback.id, text: "Kamida bitta mavzuni tanlang / Выберите хотя бы одну тему", show_alert: true });
       } else {
@@ -175,13 +162,13 @@ export async function POST(request: Request) {
   } else if (text.startsWith("/language")) {
     await telegram(token, "sendMessage", { chat_id: chatId, text: messages.choose, reply_markup: languageKeyboard });
   } else if (text.startsWith("/topics")) {
-    const selected = Array.isArray(subscription?.categories) ? subscription.categories as string[] : topicOptions.map(x=>x.topic);
+    const selected = Array.isArray(subscription?.categories) ? subscription.categories as string[] : categories;
     await telegram(token, "sendMessage", { chat_id: chatId, text: messages.topics, reply_markup: topicKeyboard(selected) });
   } else if (text.startsWith("/stop")) {
     await db.from("news_telegram_subscriptions").update({ enabled: false, updated_at: new Date().toISOString() }).eq("chat_id", chatId);
     await telegram(token, "sendMessage", { chat_id: chatId, text: messages.stopped });
   } else if (text.startsWith("/latest")) {
-    const selected = Array.isArray(subscription?.categories) ? subscription.categories as string[] : topicOptions.map(x => x.topic);
+    const selected = Array.isArray(subscription?.categories) ? subscription.categories as string[] : categories;
     const { data } = await db.from("news_articles")
       .select("id,title,summary,source_name,source_url,image_url,video_url,category")
       .eq("status", "published").in("category", selectedParentCategories(selected))
