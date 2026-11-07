@@ -1,7 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
-function parsedSafeOrigin(value:string){try{return new URL(value).origin}catch{return ""}}\n\nasync function admin(request: Request) {
+function parsedSafeOrigin(value:string){try{return new URL(value).origin}catch{return ""}}
+
+async function admin(request: Request) {
   const authHeader = request.headers.get("authorization") || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -15,7 +17,8 @@ function parsedSafeOrigin(value:string){try{return new URL(value).origin}catch{r
   if (!allowed.includes(user.email.toLowerCase())) return {response:NextResponse.json({error:"Admin huquqi yo‘q. AI_NEWS_ADMIN_EMAILS sozlang."},{status:403})};
   return {db:createClient(url,serviceKey,{auth:{persistSession:false,autoRefreshToken:false}})};
 }
-const categories=["O‘zbekiston","Jahon","AI va IT","Biznes","Iqtisodiyot","Fan","Sport"];\nconst sourceGroups=["RSS manbalari","Rasmiy davlat saytlari","Yangilik portallari","Xalqaro tashkilotlar","Ilmiy jurnallar va tadqiqotlar","Kompaniya va banklarning rasmiy yangiliklari","Normativ-huquqiy hujjatlar portallari","Ochiq API manbalari","Administrator kiritgan maxsus URL"];
+const categories=["O‘zbekiston","Jahon","AI va IT","Biznes","Iqtisodiyot","Fan","Sport"];
+const sourceGroups=["RSS manbalari","Rasmiy davlat saytlari","Yangilik portallari","Xalqaro tashkilotlar","Ilmiy jurnallar va tadqiqotlar","Kompaniya va banklarning rasmiy yangiliklari","Normativ-huquqiy hujjatlar portallari","Ochiq API manbalari","Administrator kiritgan maxsus URL"];
 export async function GET(request:Request){
  const a=await admin(request); if(a.response)return a.response;
  const {data,error}=await a.db.from("news_sources").select("id,name,feed_url,site_url,source_group,connector_type,category,enabled").order("category").order("name");
@@ -32,7 +35,9 @@ export async function POST(request:Request){
  }
  const name=typeof b.name==="string"?b.name.trim().slice(0,120):"";
  const feedUrl=typeof b.feedUrl==="string"?b.feedUrl.trim():"";
- const category=typeof b.category==="string"?b.category:"";\n const sourceGroup=typeof b.sourceGroup==="string"?b.sourceGroup:"RSS manbalari";\n const siteUrl=typeof b.siteUrl==="string"?b.siteUrl.trim():parsedSafeOrigin(feedUrl);
+ const category=typeof b.category==="string"?b.category:"";
+ const sourceGroup=typeof b.sourceGroup==="string"?b.sourceGroup:"RSS manbalari";
+ const siteUrl=typeof b.siteUrl==="string"?b.siteUrl.trim():parsedSafeOrigin(feedUrl);
  let parsed:URL; try{parsed=new URL(feedUrl)}catch{return NextResponse.json({error:"RSS/API URL noto‘g‘ri."},{status:400})}
  if(!["https:","http:"].includes(parsed.protocol)||!name||!categories.includes(category)||!sourceGroups.includes(sourceGroup))return NextResponse.json({error:"Sayt nomi, URL yoki kategoriya noto‘g‘ri."},{status:400});
  const {data:existing}=await a.db.from("news_sources").select("id").eq("feed_url",feedUrl).maybeSingle();
