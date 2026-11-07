@@ -257,7 +257,7 @@ export async function GET(request: Request) {
           }
           return 0;
         }));
-        telegramSent += deliveries.reduce((sum, count) => sum + count, 0);
+        telegramSent += deliveries.reduce<number>((sum, count) => sum + Number(count), 0);
       }
       if (telegramSent > 0) await db.from("news_articles")
         .update({ telegram_sent_at: new Date().toISOString() }).eq("id", raw.id);
