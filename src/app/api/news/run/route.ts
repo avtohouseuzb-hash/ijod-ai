@@ -33,7 +33,7 @@ async function executePipeline(request: Request) {
     if (phase === "collect") {
       const collectUrl = new URL(base + "/api/news/collect");
       collectUrl.searchParams.set("offset", String(offset));
-      collectUrl.searchParams.set("limit", "5");
+      collectUrl.searchParams.set("limit", "10");
       const collectResponse = await fetch(collectUrl, { headers, cache: "no-store", signal: AbortSignal.timeout(45000) });
       const collect = await readResponse(collectResponse);
       steps.collect = collect;
