@@ -224,11 +224,7 @@ export async function GET(request: Request) {
         for (const chat of chats) {
           if (chat.categories.length && !matchesTopics(raw, chat.categories)) continue;
           const item = variants.get(chat.language) || variants.get("uz-latn") || { title: raw.title, summary: raw.summary || "" };
-          const caption = ("📰 " + item.title + "
-
-" + item.summary + "
-
-Manba: " + raw.source_name).slice(0, 1000);
+          const caption = ("📰 " + item.title + "\n\n" + item.summary + "\n\nManba: " + raw.source_name).slice(0, 1000);
           const method = raw.image_url ? "sendPhoto" : "sendMessage";
           const payload = raw.image_url
             ? { chat_id: chat.chatId, photo: raw.image_url, caption, reply_markup: { inline_keyboard: buttons } }
