@@ -128,10 +128,19 @@ const topicTerms: Record<string, string[]> = {
   "Sport": ["sport", "football", "soccer", "basketball", "tennis", "boxing", "formula 1", "cricket", "athlete", "championship"]
 };
 const broadTopics = new Set(["O‘zbekiston", "Jahon", "AI va IT", "Iqtisodiyot", "Biznes"]);
+const categoryRequiredTerms: Record<string, string[]> = {
+  "Biznes": ["business", "company", "companies", "corporate", "startup", "start-up", "entrepreneur", "ceo", "earnings", "revenue", "profit", "merger", "acquisition", "ipo", "shares", "stock", "investor", "investment", "retail", "market", "brand", "commerce", "trade", "industry", "manufacturer", "manufacturing", "bank", "financial", "economy", "economic", "sales", "workforce", "layoff", "funding", "venture capital", "businessman", "businesswoman", "tadbirkor", "kompaniya", "daromad", "foyda", "sarmoya", "investitsiya", "savdo", "korxona"],
+  "Iqtisodiyot": ["economy", "economic", "inflation", "gdp", "interest rate", "central bank", "currency", "exchange rate", "budget", "tax", "trade deficit", "exports", "imports", "unemployment", "jobs report", "wages", "debt", "fiscal", "monetary", "price index", "economist", "iqtisodiyot", "inflyatsiya", "yalpi ichki mahsulot", "markaziy bank", "valyuta", "byudjet", "soliq", "eksport", "import"],
+  "AI va IT": ["artificial intelligence", " ai ", "machine learning", "software", "technology", "tech", "cybersecurity", "cyber security", "data breach", "hacker", "semiconductor", "chip", "cloud computing", "robotics", "app", "application", "smartphone", "computer", "internet", "algorithm", "model", "open source", "sun’iy intellekt", "dasturiy ta’minot", "texnologiya", "kiberxavfsizlik"]
+};
 function matchesTopics(article: Article, selected: string[]) {
   if (!selected.length || !parentCategories(selected).includes(article.category)) return false;
-  const text = (article.title + " " + (article.summary || "")).toLocaleLowerCase();
+  const text = (" " + article.title + " " + (article.summary || "") + " ").toLocaleLowerCase();
   if ((categoryExclusions[article.category] || []).some(term => text.includes(term))) return false;
+  // Broad source labels are not proof of article relevance. Require topical evidence
+  // for business/economy/technology even when the parent category is selected.
+  const required = categoryRequiredTerms[article.category];
+  if (required && !required.some(term => text.includes(term))) return false;
   const specific = selected.filter(topic => topicTerms[topic]);
   const direct = selected.some(topic => broadTopics.has(topic) && mainCategoryParents[topic]?.includes(article.category));
   if (!direct && specific.length && !specific.some(topic => topicTerms[topic].some(term => text.includes(term)))) return false;
@@ -177,8 +186,12 @@ export async function GET(request: Request) {
     categories: Array.isArray(s.categories) ? s.categories : []
   }));
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  // Do not broadcast every article to a public channel: delivery must respect
-  // each subscriber's selected categories. Channel publishing needs a separate explicit opt-in.
+  const channelChatId = process.env.NEWS_TELEGRAM_CHAT_ID || "";
+  const channelLanguage = process.env.NEWS_TELEGRAM_CHANNEL_LANGUAGE || "uz-latn";
+  const channelCategories = [...new Set(chats.flatMap(chat => chat.categories))];
+  const channelRecipient = channelChatId ? {
+    chatId: channelChatId, language: channelLanguage, categories: channelCategories, isChannel: true
+  } : null;
 
   // Select news for subscriber interests first. A global LIMIT(5) used to let
   // unrelated categories fill the queue, so private subscribers received only
@@ -266,11 +279,17 @@ export async function GET(request: Request) {
       if (publishError) throw new Error("Maqolani nashr qilish: " + publishError.message);
 
       let telegramSent = 0;
+      let channelMessagesSent = 0;
       if (botToken) {
         const buttons = [[{ text: "🔗 To‘liq yangilik", url: raw.source_url }],
           ...(raw.video_url ? [[{ text: "▶️ Videoni ko‘rish", url: raw.video_url }]] : []),
           [{ text: "📰 IJOD AI News’da ochish", url: (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app") + "/news" }]];
-        const recipients = chats.filter(chat => matchesTopics(raw, chat.categories));
+        const privateRecipients = chats.filter(chat => matchesTopics(raw, chat.categories));
+        const recipients = [
+          ...privateRecipients.map(chat => ({ ...chat, isChannel: false })),
+          ...(channelRecipient && matchesTopics(raw, channelRecipient.categories) &&
+            !privateRecipients.some(chat => chat.chatId === channelRecipient.chatId) ? [channelRecipient] : [])
+        ];
         const deliveries = await Promise.all(recipients.map(async chat => {
           const item = variants.get(chat.language) || variants.get("uz-latn") || { title: raw.title, summary: raw.summary || "" };
           const caption = ("📰 " + item.title + "\n\n" + item.summary + "\n\nManba: " + raw.source_name).slice(0, 1000);
@@ -284,18 +303,19 @@ export async function GET(request: Request) {
               signal: AbortSignal.timeout(4000)
             });
             const sentJson = await sent.json().catch(() => ({}));
-            if (sent.ok && sentJson.ok) return 1;
+            if (sent.ok && sentJson.ok) return { sent: 1, channel: Boolean(chat.isChannel) };
             console.error("Telegram delivery failed", chat.chatId, sentJson);
           } catch (deliveryError) {
             console.error("Telegram delivery failed", chat.chatId, deliveryError);
           }
-          return 0;
+          return { sent: 0, channel: Boolean(chat.isChannel) };
         }));
-        telegramSent += deliveries.reduce<number>((sum, count) => sum + Number(count), 0);
+        telegramSent += deliveries.reduce<number>((sum, item) => sum + item.sent, 0);
+        channelMessagesSent += deliveries.reduce<number>((sum, item) => sum + (item.channel ? item.sent : 0), 0);
       }
       if (telegramSent > 0) await db.from("news_articles")
         .update({ telegram_sent_at: new Date().toISOString() }).eq("id", raw.id);
-      outcomes.push({ id: raw.id, translated: true, telegramSent });
+      outcomes.push({ id: raw.id, translated: true, telegramSent, channelMessagesSent });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Processing failed";
       console.error("News processing failed", raw.id, message);
@@ -306,6 +326,8 @@ export async function GET(request: Request) {
   return NextResponse.json({
     ok: outcomes.every(x => x.translated), phase: "translate_and_deliver",
     model, processed: outcomes.length, translated: outcomes.filter(x => x.translated).length,
-    telegramMessagesSent: outcomes.reduce((sum, x) => sum + x.telegramSent, 0), outcomes
+    telegramMessagesSent: outcomes.reduce((sum, x) => sum + x.telegramSent, 0),
+    channelConfigured: Boolean(channelChatId),
+    channelMessagesSent: outcomes.reduce((sum, x) => sum + Number((x as any).channelMessagesSent || 0), 0), outcomes
   });
 }
