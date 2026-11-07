@@ -213,7 +213,7 @@ export async function GET(request: Request) {
   const selectedArticles = [eligible];
 
   const model = process.env.IJOD_NEWS_TRANSLATION_MODEL || process.env.IJOD_NEWS_MODEL || "gpt-6-luna";
-  const outcomes: Array<{ id: string; translated: boolean; telegramSent: number; error?: string }> = [];
+  const outcomes: Array<{ id: string; translated: boolean; telegramSent: number; channelMessagesSent?: number; error?: string }> = [];
 
   for (const raw of selectedArticles) {
     try {
@@ -328,6 +328,6 @@ export async function GET(request: Request) {
     model, processed: outcomes.length, translated: outcomes.filter(x => x.translated).length,
     telegramMessagesSent: outcomes.reduce((sum, x) => sum + x.telegramSent, 0),
     channelConfigured: Boolean(channelChatId),
-    channelMessagesSent: outcomes.reduce((sum, x) => sum + Number((x as any).channelMessagesSent || 0), 0), outcomes
+    channelMessagesSent: outcomes.reduce((sum, x) => sum + Number(x.channelMessagesSent || 0), 0), outcomes
   });
 }
