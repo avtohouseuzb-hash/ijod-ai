@@ -2,7 +2,8 @@
 import { useEffect,useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-const categories=["O‘zbekiston","Jahon","AI va IT","Biznes","Iqtisodiyot","Fan","Sport"];\nconst sourceGroups=["RSS manbalari","Rasmiy davlat saytlari","Yangilik portallari","Xalqaro tashkilotlar","Ilmiy jurnallar va tadqiqotlar","Kompaniya va banklarning rasmiy yangiliklari","Normativ-huquqiy hujjatlar portallari","Ochiq API manbalari","Administrator kiritgan maxsus URL"];
+const categories=["O‘zbekiston","Jahon","AI va IT","Biznes","Iqtisodiyot","Fan","Sport"];
+const sourceGroups=["RSS manbalari","Rasmiy davlat saytlari","Yangilik portallari","Xalqaro tashkilotlar","Ilmiy jurnallar va tadqiqotlar","Kompaniya va banklarning rasmiy yangiliklari","Normativ-huquqiy hujjatlar portallari","Ochiq API manbalari","Administrator kiritgan maxsus URL"];
 type Source={id:string;name:string;feed_url:string;site_url?:string|null;source_group?:string|null;connector_type?:string|null;category:string;enabled:boolean};
 export default function NewsAdminPage(){
  const [sources,setSources]=useState<Source[]>([]);
