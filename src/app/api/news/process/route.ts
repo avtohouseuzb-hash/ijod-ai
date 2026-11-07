@@ -6,7 +6,8 @@ export const maxDuration = 60;
 type Translation = { title: string; summary: string };
 type EditorialResult = { publish: boolean; reason?: string; uz_latn: Translation; uz_cyrl: Translation; ru: Translation };
 type Article = { id: string; title: string; summary: string | null; source_name: string; source_url: string; image_url: string | null; video_url: string | null; category: string; status: string };
-type ArticleContext = { description: string; body: string };\nconst topicRules: Record<string,{parents:string[];terms:string[]}> = {
+type ArticleContext = { description: string; body: string };
+const topicRules: Record<string,{parents:string[];terms:string[]}> = {
  "O‘zbekiston qonunchiligi":{parents:["O‘zbekiston"],terms:["qonun","qonunchilik","kodeks","qaror","farmon","normativ"]},
  "Xalqaro huquq":{parents:["Jahon"],terms:["xalqaro huquq","xalqaro sud","human rights","international law"]},
  "Sud va huquqiy amaliyot":{parents:["O‘zbekiston","Jahon"],terms:["sud","sudya","sudlov","prokuror","advokat"]},
@@ -194,7 +195,8 @@ export async function GET(request: Request) {
         const result = await ai.json();
         const output = (result.output || []).flatMap((item: { content?: Array<{ type?: string; text?: string }> } | null | undefined) => item?.content || [])
           .filter((part: { type?: string }) => part.type === "output_text")
-          .map((part: { text?: string }) => part.text || "").join("\n").trim();
+          .map((part: { text?: string }) => part.text || "").join("
+").trim();
         const parsed = JSON.parse(output) as EditorialResult;
         if (parsed.publish !== true) {
           await db.from("news_articles").update({ status: "draft" }).eq("id", raw.id);
@@ -223,7 +225,11 @@ export async function GET(request: Request) {
         for (const chat of chats) {
           if (chat.categories.length && !matchesTopics(raw, chat.categories)) continue;
           const item = variants.get(chat.language) || variants.get("uz-latn") || { title: raw.title, summary: raw.summary || "" };
-          const caption = ("📰 " + item.title + "\n\n" + item.summary + "\n\nManba: " + raw.source_name).slice(0, 1000);
+          const caption = ("📰 " + item.title + "
+
+" + item.summary + "
+
+Manba: " + raw.source_name).slice(0, 1000);
           const method = raw.image_url ? "sendPhoto" : "sendMessage";
           const payload = raw.image_url
             ? { chat_id: chat.chatId, photo: raw.image_url, caption, reply_markup: { inline_keyboard: buttons } }
