@@ -1,19 +1,30 @@
 import { createClient } from "@supabase/supabase-js";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 
 export const maxDuration = 60;
 
-function cronSecrets() {
-  return [process.env.NEWS_CRON_SECRET, process.env.CRON_SECRET].filter((value): value is string => Boolean(value));
+async function authorizedCronRequest(request: Request) {
+  const authHeader = request.headers.get("authorization") || "";
+  const supplied = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  if (!supplied) return false;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SECRET_KEY;
+  if (!url || !key) return false;
+  const db = createClient(url, key, { auth: { persistSession: false } });
+  const { data, error } = await db.from("news_cron_auth").select("token_hash").eq("id", true).maybeSingle();
+  if (error || !data?.token_hash) return false;
+  const actual = createHash("sha256").update(supplied).digest();
+  const expected = Buffer.from(String(data.token_hash), "hex");
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
 
-async function executePipeline(request: Request) {
-  const authHeader = request.headers.get("authorization") || "";
-  if (!cronSecrets().some(secret => authHeader === "Bearer " + secret)) {
+async function executePipeline(request: Request, skipCronAuth = false) {
+  if (!skipCronAuth && !await authorizedCronRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const base = new URL(request.url).origin;
-  const headers = { authorization: authHeader };
+  const headers = { authorization: request.headers.get("authorization") || "" };
   const requestUrl = new URL(request.url);
   const phase = requestUrl.searchParams.get("phase") || "collect";
   const offset = Math.max(0, Number(requestUrl.searchParams.get("offset") || 0));
@@ -30,29 +41,39 @@ async function executePipeline(request: Request) {
         };
       }
     };
-    if (phase === "collect") {
+    if (phase !== "collect" && phase !== "process" && phase !== "cycle") return NextResponse.json({ error: "Noto‘g‘ri phase" }, { status: 400 });
+    if (phase === "collect" || phase === "cycle") {
+      const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!, { auth: { persistSession: false } });
+      const { data: state } = await db.from("news_pipeline_state").select("source_offset").eq("id", true).maybeSingle();
+      const sourceOffset = requestUrl.searchParams.has("offset") ? offset : Math.max(0, Number(state?.source_offset || 0));
       const collectUrl = new URL(base + "/api/news/collect");
-      collectUrl.searchParams.set("offset", String(offset));
-      collectUrl.searchParams.set("limit", "5");
-      const collectResponse = await fetch(collectUrl, { headers, cache: "no-store", signal: AbortSignal.timeout(20000) });
+      collectUrl.searchParams.set("offset", String(sourceOffset));
+      collectUrl.searchParams.set("limit", "10");
+      const collectResponse = await fetch(collectUrl, { headers, cache: "no-store", signal: AbortSignal.timeout(50000) });
       const collect = await readResponse(collectResponse);
       steps.collect = collect;
       if (!collectResponse.ok || collect.error) {
-        return NextResponse.json({ ok: false, phase: "collect", steps }, { status: 502 });
+        return NextResponse.json({ ok: false, phase, steps }, { status: 502 });
       }
-      return NextResponse.json({ ok: Boolean(collect.ok), phase: "collect", offset, nextOffset: collect.nextOffset, hasMore: collect.hasMore, steps });
+      const nextOffset = Number(collect.nextOffset || sourceOffset);
+      const hasMore = Boolean(collect.hasMore);
+      await db.from("news_pipeline_state").update({
+        source_offset: hasMore ? nextOffset : 0,
+        last_collect_at: new Date().toISOString(),
+        last_collect_result: collect,
+        updated_at: new Date().toISOString()
+      }).eq("id", true);
+      if (phase === "collect") {
+        return NextResponse.json({ ok: Boolean(collect.ok), phase, offset: sourceOffset, nextOffset, hasMore, steps });
+      }
     }
-    if (phase !== "process") return NextResponse.json({ error: "Noto‘g‘ri phase" }, { status: 400 });
     const processResponse = await fetch(base + "/api/news/process", { headers, cache: "no-store", signal: AbortSignal.timeout(45000) });
-    const process = await readResponse(processResponse);
-    steps.process = process;
-    if (!processResponse.ok || process.error) {
-      return NextResponse.json({ ok: false, phase: "process", steps }, { status: 502 });
+    const processResult = await readResponse(processResponse);
+    steps.process = processResult;
+    if (!processResponse.ok || processResult.error) {
+      return NextResponse.json({ ok: false, phase, steps }, { status: 502 });
     }
-    return NextResponse.json({
-      ok: Boolean(process.ok),
-      steps
-    });
+    return NextResponse.json({ ok: Boolean(processResult.ok), phase, steps });
   } catch (error) {
     return NextResponse.json({
       ok: false,
@@ -87,5 +108,5 @@ export async function POST(request: Request) {
     method: "GET",
     headers: { authorization: "Bearer " + secret }
   });
-  return executePipeline(internalRequest);
+  return executePipeline(internalRequest, true);
 }

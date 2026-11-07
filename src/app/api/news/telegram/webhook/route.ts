@@ -172,6 +172,7 @@ export async function POST(request: Request) {
       if (!selected.length) {
         await telegram(token, "answerCallbackQuery", { callback_query_id: callback.id, text: "Kamida bitta mavzuni tanlang / Выберите хотя бы одну тему", show_alert: true });
       } else {
+        await db.from("news_telegram_subscriptions").update({ enabled: true, updated_at: new Date().toISOString() }).eq("chat_id", chatId);
         await telegram(token, "answerCallbackQuery", { callback_query_id: callback.id, text: "Saved" });
         await telegram(token, "sendMessage", { chat_id: chatId, text: msg.done + "\n\n/topics — mavzularni o‘zgartirish\n/language — tilni o‘zgartirish\n/latest — so‘nggi yangiliklar" });
       }

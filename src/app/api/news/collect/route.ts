@@ -105,7 +105,7 @@ export async function GET(request: Request) {
   const db = createClient(url, key, { auth: { persistSession: false } });
   const requestUrl = new URL(request.url);
   const offset = Math.max(0, Number(requestUrl.searchParams.get("offset") || 0));
-  const batchSize = Math.min(5, Math.max(1, Number(requestUrl.searchParams.get("limit") || 5)));
+  const batchSize = Math.min(10, Math.max(1, Number(requestUrl.searchParams.get("limit") || 10)));
   const { data: sources, error } = await db.from("news_sources")
     .select("id,name,feed_url,category,language").eq("enabled", true)
     .order("id", { ascending: true }).range(offset, offset + batchSize - 1);
