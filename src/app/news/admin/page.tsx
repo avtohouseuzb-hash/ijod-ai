@@ -20,7 +20,8 @@ const topicGroups:Record<string,string[]>={
  "Biznes":["Tadbirkorlik","Marketing","Menejment","Biznes yangiliklari"],
  "Salomatlik":["Tibbiyot","Ilmiy izlanishlar","Sog‘lom turmush"]
 };
-const categories=Object.keys(topicGroups);\nconst allTopics=Object.values(topicGroups).flat();
+const categories=Object.keys(topicGroups);
+const allTopics=Object.values(topicGroups).flat();
 const topicOptions=Object.entries(topicGroups).flatMap(([group,topics])=>topics.map(topic=>({group,topic})));
 const sourceGroups=["RSS manbalari","Rasmiy davlat saytlari","Yangilik portallari","Xalqaro tashkilotlar","Ilmiy jurnallar va tadqiqotlar","Kompaniya va banklarning rasmiy yangiliklari","Normativ-huquqiy hujjatlar portallari","Ochiq API manbalari","Administrator kiritgan maxsus URL"];
 type Source={id:string;name:string;feed_url:string;site_url?:string|null;source_group?:string|null;connector_type?:string|null;category:string;enabled:boolean};
