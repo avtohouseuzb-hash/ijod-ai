@@ -117,7 +117,21 @@ export async function GET(request: Request) {
         headers: { "User-Agent": "IJODAI-NewsBot/1.0", "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml" },
         signal: AbortSignal.timeout(2500)
       });
-      if (!response.ok) return { source: source.name, ok: false, reason: "HTTP " + response.status, found: 0, inserted: 0 };
+      if (!response.ok) {
+        if (response.status === 404 || response.status === 410) {
+          // Keep historical articles intact, but detach them before removing a permanently dead feed.
+          await db.from("news_articles").update({ source_id: null }).eq("source_id", source.id);
+          const { error: removeError } = await db.from("news_sources").delete().eq("id", source.id);
+          return {
+            source: source.name, ok: false,
+            reason: "HTTP " + response.status,
+            removedFromCatalog: !removeError,
+            removalError: removeError?.message,
+            found: 0, inserted: 0
+          };
+        }
+        return { source: source.name, ok: false, reason: "HTTP " + response.status, found: 0, inserted: 0 };
+      }
       const xml = await response.text();
       const entries = [...xml.matchAll(/<(?:item|entry)\b[^>]*>([\s\S]*?)<\/(?:item|entry)>/gi)].slice(0, 8);
       const rows = entries.flatMap((entry) => {
