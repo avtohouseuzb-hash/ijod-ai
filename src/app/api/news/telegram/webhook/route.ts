@@ -85,7 +85,7 @@ function topicKeyboard(selected: string[], groupIndex?: number) {
     ...categories.reduce((rows: Array<Array<{text:string;callback_data:string}>>, group, index) => {
       if (index % 2 === 0) rows.push([]);
       const count = topicGroups[group].filter(topic => selected.includes(topic)).length;
-      rows[rows.length - 1].push({ text: (count === topicGroups[group].length ? "✅ " : count ? "☑️ " : "▫️ ") + group + " (" + count + "/" + topicGroups[group].length + ")", callback_data: "news_group:" + index });
+      rows[rows.length - 1].push({ text: (count === topicGroups[group].length ? "✅ " : count ? "☑️ " : "▫️ ") + group, callback_data: "news_group:" + index });
       return rows;
     }, []),
     [{ text: "✅ Tayyor / Готово", callback_data: "news_topics_done" }]
@@ -127,14 +127,25 @@ export async function POST(request: Request) {
       await telegram(token, "answerCallbackQuery", { callback_query_id: callback.id, text: "OK" });
       await telegram(token, "sendMessage", { chat_id: chatId, text: localized.saved + "\n\n" + localized.about, reply_markup: aboutKeyboard });
       await telegram(token, "sendMessage", { chat_id: chatId, text: localized.topics, reply_markup: topicKeyboard(topicOptions.map(x => x.topic)) });
+    } else if (data.startsWith("news_group:")) {
+      const index = Number(data.slice("news_group:".length));
+      if (!Number.isInteger(index) || !categories[index]) return NextResponse.json({ ok: true });
+      const selected = Array.isArray(subscription?.categories) ? subscription.categories as string[] : topicOptions.map(x => x.topic);
+      await telegram(token, "answerCallbackQuery", { callback_query_id: callback.id, text: "OK" });
+      await telegram(token, "editMessageReplyMarkup", { chat_id: chatId, message_id: callback.message?.message_id, reply_markup: topicKeyboard(selected, index) });
+    } else if (data === "news_topics_back") {
+      const selected = Array.isArray(subscription?.categories) ? subscription.categories as string[] : topicOptions.map(x => x.topic);
+      await telegram(token, "answerCallbackQuery", { callback_query_id: callback.id, text: "OK" });
+      await telegram(token, "editMessageReplyMarkup", { chat_id: chatId, message_id: callback.message?.message_id, reply_markup: topicKeyboard(selected) });
     } else if (data.startsWith("news_topic:")) {
       const index = Number(data.slice("news_topic:".length));
-      if (!Number.isInteger(index) || !categories[index]) return NextResponse.json({ ok: true });
-      const current = Array.isArray(subscription?.categories) ? subscription.categories as string[] : [...categories];
-      const next = current.includes(categories[index]) ? current.filter(x => x !== categories[index]) : [...current, categories[index]];
+      const option = topicOptions[index];
+      if (!Number.isInteger(index) || !option) return NextResponse.json({ ok: true });
+      const current = Array.isArray(subscription?.categories) ? subscription.categories as string[] : topicOptions.map(x => x.topic);
+      const next = current.includes(option.topic) ? current.filter(x => x !== option.topic) : [...current, option.topic];
       await db.from("news_telegram_subscriptions").update({ categories: next, updated_at: new Date().toISOString() }).eq("chat_id", chatId);
       await telegram(token, "answerCallbackQuery", { callback_query_id: callback.id, text: "OK" });
-      await telegram(token, "editMessageReplyMarkup", { chat_id: chatId, message_id: callback.message?.message_id, reply_markup: topicKeyboard(next) });
+      await telegram(token, "editMessageReplyMarkup", { chat_id: chatId, message_id: callback.message?.message_id, reply_markup: topicKeyboard(next, categories.indexOf(option.group)) });
     } else if (data === "news_topics_done") {
       const selected = Array.isArray(subscription?.categories) ? subscription.categories as string[] : topicOptions.map(x=>x.topic);
       if (!selected.length) {
@@ -170,7 +181,7 @@ export async function POST(request: Request) {
     await db.from("news_telegram_subscriptions").update({ enabled: false, updated_at: new Date().toISOString() }).eq("chat_id", chatId);
     await telegram(token, "sendMessage", { chat_id: chatId, text: messages.stopped });
   } else if (text.startsWith("/latest")) {
-    const selected = Array.isArray(subscription?.categories) ? subscription.categories as string[] : [...categories];
+    const selected = Array.isArray(subscription?.categories) ? subscription.categories as string[] : topicOptions.map(x => x.topic);
     const { data } = await db.from("news_articles")
       .select("id,title,summary,source_name,source_url,image_url,video_url,category")
       .eq("status", "published").in("category", selectedParentCategories(selected))
