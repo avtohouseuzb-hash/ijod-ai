@@ -268,7 +268,7 @@ export async function GET(request: Request) {
       .order("created_at", { ascending: true }).limit(5);
     for (const delivery of dueDeliveries || []) {
       const { data: article } = await db.from("news_articles")
-        .select("id,title,summary,source_name,source_url,image_url,video_url")
+        .select("id,title,summary,source_name,source_url,image_url,video_url,category")
         .eq("id", delivery.article_id).maybeSingle();
       if (!article) continue;
       if (delivery.delivery_type === "private") {
