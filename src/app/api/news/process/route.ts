@@ -161,7 +161,7 @@ export async function GET(request: Request) {
     .select("id,title,summary,source_name,source_url,image_url,video_url,category,status")
     .eq("status", "pending_translation").order("published_at", { ascending: false });
   if (interestedCategories.length) articleQuery = articleQuery.in("category", interestedCategories);
-  const { data: articles, error } = await articleQuery.limit(2);
+  const { data: articles, error } = await articleQuery.limit(1);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!articles?.length) return NextResponse.json({ ok: true, processed: 0, message: "Tanlangan mavzularda tarjima kutayotgan yangi maqola yo‘q." });
 
@@ -236,22 +236,28 @@ export async function GET(request: Request) {
         const buttons = [[{ text: "🔗 To‘liq yangilik", url: raw.source_url }],
           ...(raw.video_url ? [[{ text: "▶️ Videoni ko‘rish", url: raw.video_url }]] : []),
           [{ text: "📰 IJOD AI News’da ochish", url: (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app") + "/news" }]];
-        for (const chat of chats) {
-          if (chat.categories.length && !matchesTopics(raw, chat.categories)) continue;
+        const recipients = chats.filter(chat => matchesTopics(raw, chat.categories));
+        const deliveries = await Promise.all(recipients.map(async chat => {
           const item = variants.get(chat.language) || variants.get("uz-latn") || { title: raw.title, summary: raw.summary || "" };
-          const caption = ("📰 " + item.title + "\n\n" + item.summary + "\n\nManba: " + raw.source_name).slice(0, 1000);
+          const caption = ("📰 " + item.title + "\\n\\n" + item.summary + "\\n\\nManba: " + raw.source_name).slice(0, 1000);
           const method = raw.image_url ? "sendPhoto" : "sendMessage";
           const payload = raw.image_url
             ? { chat_id: chat.chatId, photo: raw.image_url, caption, reply_markup: { inline_keyboard: buttons } }
             : { chat_id: chat.chatId, text: caption, reply_markup: { inline_keyboard: buttons }, disable_web_page_preview: false };
-          const sent = await fetch("https://api.telegram.org/bot" + botToken + "/" + method, {
-            method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload),
-            signal: AbortSignal.timeout(4000)
-          });
-          const sentJson = await sent.json().catch(() => ({}));
-          if (sent.ok && sentJson.ok) telegramSent++;
-          else console.error("Telegram delivery failed", chat.chatId, sentJson);
-        }
+          try {
+            const sent = await fetch("https://api.telegram.org/bot" + botToken + "/" + method, {
+              method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload),
+              signal: AbortSignal.timeout(4000)
+            });
+            const sentJson = await sent.json().catch(() => ({}));
+            if (sent.ok && sentJson.ok) return 1;
+            console.error("Telegram delivery failed", chat.chatId, sentJson);
+          } catch (deliveryError) {
+            console.error("Telegram delivery failed", chat.chatId, deliveryError);
+          }
+          return 0;
+        }));
+        telegramSent += deliveries.reduce((sum, count) => sum + count, 0);
       }
       if (telegramSent > 0) await db.from("news_articles")
         .update({ telegram_sent_at: new Date().toISOString() }).eq("id", raw.id);
