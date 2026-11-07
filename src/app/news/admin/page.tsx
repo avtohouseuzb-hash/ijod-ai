@@ -78,10 +78,10 @@ export default function NewsAdminPage(){
     processBatches.push(result);
     const count=Number(result.processed||0);
     const translated=Number(result.translated||0);
-    // The process endpoint takes up to 2 pending articles per call.
+    // The process endpoint takes up to 1 pending article per call.
     // Stop when the queue is exhausted or when a batch made no progress,
     // so a repeatedly failing article cannot create an endless loop.
-    pendingMayRemain=count>=2&&translated>0;
+    pendingMayRemain=count>=1&&translated>0;
     if(count===0)pendingMayRemain=false;
    }
    const processedSummary={
