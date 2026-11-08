@@ -313,7 +313,10 @@ export async function GET(request: Request) {
         const { data: previousDeliveries } = await db.from("news_deliveries")
           .select("chat_id,delivery_type,status")
           .eq("article_id", raw.id);
-        const alreadySent = new Set((previousDeliveries || []).filter(row => row.status === "sent")
+        // "sending"/"failed" can mean Telegram accepted a request but its
+        // response was lost. Never auto-send those again: Bot API has no
+        // idempotency key, so retrying an ambiguous timeout creates duplicates.
+        const alreadySent = new Set((previousDeliveries || []).filter(row => ["sent","sending","failed"].includes(row.status))
           .map(row => String(row.chat_id) + ":" + String(row.delivery_type)));
         const pendingRecipients = recipients.filter(chat =>
           !alreadySent.has(chat.chatId + ":" + (chat.isChannel ? "channel" : "private"))
@@ -335,30 +338,33 @@ export async function GET(request: Request) {
             next_attempt_at: null, last_error: null, updated_at: new Date().toISOString()
           }, { onConflict: "article_id,chat_id,delivery_type" });
           let lastError = "Telegram send failed";
-          for (let retry = 0; retry < 2; retry++) {
-            try {
-              const sent = await fetch("https://api.telegram.org/bot" + botToken + "/" + method, {
-                method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload),
-                signal: AbortSignal.timeout(12000)
-              });
-              const sentJson = await sent.json().catch(() => ({}));
-              if (sent.ok && sentJson.ok) {
-                await db.from("news_deliveries").update({
-                  status: "sent", sent_at: new Date().toISOString(),
-                  telegram_message_id: String(sentJson.result?.message_id || ""),
-                  last_error: null, updated_at: new Date().toISOString()
-                }).eq("article_id", raw.id).eq("chat_id", chat.chatId).eq("delivery_type", deliveryType);
-                return { sent: 1, channel: Boolean(chat.isChannel) };
-              }
-              lastError = String(sentJson.description || "Telegram HTTP " + sent.status);
-            } catch (deliveryError) {
-              lastError = deliveryError instanceof Error ? deliveryError.message : "Telegram network error";
+          let responseReceived = false;
+          try {
+            const sent = await fetch("https://api.telegram.org/bot" + botToken + "/" + method, {
+              method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload),
+              signal: AbortSignal.timeout(12000)
+            });
+            const sentJson = await sent.json().catch(() => ({}));
+            responseReceived = true;
+            if (sent.ok && sentJson.ok) {
+              await db.from("news_deliveries").update({
+                status: "sent", sent_at: new Date().toISOString(),
+                telegram_message_id: String(sentJson.result?.message_id || ""),
+                last_error: null, updated_at: new Date().toISOString()
+              }).eq("article_id", raw.id).eq("chat_id", chat.chatId).eq("delivery_type", deliveryType);
+              return { sent: 1, channel: Boolean(chat.isChannel) };
             }
+            lastError = String(sentJson.description || "Telegram HTTP " + sent.status);
+          } catch (deliveryError) {
+            lastError = deliveryError instanceof Error ? deliveryError.message : "Telegram network error";
           }
           deliveryErrors.push(chat.chatId + ": " + lastError);
           await db.from("news_deliveries").update({
-            status: "retry", last_error: lastError,
-            next_attempt_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+            // Retry only explicit Telegram rejections. A timeout/network error
+            // has an unknown outcome and is marked failed to prevent duplicates.
+            status: responseReceived ? "retry" : "failed",
+            last_error: responseReceived ? lastError : "Natija noaniq; dublikat oldini olish uchun avtomatik qayta yuborilmadi: " + lastError,
+            next_attempt_at: responseReceived ? new Date(Date.now() + 5 * 60 * 1000).toISOString() : null,
             updated_at: new Date().toISOString()
           }).eq("article_id", raw.id).eq("chat_id", chat.chatId).eq("delivery_type", deliveryType);
           return { sent: 0, channel: Boolean(chat.isChannel) };
