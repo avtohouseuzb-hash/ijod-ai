@@ -60,10 +60,10 @@ function weatherText(language: string, city: string, current: any, daily: any) {
   if (language === "ru") return icon+" Погода в "+city+"\n\n🌡 Сейчас: "+Math.round(current.temperature_2m)+"°C (ощущается как "+Math.round(current.apparent_temperature)+"°C)\n📍 "+condition+"\n💨 Ветер: "+Math.round(current.wind_speed_10m)+" км/ч\n🌧 Осадки сегодня: "+(daily.precipitation_sum?.[0] ?? 0)+" мм\n\nПусть погода задаёт настроение, а не планы! 🌿";
   return icon+" Bugungi ob-havo — "+city+"\n\n🌡 Hozir: "+Math.round(current.temperature_2m)+"°C (his qilinishi "+Math.round(current.apparent_temperature)+"°C)\n📍 Holat: "+condition+"\n💨 Shamol: "+Math.round(current.wind_speed_10m)+" km/soat\n🌧 Bugungi yog‘ingarchilik: "+(daily.precipitation_sum?.[0] ?? 0)+" mm\n\nOb-havo qanday bo‘lishidan qat’i nazar, kuningiz chiroyli o‘tsin! 🌿";
 }
-async function sendTelegram(token: string, chatId: string, text: string) {
+async function sendTelegram(token: string, chatId: string, text: string, parseMode?: "HTML") {
   const response = await fetch("https://api.telegram.org/bot"+token+"/sendMessage", {
     method:"POST", headers:{"content-type":"application/json"},
-    body:JSON.stringify({chat_id:chatId,text,disable_web_page_preview:true}),
+    body:JSON.stringify({chat_id:chatId,text,parse_mode:parseMode,disable_web_page_preview:true}),
     signal:AbortSignal.timeout(10000)
   });
   const result = await response.json().catch(()=>({}));
@@ -178,9 +178,9 @@ async function run(request: Request) {
       let sent=0,errors:string[]=[];
       for(const r of recipients){
         const text=r.language==="ru"
-          ?"💱 КУРС ВАЛЮТ ЦБ Узбекистана\n\n🇺🇸 1 USD = "+Number(usd.Rate).toLocaleString("ru-RU")+" сум\n\n"+lines.join("\n")+"\n\nДата курса: "+usd.Date
-          :localized("💱 O‘ZBEKISTONDA VALYUTA KURSLARI\n\n🇺🇸 1 AQSh dollari (USD)\n"+Number(usd.Rate).toLocaleString("uz-UZ")+" SO‘M\n\n"+lines.join("\n")+"\n\nManba: O‘zbekiston Markaziy banki · "+usd.Date,r.language);
-        try{await sendTelegram(token,r.chatId,text);sent++;}catch(e){errors.push(r.chatId+": "+(e instanceof Error?e.message:"send failed"));}
+          ?"<b>💱 КУРС ВАЛЮТ ЦБ Узбекистана</b>\n\n<b>🇺🇸 1 USD = "+Number(usd.Rate).toLocaleString("ru-RU")+" сум</b>\n\n"+lines.join("\n")+"\n\nДата курса: "+usd.Date
+          :localized("<b>💱 O‘ZBEKISTONDA VALYUTA KURSLARI</b>\n\n<b>🇺🇸 1 AQSh dollari (USD)\n"+Number(usd.Rate).toLocaleString("uz-UZ")+" SO‘M</b>\n\n"+lines.join("\n")+"\n\nManba: O‘zbekiston Markaziy banki · "+usd.Date,r.language);
+        try{await sendTelegram(token,r.chatId,text,"HTML");sent++;}catch(e){errors.push(r.chatId+": "+(e instanceof Error?e.message:"send failed"));}
       }
       payload={kind:type,usd,otherRates:lines};
       await db.from("news_daily_posts").update({status:errors.length?(sent?"partial":"failed"):"sent",recipients_sent:sent,payload:{...payload,errors},sent_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("id",postId);
