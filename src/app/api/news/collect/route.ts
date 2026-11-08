@@ -105,8 +105,13 @@ export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const offset = Math.max(0, Number(requestUrl.searchParams.get("offset") || 0));
   const batchSize = Math.min(10, Math.max(1, Number(requestUrl.searchParams.get("limit") || 10)));
-  const { data: sources, error } = await db.from("news_sources")
-    .select("id,name,feed_url,category,language").eq("enabled", true)
+  const allowedCategories = new Set(["Iqtisodiyot","Fan","Jahon","AI va IT","O‘zbekiston","Biznes","Sport"]);
+  const requestedCategories = (requestUrl.searchParams.get("categories") || "")
+    .split(",").map(value => value.trim()).filter(value => allowedCategories.has(value));
+  let sourceQuery = db.from("news_sources")
+    .select("id,name,feed_url,category,language").eq("enabled", true);
+  if (requestedCategories.length) sourceQuery = sourceQuery.in("category", requestedCategories);
+  const { data: sources, error } = await sourceQuery
     .order("id", { ascending: true }).range(offset, offset + batchSize - 1);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
