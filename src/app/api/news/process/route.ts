@@ -402,14 +402,64 @@ export async function GET(request: Request) {
         }
         const { error: scoreSaveError } = await db.from("news_articles").update({ editorial_score: editorialScore, editorial_reason: null, editorial_quality: quality }).eq("id", raw.id);
         if (scoreSaveError) throw new Error("Editorial score save: " + scoreSaveError.message);
+
         const pairs = [["uz-latn", "uz_latn"], ["uz-cyrl", "uz_cyrl"], ["ru", "ru"]] as const;
-        for (const [language, keyName] of pairs) {
-          const item = parsed[keyName];
-          if (!item?.title || !item?.summary) throw new Error("GPT uch tilning barchasini qaytarmadi.");
-          const row = { article_id: raw.id, language, title: item.title.slice(0, 500), summary: item.summary.slice(0, 1400) };
+        const isCompleteTranslation = (item: unknown): item is Translation => {
+          if (!item || typeof item !== "object") return false;
+          const value = item as Partial<Translation>;
+          return typeof value.title === "string" && value.title.trim().length > 0 &&
+            typeof value.summary === "string" && value.summary.trim().length > 0;
+        };
+        const saveTranslation = async (language: string, item: Translation) => {
+          const row = { article_id: raw.id, language, title: item.title.trim().slice(0, 500), summary: item.summary.trim().slice(0, 1400) };
           const { error: saveError } = await db.from("news_translations").upsert(row, { onConflict: "article_id,language" });
-          if (saveError) throw new Error("Tarjimani saqlash: " + saveError.message);
+          if (saveError) throw new Error("Tarjimani saqlash (" + language + "): " + saveError.message);
           variants.set(language, { title: row.title, summary: row.summary });
+        };
+
+        // Keep cached translations and save every valid language independently.
+        // A single missing locale must not discard the other successful translations.
+        const missingPairs: Array<readonly [string, string]> = [];
+        for (const [language, keyName] of pairs) {
+          if (variants.has(language)) continue;
+          const item = (parsed as unknown as Record<string, unknown>)[keyName];
+          if (isCompleteTranslation(item)) await saveTranslation(language, item);
+          else missingPairs.push([language, keyName]);
+        }
+
+        // Retry only the missing locales once, rather than regenerating all three.
+        // This extra request runs only when the first response is incomplete.
+        if (missingPairs.length) {
+          const missingLanguageNames = missingPairs.map(([language]) =>
+            language === "uz-latn" ? "Uzbek Latin" : language === "uz-cyrl" ? "Uzbek Cyrillic" : "Russian"
+          );
+          const repair = await fetch("https://api.openai.com/v1/responses", {
+            method: "POST",
+            headers: { "content-type": "application/json", authorization: "Bearer " + openaiKey },
+            body: JSON.stringify({
+              model,
+              instructions: "You are IJOD AI News translator. Return only a valid JSON object. Translate faithfully and completely into every requested language. Each translation must contain a specific headline and factual 2-3 sentence summary. Preserve names, dates, numbers and uncertainty. Do not omit any requested key.",
+              input: "Create only these missing translation keys: " + missingPairs.map(([, key]) => key).join(", ") +
+                ". Language mapping: uz_latn=Uzbek Latin, uz_cyrl=Uzbek Cyrillic, ru=Russian. Return each key with title and summary. Source context: " +
+                JSON.stringify({ source: raw.source_name, title: raw.title, rss_summary: raw.summary || "", original_page_description: description, original_article_text: articleBody }),
+              text: { format: { type: "json_object" } },
+              max_output_tokens: 1200
+            }),
+            signal: AbortSignal.timeout(18000)
+          });
+          if (!repair.ok) throw new Error("Tarjima tiklash GPT API: " + (await repair.text()).slice(0, 300));
+          const repairResult = await repair.json();
+          const repairOutput = (repairResult.output || []).flatMap((item: { content?: Array<{ type?: string; text?: string }> } | null | undefined) => item?.content || [])
+            .filter((part: { type?: string }) => part.type === "output_text")
+            .map((part: { text?: string }) => part.text || "").join(" ").trim();
+          let repaired: Record<string, unknown>;
+          try { repaired = JSON.parse(repairOutput) as Record<string, unknown>; }
+          catch { throw new Error("GPT tarjima tiklashda yaroqli JSON qaytarmadi."); }
+          for (const [language, keyName] of missingPairs) {
+            const item = repaired[keyName];
+            if (!isCompleteTranslation(item)) throw new Error("GPT tarjimasi yetishmayapti: " + language);
+            await saveTranslation(language, item);
+          }
         }
       }
 
