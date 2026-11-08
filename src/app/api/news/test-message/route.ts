@@ -155,7 +155,7 @@ export async function POST(request: Request) {
     }
     if (type === "currency") {
       message = await buildCurrencyMessage(language);
-      photoUrl = "https://images.unsplash.com/photo-1618044733300-9472054094ee?auto=format&fit=crop&w=1200&q=85";
+      photoUrl = "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=1200&q=85";
       details = { provider: "Central Bank of Uzbekistan", url: "https://cbu.uz/uz/arkhiv-kursov-valyut/json/", imageProvider: "Unsplash" };
     }
     if (type === "news") {
@@ -181,6 +181,9 @@ export async function POST(request: Request) {
       try {
         messageId = await sendTelegramWithPhoto(token, chatId, message, photoUrl);
         imageSent = true;
+        if (message.length > 900) {
+          await sendTelegram(token, chatId, message.slice(900));
+        }
       } catch (error) {
         imageError = error instanceof Error ? error.message : "Rasm yuborilmadi.";
       }
