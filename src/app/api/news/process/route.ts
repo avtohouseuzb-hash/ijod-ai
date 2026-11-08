@@ -387,13 +387,15 @@ export async function GET(request: Request) {
           ...(raw.video_url ? [[{ text: "▶️ Videoni ko‘rish", url: raw.video_url }]] : []),
           [{ text: "📰 IJOD AI News’da ochish", url: (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app") + "/news" }]];
         const { data: previousDeliveries } = await db.from("news_deliveries")
-          .select("chat_id,delivery_type,status")
+          .select("chat_id,delivery_type,status,next_attempt_at")
           .eq("article_id", raw.id);
         // "sending"/"failed" can mean Telegram accepted a request but its
         // response was lost. Never auto-send those again: Bot API has no
         // idempotency key, so retrying an ambiguous timeout creates duplicates.
-        const alreadySent = new Set((previousDeliveries || []).filter(row => ["sent","sending","failed"].includes(row.status))
-          .map(row => String(row.chat_id) + ":" + String(row.delivery_type)));
+        const alreadySent = new Set((previousDeliveries || []).filter(row =>
+          ["sent","sending","failed"].includes(row.status) ||
+          (row.status === "retry" && row.next_attempt_at && new Date(row.next_attempt_at).getTime() > Date.now())
+        ).map(row => String(row.chat_id) + ":" + String(row.delivery_type)));
         const pendingRecipients = recipients.filter(chat =>
           !alreadySent.has(chat.chatId + ":" + (chat.isChannel ? "channel" : "private"))
         );
