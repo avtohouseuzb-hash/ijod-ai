@@ -340,6 +340,7 @@ export async function GET(request: Request) {
       continue;
     }
     if (!claimed) continue;
+    let editorialScoreForOutcome: number | null = raw.editorial_score ?? null;
     await db.from("news_pipeline_state").update({ last_processed_category: raw.category, updated_at: new Date().toISOString() }).eq("id", true);
     try {
       const cleanTitle = raw.title.replace(/[^\p{L}\p{N}]+/gu, " ").trim();
@@ -392,6 +393,7 @@ export async function GET(request: Request) {
           clarity: Math.max(1, Math.min(10, Math.round(Number(parsed.quality?.clarity) || 1)))
         };
         const editorialScore = Math.round(quality.relevance * 0.25 + quality.usefulness * 0.25 + quality.source_reliability * 0.20 + quality.originality * 0.15 + quality.clarity * 0.15);
+        editorialScoreForOutcome = editorialScore;
         const rejectReason = String(parsed.reason || "Sifat balli nashr chegarasidan past.").slice(0, 500);
         if (parsed.publish !== true || editorialScore < 6) {
           await db.from("news_articles").update({ status: "draft", editorial_score: editorialScore, editorial_reason: rejectReason, editorial_quality: quality, processing_started_at: null, processing_last_error: rejectReason }).eq("id", raw.id);
@@ -538,7 +540,7 @@ export async function GET(request: Request) {
         }).eq("id", raw.id);
       }
       outcomes.push({
-        id: raw.id, translated: true, telegramSent, channelMessagesSent, editorialScore: raw.editorial_score ?? null,
+        id: raw.id, translated: true, telegramSent, channelMessagesSent, editorialScore: editorialScoreForOutcome,
         deliveryErrors: deliveryErrors.length ? deliveryErrors : undefined,
         matchedRecipients: recipients.length
       });
