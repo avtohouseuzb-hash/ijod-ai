@@ -46,6 +46,25 @@ export async function GET(request:Request){
 export async function POST(request:Request){
  const a=await admin(request); if(a.response)return a.response;
  let b:any; try{b=await request.json()}catch{return NextResponse.json({error:"Noto‘g‘ri so‘rov."},{status:400})}
+ if(b.action==="update"){
+  if(typeof b.id!=="string")return NextResponse.json({error:"Manba ID noto‘g‘ri."},{status:400});
+  const name=typeof b.name==="string"?b.name.trim().slice(0,120):"";
+  const feedUrl=typeof b.feedUrl==="string"?b.feedUrl.trim():"";
+  const category=typeof b.category==="string"?b.category:"";
+  const sourceGroup=typeof b.sourceGroup==="string"?b.sourceGroup:"RSS manbalari";
+  const siteUrl=typeof b.siteUrl==="string"?b.siteUrl.trim():parsedSafeOrigin(feedUrl);
+  let parsed:URL;try{parsed=new URL(feedUrl)}catch{return NextResponse.json({error:"RSS/Atom URL noto‘g‘ri."},{status:400})}
+  if(!["https:","http:"].includes(parsed.protocol)||!name||!allTopics.has(category)||!sourceGroups.includes(sourceGroup))
+    return NextResponse.json({error:"Sayt nomi, URL yoki mavzu noto‘g‘ri."},{status:400});
+  if(sourceGroup==="Ochiq API manbalari")return NextResponse.json({error:"JSON API connector hali ulanmagan. Hozircha RSS/Atom feed URL kiriting."},{status:400});
+  const topicGroup=Object.entries(topicGroups).find(([,topics])=>topics.includes(category))?.[0]||category;
+  const normalizedCategory=parentCategory[topicGroup]||topicGroup;
+  const {error}=await a.db.from("news_sources").update({
+    name,feed_url:feedUrl,site_url:siteUrl,source_group:sourceGroup,
+    connector_type:"rss",category:normalizedCategory,language:"multi"
+  }).eq("id",b.id);
+  return error?NextResponse.json({error:error.message},{status:500}):NextResponse.json({ok:true});
+ }
  if(b.action==="toggle"){
   if(typeof b.id!=="string"||typeof b.enabled!=="boolean")return NextResponse.json({error:"ID yoki holat noto‘g‘ri."},{status:400});
   const {error}=await a.db.from("news_sources").update({enabled:b.enabled}).eq("id",b.id);
