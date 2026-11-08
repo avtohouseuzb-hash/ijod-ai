@@ -139,6 +139,7 @@ export async function POST(request: Request) {
   const language = recipient.language || "uz-latn";
   try {
     let message = "";
+    let photoUrl = "";
     let details: Record<string, unknown> = {};
     if (type === "motivation") {
       message = motivationMessage(language);
@@ -151,7 +152,12 @@ export async function POST(request: Request) {
       const city = String(settings?.city || "Tashkent");
       const latitude = Number(settings?.latitude ?? 41.2995), longitude = Number(settings?.longitude ?? 69.2401);
       message = await buildWeatherMessage(city, latitude, longitude, language);
-      details = { city, provider: "Open-Meteo" };
+      const weatherResponse = await fetch("https://api.open-meteo.com/v1/forecast?latitude=" + latitude + "&longitude=" + longitude + "&current=weather_code&timezone=Asia%2FTashkent", { cache: "no-store", signal: AbortSignal.timeout(8000) });
+      if (weatherResponse.ok) {
+        const weatherData = await weatherResponse.json() as { current?: { weather_code?: number; time?: string } };
+        if (typeof weatherData.current?.weather_code === "number") photoUrl = weatherPhotoUrl(weatherData.current.weather_code, weatherData.current.time || new Date().toISOString());
+      }
+      details = { city, provider: "Open-Meteo", imageProvider: photoUrl ? "OpenWeatherMap weather icons" : null };
     }
     if (type === "currency") {
       message = await buildCurrencyMessage(language);
