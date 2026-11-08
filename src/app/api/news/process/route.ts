@@ -202,7 +202,9 @@ export async function GET(request: Request) {
     .select("id,title,summary,source_name,source_url,image_url,video_url,category,status")
     .eq("status", "pending_translation").in("category", interestedCategories)
     .gte("published_at", recentSince)
+    .is("telegram_sent_at", null)
     .or("processing_next_attempt_at.is.null,processing_next_attempt_at.lte." + new Date().toISOString())
+    .or("processing_started_at.is.null,processing_started_at.lt." + new Date(Date.now() - 10 * 60 * 1000).toISOString())
     .order("published_at", { ascending: false }).limit(100);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   const articles = (candidates || []) as Article[];
@@ -220,6 +222,22 @@ export async function GET(request: Request) {
   const outcomes: Array<{ id: string; translated: boolean; telegramSent: number; channelMessagesSent?: number; error?: string; deliveryErrors?: string[]; matchedRecipients?: number }> = [];
 
   for (const raw of selectedArticles) {
+    // Atomic claim prevents overlapping cron/manual requests from delivering the same article twice.
+    const claimTime = new Date().toISOString();
+    const staleBefore = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const { data: claimed, error: claimError } = await db.from("news_articles")
+      .update({ processing_started_at: claimTime })
+      .eq("id", raw.id)
+      .eq("status", "pending_translation")
+      .is("telegram_sent_at", null)
+      .or("processing_started_at.is.null,processing_started_at.lt." + staleBefore)
+      .select("id")
+      .maybeSingle();
+    if (claimError) {
+      console.error("Could not claim news article", raw.id, claimError.message);
+      continue;
+    }
+    if (!claimed) continue;
     try {
       const cleanTitle = raw.title.replace(/[^\p{L}\p{N}]+/gu, " ").trim();
       const titleWords = cleanTitle.split(/\s+/).filter(Boolean);
@@ -352,14 +370,16 @@ export async function GET(request: Request) {
         const { error: publishError } = await db.from("news_articles").update({
           status: "published", telegram_sent_at: new Date().toISOString(),
           processing_last_error: deliveryErrors.length ? deliveryErrors.join("; ") : null,
-          processing_next_attempt_at: null
+          processing_next_attempt_at: null,
+          processing_started_at: null
         }).eq("id", raw.id);
         if (publishError) throw new Error("Maqolani nashr qilish: " + publishError.message);
       } else {
         await db.from("news_articles").update({
           status: "pending_translation",
           processing_last_error: deliveryErrors.join("; ") || "Mos Telegram qabul qiluvchisi topilmadi yoki bot tokeni mavjud emas.",
-          processing_next_attempt_at: new Date(Date.now() + 5 * 60 * 1000).toISOString()
+          processing_next_attempt_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+          processing_started_at: null
         }).eq("id", raw.id);
       }
       outcomes.push({
@@ -370,6 +390,11 @@ export async function GET(request: Request) {
     } catch (e) {
       const message = e instanceof Error ? e.message : "Processing failed";
       console.error("News processing failed", raw.id, message);
+      await db.from("news_articles").update({
+        processing_started_at: null,
+        processing_next_attempt_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+        processing_last_error: message.slice(0, 1000)
+      }).eq("id", raw.id).eq("status", "pending_translation");
       outcomes.push({ id: raw.id, translated: false, telegramSent: 0, error: message });
     }
   }
