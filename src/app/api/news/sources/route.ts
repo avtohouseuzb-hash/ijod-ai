@@ -36,7 +36,7 @@ const parentCategory:Record<string,string> = {
 const categories=[...Object.keys(topicGroups),"Bank va moliya","Qurilish","Ko‘chmas mulk","Mebel va dizayn","Texnika","Ta’lim","Madaniyat","Ko‘ngilochar","Salomatlik"];
 const allTopics=new Set([...categories,...Object.values(topicGroups).flat()]);
 const sourceGroups=["RSS manbalari","Rasmiy davlat saytlari","Yangilik portallari","Xalqaro tashkilotlar","Ilmiy jurnallar va tadqiqotlar","Kompaniya va banklarning rasmiy yangiliklari","Normativ-huquqiy hujjatlar portallari","Administrator kiritgan maxsus URL"];
-const sourceGroups=["RSS manbalari","Rasmiy davlat saytlari","Yangilik portallari","Xalqaro tashkilotlar","Ilmiy jurnallar va tadqiqotlar","Kompaniya va banklarning rasmiy yangiliklari","Normativ-huquqiy hujjatlar portallari","Ochiq API manbalari","Administrator kiritgan maxsus URL"];
+
 export async function GET(request:Request){
  const a=await admin(request); if(a.response)return a.response;
  const {data,error}=await a.db.from("news_sources").select("id,name,feed_url,site_url,source_group,connector_type,category,enabled").order("category").order("name");
