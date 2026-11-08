@@ -202,6 +202,7 @@ export async function GET(request: Request) {
     .select("id,title,summary,source_name,source_url,image_url,video_url,category,status")
     .eq("status", "pending_translation").in("category", interestedCategories)
     .gte("published_at", recentSince)
+    .or("processing_next_attempt_at.is.null,processing_next_attempt_at.lte." + new Date().toISOString())
     .order("published_at", { ascending: false }).limit(100);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   const articles = (candidates || []) as Article[];
@@ -350,13 +351,15 @@ export async function GET(request: Request) {
       if (telegramSent > 0) {
         const { error: publishError } = await db.from("news_articles").update({
           status: "published", telegram_sent_at: new Date().toISOString(),
-          processing_last_error: deliveryErrors.length ? deliveryErrors.join("; ") : null
+          processing_last_error: deliveryErrors.length ? deliveryErrors.join("; ") : null,
+          processing_next_attempt_at: null
         }).eq("id", raw.id);
         if (publishError) throw new Error("Maqolani nashr qilish: " + publishError.message);
       } else {
         await db.from("news_articles").update({
           status: "pending_translation",
-          processing_last_error: deliveryErrors.join("; ") || "Mos Telegram qabul qiluvchisi topilmadi yoki bot tokeni mavjud emas."
+          processing_last_error: deliveryErrors.join("; ") || "Mos Telegram qabul qiluvchisi topilmadi yoki bot tokeni mavjud emas.",
+          processing_next_attempt_at: new Date(Date.now() + 5 * 60 * 1000).toISOString()
         }).eq("id", raw.id);
       }
       outcomes.push({
