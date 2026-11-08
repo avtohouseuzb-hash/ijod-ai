@@ -49,11 +49,9 @@ export default function NewsAdminPage(){
    const {data:{session}}=await supabase.auth.getSession();
    if(!session)throw new Error("Avval hisobingizga kiring.");
    const headers={authorization:"Bearer "+session.access_token};
-   const morningResponse=await fetch("/api/news/run?phase=morning",{method:"POST",headers});
-   const morningRaw=await morningResponse.text();
-   let morning:any;
-   try{morning=morningRaw?JSON.parse(morningRaw):{};}catch{throw new Error("Ertalabki xabarlar serveri noto‘g‘ri javob qaytardi.");}
-   if(!morningResponse.ok||morning.ok===false){const details=(morning.results||[]).map((x:any)=>x.slot+": "+(x.result?.error||x.result?.errors?.join("; ")||(x.result?.skipped?"o‘tkazib yuborildi":JSON.stringify(x.result)))).join(" | ");throw new Error(morning.error||details||"Ertalabki xabarlarni yuborishda xatolik (HTTP "+morningResponse.status+").");}
+   // Daily editorial posts run through /api/news/daily on their own schedule.
+   // The manual admin action starts with source collection and article processing.
+   const morning:any={ok:true,sent:0,skipped:true,message:"Kunlik xabarlar alohida jadval orqali yuboriladi."};
    const batches:any[]=[];
    const progressKey="ijod-news-collect-offset";
    let offset=Number(window.localStorage.getItem(progressKey)||0);
