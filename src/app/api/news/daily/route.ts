@@ -132,6 +132,7 @@ async function run(request: Request) {
       if(!wx.ok) throw new Error("Ob-havo xizmati javob bermadi: "+wx.status);
       const weather=await wx.json(), current=weather.current, daily=weather.daily;
       if(!current||!daily) throw new Error("Ob-havo ma’lumoti to‘liq emas.");
+      const code=Number(current.weather_code);
       const captions=recipients.map(r=>({chatId:r.chatId,caption:localized(weatherText(r.language,city,current,daily),r.language)}));
       let weatherImage:Buffer|null=null;
       if(settings?.weather_image_enabled===true&&process.env.OPENAI_API_KEY){
