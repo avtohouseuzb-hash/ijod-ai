@@ -7,6 +7,21 @@ export const maxDuration = 20;
 type TestType = "motivation" | "weather" | "currency" | "news";
 type Recipient = { chat_id: string; chat_type: string; language: string; categories: string[] };
 
+const parentCategoryByPreference: Record<string, string[]> = {
+  "Huquq": ["O‘zbekiston"], "O‘zbekiston": ["O‘zbekiston"],
+  "Fan": ["Fan"], "Ta’lim": ["Fan"], "Salomatlik": ["Fan"],
+  "AI va IT": ["AI va IT"], "Texnika": ["AI va IT"],
+  "Jahon": ["Jahon"], "Madaniyat": ["Jahon"], "Ko‘ngilochar": ["Jahon"],
+  "Iqtisodiyot": ["Iqtisodiyot"], "Bank va moliya": ["Iqtisodiyot"],
+  "Qurilish": ["Iqtisodiyot"], "Ko‘chmas mulk": ["Iqtisodiyot"],
+  "Mebel va dizayn": ["Iqtisodiyot"], "Biznes": ["Biznes"], "Sport": ["Sport"]
+};
+
+function allowedArticleCategories(preferences: string[]) {
+  return [...new Set(preferences.flatMap(topic => parentCategoryByPreference[topic] || [topic]))]
+    .filter(Boolean);
+}
+
 function cyrillic(value: string) {
   const pairs: Array<[string, string]> = [["o‘","ў"],["g‘","ғ"],["sh","ш"],["ch","ч"],["yo","ё"],["yu","ю"],["ya","я"],["ng","нг"],["a","а"],["b","б"],["d","д"],["e","е"],["f","ф"],["g","г"],["h","ҳ"],["i","и"],["j","ж"],["k","к"],["l","л"],["m","м"],["n","н"],["o","о"],["p","п"],["q","қ"],["r","р"],["s","с"],["t","т"],["u","у"],["v","в"],["x","х"],["y","й"],["z","з"],["c","ц"]];
   let result = value;
@@ -136,6 +151,16 @@ export async function POST(request: Request) {
   const db = createClient(url, key, { auth: { persistSession: false } });
   const recipient = await getRecipient(db, chatId, process.env.NEWS_TELEGRAM_CHAT_ID);
   if (!recipient) return NextResponse.json({ error: "Bu chat faol obunachilar ro‘yxatida yo‘q." }, { status: 403 });
+  let recipientCategories = Array.isArray(recipient.categories) ? recipient.categories : [];
+  // A channel has no individual subscription row: test only categories explicitly
+  // selected by active subscribers. Never treat an empty list as "all topics".
+  if (recipient.chat_type === "channel") {
+    const { data: activeSubscriptions, error: subscriptionsError } = await db.from("news_telegram_subscriptions")
+      .select("categories").eq("enabled", true);
+    if (subscriptionsError) throw new Error("Kanal mavzularini tekshirib bo‘lmadi: " + subscriptionsError.message);
+    recipientCategories = [...new Set((activeSubscriptions || []).flatMap((row: { categories?: string[] | null }) => Array.isArray(row.categories) ? row.categories : []))];
+  }
+  const articleCategories = allowedArticleCategories(recipientCategories);
   const language = recipient.language || "uz-latn";
   try {
     let message = "";
@@ -165,21 +190,34 @@ export async function POST(request: Request) {
       details = { provider: "Central Bank of Uzbekistan", url: "https://cbu.uz/uz/arkhiv-kursov-valyut/json/", imageProvider: "Unsplash" };
     }
     if (type === "news") {
-      const { data: article, error } = await db.from("news_articles")
-        .select("id,title,summary,source_name,source_url,image_url,category,editorial_score")
-        .eq("status", "published").order("published_at", { ascending: false }).limit(1).maybeSingle();
-      if (error) throw new Error("Yangilikni olishda xatolik: " + error.message);
-      if (!article) throw new Error("Test uchun nashr qilingan yangilik topilmadi.");
-      const { data: translation, error: translationError } = await db.from("news_translations")
-        .select("title,summary").eq("article_id", article.id).eq("language", language).maybeSingle();
-      if (translationError) throw new Error("Yangilik tarjimasini olishda xatolik: " + translationError.message);
+      if (!articleCategories.length) {
+        throw new Error("Bu Telegram chatida mavzular tanlanmagan. Avval /topics orqali kamida bitta mavzuni tanlang.");
+      }
+      const { data: articles, error } = await db.from("news_articles")
+        .select("id,title,summary,source_name,source_url,image_url,category,editorial_score,published_at")
+        .eq("status", "published").in("category", articleCategories)
+        .order("published_at", { ascending: false }).limit(50);
+      if (error) throw new Error("Tanlangan mavzulardagi yangiliklarni olishda xatolik: " + error.message);
+      if (!articles?.length) {
+        throw new Error("Tanlangan mavzularda hali nashr qilingan yangilik yo‘q. Boshqa mavzudagi xabar yuborilmadi.");
+      }
+      // Pick the newest article that also has a translation for this recipient.
+      let article: (typeof articles)[number] | null = null;
+      let translation: { title: string; summary: string | null } | null = null;
+      for (const candidate of articles) {
+        const { data, error: translationError } = await db.from("news_translations")
+          .select("title,summary").eq("article_id", candidate.id).eq("language", language).maybeSingle();
+        if (translationError) throw new Error("Yangilik tarjimasini olishda xatolik: " + translationError.message);
+        if (data?.title) { article = candidate; translation = data; break; }
+      }
+      if (!article) throw new Error("Tanlangan mavzulardagi yangiliklar uchun " + language + " tarjima hali tayyor emas. Noto‘g‘ri mavzudagi xabar yuborilmadi.");
       const title = translation?.title || article.title;
       const summary = translation?.summary || article.summary || "";
       const displayTitle = language === "uz-cyrl" ? cyrillic(title) : title;
       const displaySummary = language === "uz-cyrl" ? cyrillic(summary) : summary;
       message = "🧪 TEST XABAR · AI NEWS\n\n" + displayTitle + "\n\n" + displaySummary + "\n\nManba: " + article.source_name + "\n" + article.source_url;
       photoUrl = String(article.image_url || "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1200&q=85");
-      details = { articleId: article.id, editorialScore: article.editorial_score ?? null, language, imageAvailable: Boolean(article.image_url) };
+      details = { articleId: article.id, category: article.category, selectedCategories: recipientCategories, matchedCategories: articleCategories, editorialScore: article.editorial_score ?? null, language, imageAvailable: Boolean(article.image_url) };
     }
     let messageId: number | null = null;
     let imageSent = false;
