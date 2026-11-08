@@ -236,7 +236,7 @@ async function run(request: Request, adminAuthorized = false) {
       await db.from("news_pipeline_state").update({source_offset:next,last_collect_at:new Date().toISOString(),last_collect_result:collect,updated_at:new Date().toISOString()}).eq("id",true);
       const processResponse=await fetch(new URL(request.url).origin+"/api/news/process",{headers,cache:"no-store",signal:AbortSignal.timeout(25000)});
       const processed=await processResponse.json().catch(()=>({error:"process response invalid"}));
-      if(!processResponse.ok||processed.error) throw new Error("Yangilikni tarjima/yuborish xatosi: "+JSON.stringify(processed).slice(0,400));
+      if(!processResponse.ok||processed.error||processed.ok===false) throw new Error("Yangilikni tarjima/yuborish xatosi: "+JSON.stringify(processed).slice(0,900));
       batches.push({collect,processed,offset});
       sent+=Number(processed.telegramMessagesSent||0);
       if(Number(processed.telegramMessagesSent||0)>0) found=true;
