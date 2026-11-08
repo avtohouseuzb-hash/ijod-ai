@@ -97,8 +97,9 @@ export default function NewsAdminPage(){
     const result=processed.steps?.process||processed;
     processBatches.push(result);
     const count=Number(result.processed||0);
-    const translated=Number(result.translated||0);
-    pendingMayRemain=count>=1&&translated>0;
+    // A full batch means more articles may remain. Failed deliveries are
+    // delayed in the database, so the next iteration can move to other articles.
+    pendingMayRemain=count>=5;
     if(count===0)pendingMayRemain=false;
     setNotice("Manbalar tekshirildi. Yangiliklar qayta ishlanmoqda: "+processBatches.length+" ta maqola...");
    }
