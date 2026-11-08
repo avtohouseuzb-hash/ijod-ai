@@ -9,7 +9,7 @@ function cronSecrets() {
 
 async function executePipeline(request: Request, adminAuthorized = false) {
   const authHeader = request.headers.get("authorization") || "";
-  if (!cronSecrets().some(secret => authHeader === "Bearer " + secret)) {
+  if (!adminAuthorized && !cronSecrets().some(secret => authHeader === "Bearer " + secret)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const base = new URL(request.url).origin;
@@ -105,11 +105,7 @@ export async function POST(request: Request) {
 
   const secret = process.env.NEWS_CRON_SECRET || process.env.CRON_SECRET;
   if (!secret) return NextResponse.json({ error: "NEWS_CRON_SECRET yoki CRON_SECRET sozlanmagan." }, { status: 500 });
-  // Admin is checked above. Run all internal pipeline calls with the dedicated
-  // cron secret, because collect/process/daily endpoints intentionally reject user JWTs.
-  const internalRequest = new Request(new URL(request.url), {
-    method: "GET",
-    headers: { authorization: "Bearer " + secret }
-  });
-  return executePipeline(internalRequest);
+  // Keep the verified admin JWT for internal routes; collect/process now verify
+  // that it belongs to an allow-listed administrator.
+  return executePipeline(request, true);
 }
