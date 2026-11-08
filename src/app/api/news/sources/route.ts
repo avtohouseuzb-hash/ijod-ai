@@ -46,6 +46,11 @@ export async function GET(request:Request){
 export async function POST(request:Request){
  const a=await admin(request); if(a.response)return a.response;
  let b:any; try{b=await request.json()}catch{return NextResponse.json({error:"Noto‘g‘ri so‘rov."},{status:400})}
+ if(b.action==="toggle"){
+  if(typeof b.id!=="string"||typeof b.enabled!=="boolean")return NextResponse.json({error:"ID yoki holat noto‘g‘ri."},{status:400});
+  const {error}=await a.db.from("news_sources").update({enabled:b.enabled}).eq("id",b.id);
+  return error?NextResponse.json({error:error.message},{status:500}):NextResponse.json({ok:true});
+ }
  if(b.action==="delete"){
   if(typeof b.id!=="string")return NextResponse.json({error:"ID noto‘g‘ri."},{status:400});
   const {error}=await a.db.from("news_sources").delete().eq("id",b.id);
