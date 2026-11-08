@@ -89,8 +89,12 @@ async function run(request: Request) {
   if(channel&&!recipients.some(r=>r.chatId===channel)) recipients.push({chatId:channel,language:channelLanguage,categories:[...new Set((subs||[]).flatMap(s=>s.categories||[]))]});
   if(!recipients.length) return NextResponse.json({ok:true,skipped:"no active Telegram recipients"});
   const currentMinute=Number(parts.hour)*60+Number(parts.minute);
+  const requestedSlot=new URL(request.url).searchParams.get("slot");
   let selectedSlot: typeof DAILY_SCHEDULE[number] | undefined;
-  for(const candidate of DAILY_SCHEDULE){
+  if(requestedSlot){
+    selectedSlot=DAILY_SCHEDULE.find(candidate=>candidate.time===requestedSlot);
+  }
+  for(const candidate of selectedSlot ? [] : DAILY_SCHEDULE){
     const [hour,minute]=candidate.time.split(":").map(Number);
     const age=currentMinute-(hour*60+minute);
     if(age<0||age>candidate.windowMinutes) continue;
