@@ -29,11 +29,13 @@ function cyrillic(value: string) {
   return result;
 }
 
-async function sendTelegram(token: string, chatId: string, message: string) {
+type TelegramKeyboard = { inline_keyboard: Array<Array<{ text: string; url: string }>> };
+
+async function sendTelegram(token: string, chatId: string, message: string, replyMarkup?: TelegramKeyboard, disablePreview = true) {
   const response = await fetch("https://api.telegram.org/bot" + token + "/sendMessage", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text: message, disable_web_page_preview: true }),
+    body: JSON.stringify({ chat_id: chatId, text: message, disable_web_page_preview: disablePreview, ...(replyMarkup ? { reply_markup: replyMarkup } : {}) }),
     signal: AbortSignal.timeout(12000)
   });
   const result = await response.json().catch(() => ({})) as { ok?: boolean; description?: string; result?: { message_id?: number } };
@@ -41,15 +43,60 @@ async function sendTelegram(token: string, chatId: string, message: string) {
   return result.result?.message_id ?? null;
 }
 
-async function sendTelegramWithPhoto(token: string, chatId: string, caption: string, photoUrl: string) {
+async function sendTelegramWithPhoto(token: string, chatId: string, caption: string, photoUrl: string, replyMarkup?: TelegramKeyboard) {
   const response = await fetch("https://api.telegram.org/bot" + token + "/sendPhoto", {
     method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, photo: photoUrl, caption: caption.slice(0, 1024) }),
+    body: JSON.stringify({ chat_id: chatId, photo: photoUrl, caption: caption.slice(0, 1024), ...(replyMarkup ? { reply_markup: replyMarkup } : {}) }),
     signal: AbortSignal.timeout(12000)
   });
   const result = await response.json().catch(() => ({})) as { ok?: boolean; description?: string; result?: { message_id?: number } };
   if (!response.ok || !result.ok) throw new Error(result.description || "Telegram rasmni qabul qilmadi.");
   return result.result?.message_id ?? null;
+}
+
+async function resolveNewsPhotoUrl(imageUrl: string | null, sourceUrl: string): Promise<string | null> {
+  const candidates = [imageUrl, sourceUrl].filter((value): value is string => Boolean(value));
+  for (const candidate of candidates) {
+    try {
+      const response = await fetch(candidate, {
+        headers: { "user-agent": "Mozilla/5.0 (compatible; IJODAINews/1.0)", accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8" },
+        redirect: "follow", signal: AbortSignal.timeout(9000)
+      });
+      if (!response.ok) continue;
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.startsWith("image/")) return response.url || candidate;
+      if (!contentType.includes("text/html")) continue;
+      const html = await response.text();
+      const tags = html.match(/<meta\\b[^>]*>/gi) || [];
+      for (const tag of tags) {
+        const property = tag.match(/(?:property|name)=[\"'](?:og:image|twitter:image)[\"']/i);
+        if (!property) continue;
+        const raw = tag.match(/content=[\"']([^\"']+)[\"']/i)?.[1];
+        if (!raw) continue;
+        const image = new URL(raw.replace(/&amp;/g, "&"), response.url || candidate).toString();
+        const imageResponse = await fetch(image, {
+          method: "HEAD", headers: { "user-agent": "Mozilla/5.0", accept: "image/*" },
+          redirect: "follow", signal: AbortSignal.timeout(7000)
+        });
+        if (imageResponse.ok && (imageResponse.headers.get("content-type") || "").startsWith("image/")) {
+          return imageResponse.url || image;
+        }
+        // Some CDNs reject HEAD but accept GET; Telegram can fetch the public URL itself.
+        if (image.startsWith("https://")) return image;
+      }
+    } catch {
+      // Try the canonical article page if the stored image URL was malformed.
+    }
+  }
+  return null;
+}
+
+function newsKeyboard(sourceUrl: string): TelegramKeyboard {
+  const newsUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app").replace(/\\/$/, "") + "/news";
+  return { inline_keyboard: [
+    [{ text: "🔗 To‘liq yangilik", url: sourceUrl }],
+    [{ text: "📰 IJOD AI News’da ochish", url: newsUrl }]
+  ] };
 }
 
 function weatherPhotoUrl(code: number, time: string) {
@@ -216,24 +263,30 @@ export async function POST(request: Request) {
       const displayTitle = language === "uz-cyrl" ? cyrillic(title) : title;
       const displaySummary = language === "uz-cyrl" ? cyrillic(summary) : summary;
       message = "🧪 TEST XABAR · AI NEWS\n\n" + displayTitle + "\n\n" + displaySummary + "\n\nManba: " + article.source_name + "\n" + article.source_url;
-      photoUrl = String(article.image_url || "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1200&q=85");
-      details = { articleId: article.id, category: article.category, selectedCategories: recipientCategories, matchedCategories: articleCategories, editorialScore: article.editorial_score ?? null, language, imageAvailable: Boolean(article.image_url) };
+      photoUrl = await resolveNewsPhotoUrl(article.image_url, article.source_url) || "";
+      details = { articleId: article.id, category: article.category, selectedCategories: recipientCategories, matchedCategories: articleCategories, editorialScore: article.editorial_score ?? null, language, imageAvailable: Boolean(photoUrl), imageResolvedFrom: photoUrl ? (article.image_url || article.source_url) : null };
     }
     let messageId: number | null = null;
     let imageSent = false;
     let imageError: string | null = null;
+    const keyboard = type === "news" && details && typeof details === "object" && "articleId" in details
+      ? newsKeyboard(String((await db.from("news_articles").select("source_url").eq("id", String(details.articleId)).maybeSingle()).data?.source_url || "https://ijod-ai.vercel.app/news"))
+      : undefined;
     if (photoUrl) {
       try {
-        messageId = await sendTelegramWithPhoto(token, chatId, message, photoUrl);
+        messageId = await sendTelegramWithPhoto(token, chatId, message, photoUrl, keyboard);
         imageSent = true;
         if (message.length > 900) {
-          await sendTelegram(token, chatId, message.slice(900));
+          await sendTelegram(token, chatId, message.slice(900), undefined, true);
         }
       } catch (error) {
         imageError = error instanceof Error ? error.message : "Rasm yuborilmadi.";
       }
     }
-    if (!imageSent) messageId = await sendTelegram(token, chatId, message);
+    if (!imageSent) {
+      // Preserve the two navigation buttons even when a publisher blocks its image.
+      messageId = await sendTelegram(token, chatId, message, keyboard, type === "news" ? false : true);
+    }
     return NextResponse.json({ ok: true, type, chatId, language, messageId, imageSent, imageError, details, note: "Faqat tanlangan chatga test yuborildi. Kundalik jadval va delivery yozuvlari o‘zgartirilmadi." });
   } catch (error) {
     return NextResponse.json({ ok: false, type, chatId, error: error instanceof Error ? error.message : "Test xabar yuborilmadi." }, { status: 502 });
