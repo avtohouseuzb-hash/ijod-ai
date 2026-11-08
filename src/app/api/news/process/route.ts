@@ -306,10 +306,18 @@ export async function GET(request: Request) {
   // Process a small batch per request to avoid one article blocking the entire queue.
   const { data: roundRobinState } = await db.from("news_pipeline_state").select("last_processed_category").eq("id", true).maybeSingle();
   const lastCategory = String(roundRobinState?.last_processed_category || "");
+  const articleIds = eligible.map(article => article.id);
+  const { data: recentVotes } = articleIds.length
+    ? await db.from("news_article_feedback").select("article_id,vote").in("article_id", articleIds).gte("created_at", new Date(Date.now() - 30 * 86400000).toISOString())
+    : { data: [] };
+  const communityScores = new Map<string, number>();
+  for (const vote of recentVotes || []) communityScores.set(vote.article_id, (communityScores.get(vote.article_id) || 0) + Number(vote.vote));
   const selectedArticles = [...eligible].sort((a, b) => {
     const repeatA = a.category === lastCategory ? 1 : 0;
     const repeatB = b.category === lastCategory ? 1 : 0;
-    return repeatA - repeatB || Number(b.editorial_score || 0) - Number(a.editorial_score || 0) || new Date(b.published_at || 0).getTime() - new Date(a.published_at || 0).getTime();
+    const scoreA = Number(a.editorial_score || 0) + Math.max(-1, Math.min(1, (communityScores.get(a.id) || 0) * 0.15));
+    const scoreB = Number(b.editorial_score || 0) + Math.max(-1, Math.min(1, (communityScores.get(b.id) || 0) * 0.15));
+    return repeatA - repeatB || scoreB - scoreA || new Date(b.published_at || 0).getTime() - new Date(a.published_at || 0).getTime();
   }).slice(0, 1);
 
   const model = process.env.IJOD_NEWS_TRANSLATION_MODEL || process.env.IJOD_NEWS_MODEL || "gpt-6-luna";
