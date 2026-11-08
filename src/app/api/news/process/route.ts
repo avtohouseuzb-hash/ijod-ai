@@ -8,6 +8,9 @@ type Translation = { title: string; summary: string };
 type EditorialResult = { publish: boolean; reason?: string; uz_latn: Translation; uz_cyrl: Translation; ru: Translation };
 type Article = { id: string; title: string; summary: string | null; source_name: string; source_url: string; image_url: string | null; video_url: string | null; category: string; status: string };
 type ArticleContext = { description: string; body: string };
+type NewsChat = { chatId: string; language: string; categories: string[]; isChannel?: boolean };
+type DeliveryRow = { chat_id: string; delivery_type: string; status: string; next_attempt_at: string | null };
+type TranslationRow = { language: string; title: string; summary: string | null };
 const topicRules: Record<string,{parents:string[];terms:string[]}> = {
  "O‘zbekiston qonunchiligi":{parents:["O‘zbekiston"],terms:["qonun","qonunchilik","kodeks","qaror","farmon","normativ"]},
  "Xalqaro huquq":{parents:["Jahon"],terms:["xalqaro huquq","xalqaro sud","human rights","international law"]},
@@ -256,7 +259,7 @@ export async function GET(request: Request) {
   const db: any = createClient(url, key, { auth: { persistSession: false } });
   const { data: subscribers } = await db.from("news_telegram_subscriptions")
     .select("chat_id,language,categories").eq("enabled", true);
-  const chats = (subscribers || []).map((s: { chat_id: string; language?: string | null; categories?: string[] | null }) => ({
+  const chats: NewsChat[] = (subscribers || []).map((s: { chat_id: string; language?: string | null; categories?: string[] | null }) => ({
     chatId: String(s.chat_id), language: String(s.language || "uz-latn"),
     categories: Array.isArray(s.categories) ? s.categories : []
   }));
@@ -264,15 +267,15 @@ export async function GET(request: Request) {
   const channelChatId = process.env.NEWS_TELEGRAM_CHAT_ID || "";
   const channelLanguage = process.env.NEWS_TELEGRAM_CHANNEL_LANGUAGE || "uz-latn";
   const retrySummary = botToken ? await retryPendingDeliveries(db, botToken) : { sent: 0, failed: 0, processed: 0 };
-  const channelCategories = [...new Set(chats.flatMap(chat => chat.categories))];
-  const channelRecipient = channelChatId ? {
+  const channelCategories: string[] = [...new Set<string>(chats.flatMap((chat: NewsChat) => chat.categories))];
+  const channelRecipient: NewsChat | null = channelChatId ? {
     chatId: channelChatId, language: channelLanguage, categories: channelCategories, isChannel: true
   } : null;
 
   // Select news for subscriber interests first. A global LIMIT(5) used to let
   // unrelated categories fill the queue, so private subscribers received only
   // one matching story while the public channel received the whole batch.
-  const interestedCategories = [...new Set(chats.flatMap(chat => parentCategories(chat.categories)))];
+  const interestedCategories: string[] = [...new Set<string>(chats.flatMap((chat: NewsChat) => parentCategories(chat.categories)))];
   if (!interestedCategories.length) return NextResponse.json({ ok: true, processed: 0, message: "Faol obunachilar hali mavzu tanlamagan." });
   const nowIso = new Date().toISOString();
   const staleBefore = new Date(Date.now() - 15 * 60 * 1000).toISOString();
@@ -286,7 +289,7 @@ export async function GET(request: Request) {
     .order("published_at", { ascending: true }).limit(100);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   const articles = (candidates || []) as Article[];
-  const eligible = articles.filter(article => chats.some(chat => matchesTopics(article, chat.categories)));
+  const eligible = articles.filter(article => chats.some((chat: NewsChat) => matchesTopics(article, chat.categories)));
   if (!eligible.length) {
     return NextResponse.json({
       ok: true, processed: 0, candidatesChecked: articles.length,
@@ -336,7 +339,7 @@ export async function GET(request: Request) {
       const { data: cached, error: cacheError } = await db.from("news_translations")
         .select("language,title,summary").eq("article_id", raw.id);
       if (cacheError) throw new Error(cacheError.message);
-      const variants = new Map<string, Translation>((cached || []).map(t => [
+      const variants = new Map<string, Translation>((cached || []).map((t: TranslationRow) => [
         String(t.language), { title: String(t.title), summary: String(t.summary || "") }
       ]));
       const languages = ["uz-latn", "uz-cyrl", "ru"];
@@ -378,11 +381,11 @@ export async function GET(request: Request) {
       let telegramSent = 0;
       const deliveryErrors: string[] = [];
       let channelMessagesSent = 0;
-      const privateRecipients = chats.filter(chat => matchesTopics(raw, chat.categories));
+      const privateRecipients = chats.filter((chat: NewsChat) => matchesTopics(raw, chat.categories));
       const recipients = [
-        ...privateRecipients.map(chat => ({ ...chat, isChannel: false })),
+        ...privateRecipients.map((chat: NewsChat) => ({ ...chat, isChannel: false })),
         ...(channelRecipient && matchesTopics(raw, channelRecipient.categories) &&
-          !privateRecipients.some(chat => chat.chatId === channelRecipient.chatId) ? [channelRecipient] : [])
+          !privateRecipients.some((chat: NewsChat) => chat.chatId === channelRecipient.chatId) ? [channelRecipient] : [])
       ];
       if (botToken) {
         const buttons = [[{ text: "🔗 To‘liq yangilik", url: raw.source_url }],
@@ -394,14 +397,14 @@ export async function GET(request: Request) {
         // "sending"/"failed" can mean Telegram accepted a request but its
         // response was lost. Never auto-send those again: Bot API has no
         // idempotency key, so retrying an ambiguous timeout creates duplicates.
-        const alreadySent = new Set((previousDeliveries || []).filter(row =>
+        const alreadySent = new Set((previousDeliveries || []).filter((row: DeliveryRow) =>
           ["sent","sending","failed"].includes(row.status) ||
           (row.status === "retry" && row.next_attempt_at && new Date(row.next_attempt_at).getTime() > Date.now())
-        ).map(row => String(row.chat_id) + ":" + String(row.delivery_type)));
-        const pendingRecipients = recipients.filter(chat =>
+        ).map((row: DeliveryRow) => String(row.chat_id) + ":" + String(row.delivery_type)));
+        const pendingRecipients = recipients.filter((chat: NewsChat) =>
           !alreadySent.has(chat.chatId + ":" + (chat.isChannel ? "channel" : "private"))
         );
-        const deliveries = await Promise.all(pendingRecipients.map(async chat => {
+        const deliveries = await Promise.all(pendingRecipients.map(async (chat: NewsChat) => {
           const deliveryType = chat.isChannel ? "channel" : "private";
           const item = variants.get(chat.language) || variants.get("uz-latn") || { title: raw.title, summary: raw.summary || "" };
           const caption = ("📰 " + item.title + "\n\n" + item.summary + "\n\nManba: " + raw.source_name).slice(0, 1000);
