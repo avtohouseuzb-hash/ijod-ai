@@ -31,3 +31,4 @@ create index if not exists news_article_feedback_user_created_idx
 
 alter table public.news_article_feedback enable row level security;
 revoke all on public.news_article_feedback from anon, authenticated;
+grant all on public.news_article_feedback to service_role;
