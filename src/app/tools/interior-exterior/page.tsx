@@ -79,6 +79,7 @@ export default function InteriorExteriorDesignPage() {
   const [resultImage, setResultImage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [imagePreparing, setImagePreparing] = useState(false);
   const [credits, setCredits] = useState<number | null>(null);
   const [signedIn, setSignedIn] = useState(false);
   const [authChecking, setAuthChecking] = useState(true);
@@ -114,29 +115,69 @@ export default function InteriorExteriorDesignPage() {
     if (typeof data?.credits === "number") setCredits(data.credits);
   }
 
-  function handleImage(file?: File) {
+  async function handleImage(file?: File) {
     if (!file) return;
     if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
       setError("Faqat JPG, PNG yoki WEBP formatidagi rasmni yuklang.");
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      setError("Rasm hajmi 10 MB dan oshmasin.");
+      setError("Asl rasm hajmi 10 MB dan oshmasin.");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      setSourceImage(typeof reader.result === "string" ? reader.result : "");
-      setSourceName(file.name);
-      setResultImage("");
-      setError("");
-    };
-    reader.onerror = () => setError("Rasmni o‘qib bo‘lmadi. Boshqa rasm tanlang.");
-    reader.readAsDataURL(file);
+
+    setImagePreparing(true);
+    setError("");
+    try {
+      // Vercel serverless request body limitiga sig‘ishi uchun rasm brauzerda siqiladi.
+      const objectUrl = URL.createObjectURL(file);
+      try {
+        const image = new Image();
+        image.src = objectUrl;
+        await new Promise<void>((resolve, reject) => {
+          image.onload = () => resolve();
+          image.onerror = () => reject(new Error("Rasmni ochib bo‘lmadi. Boshqa rasm tanlang."));
+        });
+
+        let scale = Math.min(1, 2048 / Math.max(image.naturalWidth, image.naturalHeight));
+        let blob: Blob | null = null;
+        for (let attempt = 0; attempt < 4; attempt++) {
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+          canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+          const context = canvas.getContext("2d");
+          if (!context) throw new Error("Rasmni tayyorlash uchun canvas ochilmadi.");
+          context.fillStyle = "#ffffff";
+          context.fillRect(0, 0, canvas.width, canvas.height);
+          context.drawImage(image, 0, 0, canvas.width, canvas.height);
+          blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.82));
+          if (blob && blob.size <= 3 * 1024 * 1024) break;
+          scale *= 0.82;
+        }
+        if (!blob || blob.size > 3 * 1024 * 1024) {
+          throw new Error("Rasmni xavfsiz yuborish hajmigacha siqib bo‘lmadi. Kichikroq rasm tanlang.");
+        }
+        const reader = new FileReader();
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("Siqilgan rasmni o‘qib bo‘lmadi."));
+          reader.onerror = () => reject(new Error("Rasmni o‘qib bo‘lmadi. Qayta urinib ko‘ring."));
+          reader.readAsDataURL(blob as Blob);
+        });
+        setSourceImage(dataUrl);
+        setSourceName(file.name + " · " + (blob.size / 1024 / 1024).toFixed(1) + " MB");
+        setResultImage("");
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Rasmni tayyorlashda xatolik yuz berdi.");
+    } finally {
+      setImagePreparing(false);
+    }
   }
 
   async function generateDesign() {
-    if (!sourceImage || loading) return;
+    if (!sourceImage || loading || imagePreparing) return;
     setLoading(true);
     setError("");
     try {
@@ -235,7 +276,7 @@ export default function InteriorExteriorDesignPage() {
               <p className="mt-1 text-right text-[10px] text-gray-500">{requirements.length}/500</p>
             </div>
 
-            <button type="button" disabled={!sourceImage || loading} onClick={generateDesign} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 px-4 py-4 text-sm font-extrabold text-white shadow-lg shadow-violet-950/40 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40">{loading ? <><span className="animate-spin">◌</span> Dizayn yaratilmoqda...</> : <>✧ AI dizayn yaratish <span className="ml-auto rounded-full bg-black/20 px-3 py-1 text-xs">1 kredit</span></>}</button>
+            <button type="button" disabled={!sourceImage || loading || imagePreparing} onClick={generateDesign} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 px-4 py-4 text-sm font-extrabold text-white shadow-lg shadow-violet-950/40 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40">{imagePreparing ? "Rasm tayyorlanmoqda..." : loading ? <><span className="animate-spin">◌</span> Dizayn yaratilmoqda...</> : <>✧ AI dizayn yaratish <span className="ml-auto rounded-full bg-black/20 px-3 py-1 text-xs">1 kredit</span></>}</button>
             {error && <p role="alert" className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{error}</p>}
             <p className="mt-3 text-center text-[11px] text-gray-500">Rasm faqat muvaffaqiyatli yaratilganda 1 kredit sarflanadi. Xatolikda kredit qaytariladi.</p>
           </section>
