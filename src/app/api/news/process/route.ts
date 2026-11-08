@@ -197,19 +197,23 @@ export async function GET(request: Request) {
   // one matching story while the public channel received the whole batch.
   const interestedCategories = [...new Set(chats.flatMap(chat => parentCategories(chat.categories)))];
   if (!interestedCategories.length) return NextResponse.json({ ok: true, processed: 0, message: "Faol obunachilar hali mavzu tanlamagan." });
+  const recentSince = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
   const { data: candidates, error } = await db.from("news_articles")
     .select("id,title,summary,source_name,source_url,image_url,video_url,category,status")
     .eq("status", "pending_translation").in("category", interestedCategories)
-    .order("published_at", { ascending: false }).limit(40);
+    .gte("published_at", recentSince)
+    .order("published_at", { ascending: false }).limit(100);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   const articles = (candidates || []) as Article[];
-  const eligible = articles.find(article => chats.some(chat => matchesTopics(article, chat.categories)));
-  if (!eligible) {
-    const irrelevant = articles.filter(article => !chats.some(chat => matchesTopics(article, chat.categories)));
-    if (irrelevant.length) await db.from("news_articles").update({ status: "draft", ai_analysis: "Avtomatik mavzu filtri: faol Telegram obunachilarining tanloviga mos kelmadi." }).in("id", irrelevant.map(article => article.id));
-    return NextResponse.json({ ok: true, processed: 0, skippedIrrelevant: irrelevant.length, message: "Tanlangan mavzularga mos maqola topilmadi." });
+  const eligible = articles.filter(article => chats.some(chat => matchesTopics(article, chat.categories)));
+  if (!eligible.length) {
+    return NextResponse.json({
+      ok: true, processed: 0, candidatesChecked: articles.length,
+      message: "Oxirgi 72 soatda tanlangan mavzularga mos yangi maqola topilmadi."
+    });
   }
-  const selectedArticles = [eligible];
+  // Process a small batch per request to avoid one article blocking the entire queue.
+  const selectedArticles = eligible.slice(0, 5);
 
   const model = process.env.IJOD_NEWS_TRANSLATION_MODEL || process.env.IJOD_NEWS_MODEL || "gpt-6-luna";
   const outcomes: Array<{ id: string; translated: boolean; telegramSent: number; channelMessagesSent?: number; error?: string }> = [];
@@ -274,10 +278,8 @@ export async function GET(request: Request) {
         }
       }
 
-      const { error: publishError } = await db.from("news_articles").update({ status: "published" }).eq("id", raw.id);
-      if (publishError) throw new Error("Maqolani nashr qilish: " + publishError.message);
-
       let telegramSent = 0;
+      const deliveryErrors: string[] = [];
       let channelMessagesSent = 0;
       if (botToken) {
         const buttons = [[{ text: "🔗 To‘liq yangilik", url: raw.source_url }],
@@ -289,32 +291,79 @@ export async function GET(request: Request) {
           ...(channelRecipient && matchesTopics(raw, channelRecipient.categories) &&
             !privateRecipients.some(chat => chat.chatId === channelRecipient.chatId) ? [channelRecipient] : [])
         ];
-        const deliveries = await Promise.all(recipients.map(async chat => {
+        const { data: previousDeliveries } = await db.from("news_deliveries")
+          .select("chat_id,delivery_type,status")
+          .eq("article_id", raw.id);
+        const alreadySent = new Set((previousDeliveries || []).filter(row => row.status === "sent")
+          .map(row => String(row.chat_id) + ":" + String(row.delivery_type)));
+        const pendingRecipients = recipients.filter(chat =>
+          !alreadySent.has(chat.chatId + ":" + (chat.isChannel ? "channel" : "private"))
+        );
+        const deliveries = await Promise.all(pendingRecipients.map(async chat => {
+          const deliveryType = chat.isChannel ? "channel" : "private";
           const item = variants.get(chat.language) || variants.get("uz-latn") || { title: raw.title, summary: raw.summary || "" };
           const caption = ("📰 " + item.title + "\n\n" + item.summary + "\n\nManba: " + raw.source_name).slice(0, 1000);
           const method = raw.image_url ? "sendPhoto" : "sendMessage";
           const payload = raw.image_url
             ? { chat_id: chat.chatId, photo: raw.image_url, caption, reply_markup: { inline_keyboard: buttons } }
             : { chat_id: chat.chatId, text: caption, reply_markup: { inline_keyboard: buttons }, disable_web_page_preview: false };
-          try {
-            const sent = await fetch("https://api.telegram.org/bot" + botToken + "/" + method, {
-              method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload),
-              signal: AbortSignal.timeout(4000)
-            });
-            const sentJson = await sent.json().catch(() => ({}));
-            if (sent.ok && sentJson.ok) return { sent: 1, channel: Boolean(chat.isChannel) };
-            console.error("Telegram delivery failed", chat.chatId, sentJson);
-          } catch (deliveryError) {
-            console.error("Telegram delivery failed", chat.chatId, deliveryError);
+          const { data: previous } = await db.from("news_deliveries").select("id,attempts")
+            .eq("article_id", raw.id).eq("chat_id", chat.chatId).eq("delivery_type", deliveryType).maybeSingle();
+          const attempt = Number(previous?.attempts || 0) + 1;
+          await db.from("news_deliveries").upsert({
+            article_id: raw.id, chat_id: chat.chatId, delivery_type: deliveryType,
+            language: chat.language, status: "sending", attempts: attempt,
+            next_attempt_at: null, last_error: null, updated_at: new Date().toISOString()
+          }, { onConflict: "article_id,chat_id,delivery_type" });
+          let lastError = "Telegram send failed";
+          for (let retry = 0; retry < 2; retry++) {
+            try {
+              const sent = await fetch("https://api.telegram.org/bot" + botToken + "/" + method, {
+                method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload),
+                signal: AbortSignal.timeout(12000)
+              });
+              const sentJson = await sent.json().catch(() => ({}));
+              if (sent.ok && sentJson.ok) {
+                await db.from("news_deliveries").update({
+                  status: "sent", sent_at: new Date().toISOString(),
+                  telegram_message_id: String(sentJson.result?.message_id || ""),
+                  last_error: null, updated_at: new Date().toISOString()
+                }).eq("article_id", raw.id).eq("chat_id", chat.chatId).eq("delivery_type", deliveryType);
+                return { sent: 1, channel: Boolean(chat.isChannel) };
+              }
+              lastError = String(sentJson.description || "Telegram HTTP " + sent.status);
+            } catch (deliveryError) {
+              lastError = deliveryError instanceof Error ? deliveryError.message : "Telegram network error";
+            }
           }
+          deliveryErrors.push(chat.chatId + ": " + lastError);
+          await db.from("news_deliveries").update({
+            status: "retry", last_error: lastError,
+            next_attempt_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+            updated_at: new Date().toISOString()
+          }).eq("article_id", raw.id).eq("chat_id", chat.chatId).eq("delivery_type", deliveryType);
           return { sent: 0, channel: Boolean(chat.isChannel) };
         }));
         telegramSent += deliveries.reduce<number>((sum, item) => sum + item.sent, 0);
         channelMessagesSent += deliveries.reduce<number>((sum, item) => sum + (item.channel ? item.sent : 0), 0);
       }
-      if (telegramSent > 0) await db.from("news_articles")
-        .update({ telegram_sent_at: new Date().toISOString() }).eq("id", raw.id);
-      outcomes.push({ id: raw.id, translated: true, telegramSent, channelMessagesSent });
+      if (telegramSent > 0) {
+        const { error: publishError } = await db.from("news_articles").update({
+          status: "published", telegram_sent_at: new Date().toISOString(),
+          processing_last_error: deliveryErrors.length ? deliveryErrors.join("; ") : null
+        }).eq("id", raw.id);
+        if (publishError) throw new Error("Maqolani nashr qilish: " + publishError.message);
+      } else {
+        await db.from("news_articles").update({
+          status: "pending_translation",
+          processing_last_error: deliveryErrors.join("; ") || "Mos Telegram qabul qiluvchisi topilmadi yoki bot tokeni mavjud emas."
+        }).eq("id", raw.id);
+      }
+      outcomes.push({
+        id: raw.id, translated: true, telegramSent, channelMessagesSent,
+        deliveryErrors: deliveryErrors.length ? deliveryErrors : undefined,
+        matchedRecipients: recipients.length
+      });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Processing failed";
       console.error("News processing failed", raw.id, message);
