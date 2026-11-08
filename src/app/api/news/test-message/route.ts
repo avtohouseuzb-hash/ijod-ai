@@ -155,7 +155,8 @@ export async function POST(request: Request) {
     }
     if (type === "currency") {
       message = await buildCurrencyMessage(language);
-      details = { provider: "Central Bank of Uzbekistan", url: "https://cbu.uz/uz/arkhiv-kursov-valyut/json/" };
+      photoUrl = "https://images.unsplash.com/photo-1618044733300-9472054094ee?auto=format&fit=crop&w=1200&q=85";
+      details = { provider: "Central Bank of Uzbekistan", url: "https://cbu.uz/uz/arkhiv-kursov-valyut/json/", imageProvider: "Unsplash" };
     }
     if (type === "news") {
       const { data: article, error } = await db.from("news_articles")
@@ -171,7 +172,7 @@ export async function POST(request: Request) {
       const displayTitle = language === "uz-cyrl" ? cyrillic(title) : title;
       const displaySummary = language === "uz-cyrl" ? cyrillic(summary) : summary;
       message = "🧪 TEST XABAR · AI NEWS\n\n" + displayTitle + "\n\n" + displaySummary + "\n\nManba: " + article.source_name + "\n" + article.source_url;
-      details = { articleId: article.id, editorialScore: article.editorial_score ?? null, language };
+      details = { articleId: article.id, editorialScore: article.editorial_score ?? null, language, imageAvailable: Boolean(photoUrl) };
     }
     let messageId: number | null = null;
     let imageSent = false;
