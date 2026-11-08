@@ -150,6 +150,79 @@ function matchesTopics(article: Article, selected: string[]) {
   return matchesSpecific || matchesBroad;
 }
 
+async function retryPendingDeliveries(db: ReturnType<typeof createClient>, token: string) {
+  const now = new Date().toISOString();
+  const { data: due, error } = await db.from("news_deliveries")
+    .select("article_id,chat_id,delivery_type,language,attempts")
+    .in("status", ["queued", "retry"])
+    .lte("next_attempt_at", now)
+    .order("created_at", { ascending: true })
+    .limit(5);
+  if (error) throw new Error("Delivery retry queue: " + error.message);
+  let sent = 0, failed = 0;
+  for (const item of due || []) {
+    const { data: article, error: articleError } = await db.from("news_articles")
+      .select("id,title,summary,source_name,source_url,image_url,video_url")
+      .eq("id", item.article_id).maybeSingle();
+    if (articleError || !article) { failed++; continue; }
+    if (item.delivery_type === "private") {
+      const { data: sub, error: subError } = await db.from("news_telegram_subscriptions")
+        .select("enabled").eq("chat_id", item.chat_id).maybeSingle();
+      if (subError || !sub?.enabled) {
+        await db.from("news_deliveries").update({
+          status: "failed", next_attempt_at: now,
+          last_error: subError?.message || "Obunachi faol emas.", updated_at: now
+        }).eq("article_id", item.article_id).eq("chat_id", item.chat_id).eq("delivery_type", item.delivery_type);
+        failed++; continue;
+      }
+    }
+    const { data: translation, error: translationError } = await db.from("news_translations")
+      .select("title,summary").eq("article_id", item.article_id).eq("language", item.language).maybeSingle();
+    if (translationError || !translation) { failed++; continue; }
+    const buttons = [
+      [{ text: "🔗 To‘liq yangilik", url: article.source_url }],
+      ...(article.video_url ? [[{ text: "▶️ Videoni ko‘rish", url: article.video_url }]] : []),
+      [{ text: "📰 IJOD AI News’da ochish", url: (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app") + "/news" }]
+    ];
+    const caption = ("📰 " + translation.title + "\n\n" + (translation.summary || "") + "\n\nManba: " + article.source_name).slice(0, 1000);
+    const send = async (method: string, payload: Record<string, unknown>) => {
+      const response = await fetch("https://api.telegram.org/bot" + token + "/" + method, {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000)
+      });
+      const result = await response.json().catch(() => ({}));
+      return { ok: response.ok && result.ok === true, result, status: response.status };
+    };
+    let outcome = article.image_url
+      ? await send("sendPhoto", { chat_id: item.chat_id, photo: article.image_url, caption, reply_markup: { inline_keyboard: buttons } })
+      : await send("sendMessage", { chat_id: item.chat_id, text: caption, reply_markup: { inline_keyboard: buttons }, disable_web_page_preview: false });
+    if (!outcome.ok && article.image_url && /failed to get HTTP URL content|wrong file identifier|failed to get|wrong type of the web page/i.test(String(outcome.result.description || ""))) {
+      outcome = await send("sendMessage", { chat_id: item.chat_id, text: caption, reply_markup: { inline_keyboard: buttons }, disable_web_page_preview: false });
+    }
+    const at = new Date().toISOString();
+    if (outcome.ok) {
+      const { error: saveError } = await db.from("news_deliveries").update({
+        status: "sent", sent_at: at, telegram_message_id: String(outcome.result.result?.message_id || ""),
+        next_attempt_at: at, last_error: null, updated_at: at
+      }).eq("article_id", item.article_id).eq("chat_id", item.chat_id).eq("delivery_type", item.delivery_type);
+      if (saveError) { failed++; continue; }
+      sent++;
+    } else {
+      const attempts = Number(item.attempts || 0);
+      const reason = String(outcome.result.description || "Telegram HTTP " + outcome.status).slice(0, 500);
+      const permanent = /bot was blocked|chat not found|not enough rights|bot is not a member|user is deactivated/i.test(reason);
+      const delay = Math.min(360, 5 * Math.pow(2, Math.min(Math.max(0, attempts - 1), 6)));
+      await db.from("news_deliveries").update({
+        status: permanent || attempts >= 5 ? "failed" : "retry",
+        next_attempt_at: new Date(Date.now() + delay * 60000).toISOString(),
+        last_error: reason, updated_at: at
+      }).eq("article_id", item.article_id).eq("chat_id", item.chat_id).eq("delivery_type", item.delivery_type);
+      failed++;
+    }
+  }
+  return { sent, failed, processed: (due || []).length };
+}
+
 async function fetchArticleContext(articleUrl: string): Promise<ArticleContext> {
   try {
     const response = await fetch(articleUrl, {
@@ -188,6 +261,7 @@ export async function GET(request: Request) {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   const channelChatId = process.env.NEWS_TELEGRAM_CHAT_ID || "";
   const channelLanguage = process.env.NEWS_TELEGRAM_CHANNEL_LANGUAGE || "uz-latn";
+  const retrySummary = botToken ? await retryPendingDeliveries(db, botToken) : { sent: 0, failed: 0, processed: 0 };
   const channelCategories = [...new Set(chats.flatMap(chat => chat.categories))];
   const channelRecipient = channelChatId ? {
     chatId: channelChatId, language: channelLanguage, categories: channelCategories, isChannel: true
@@ -438,7 +512,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     ok: outcomes.every(x => x.translated), phase: "translate_and_deliver",
-    model, processed: outcomes.length, translated: outcomes.filter(x => x.translated).length,
+    model, retrySummary, processed: outcomes.length, translated: outcomes.filter(x => x.translated).length,
     telegramMessagesSent: outcomes.reduce((sum, x) => sum + x.telegramSent, 0),
     channelConfigured: Boolean(channelChatId),
     channelMessagesSent: outcomes.reduce((sum, x) => sum + Number(x.channelMessagesSent || 0), 0), outcomes
