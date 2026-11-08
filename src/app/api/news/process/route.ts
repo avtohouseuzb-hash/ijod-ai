@@ -321,7 +321,7 @@ export async function GET(request: Request) {
   }).slice(0, 1);
 
   const model = process.env.IJOD_NEWS_TRANSLATION_MODEL || process.env.IJOD_NEWS_MODEL || "gpt-6-luna";
-  const outcomes: Array<{ id: string; translated: boolean; telegramSent: number; channelMessagesSent?: number; error?: string; deliveryErrors?: string[]; matchedRecipients?: number }> = [];
+  const outcomes: Array<{ id: string; translated: boolean; telegramSent: number; channelMessagesSent?: number; editorialScore?: number | null; error?: string; deliveryErrors?: string[]; matchedRecipients?: number }> = [];
 
   for (const raw of selectedArticles) {
     // Atomic claim prevents overlapping cron/manual requests from delivering the same article twice.
@@ -538,7 +538,7 @@ export async function GET(request: Request) {
         }).eq("id", raw.id);
       }
       outcomes.push({
-        id: raw.id, translated: true, telegramSent, channelMessagesSent,
+        id: raw.id, translated: true, telegramSent, channelMessagesSent, editorialScore: raw.editorial_score ?? null,
         deliveryErrors: deliveryErrors.length ? deliveryErrors : undefined,
         matchedRecipients: recipients.length
       });
