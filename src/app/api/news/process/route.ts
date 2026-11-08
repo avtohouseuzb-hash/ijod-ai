@@ -216,7 +216,7 @@ export async function GET(request: Request) {
     });
   }
   // Process a small batch per request to avoid one article blocking the entire queue.
-  const selectedArticles = eligible.slice(0, 5);
+  const selectedArticles = eligible.slice(0, 1);
 
   const model = process.env.IJOD_NEWS_TRANSLATION_MODEL || process.env.IJOD_NEWS_MODEL || "gpt-6-luna";
   const outcomes: Array<{ id: string; translated: boolean; telegramSent: number; channelMessagesSent?: number; error?: string; deliveryErrors?: string[]; matchedRecipients?: number }> = [];
@@ -339,6 +339,7 @@ export async function GET(request: Request) {
           }, { onConflict: "article_id,chat_id,delivery_type" });
           let lastError = "Telegram send failed";
           let responseReceived = false;
+          let telegramMessageId = "";
           try {
             const sent = await fetch("https://api.telegram.org/bot" + botToken + "/" + method, {
               method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload),
@@ -347,14 +348,33 @@ export async function GET(request: Request) {
             const sentJson = await sent.json().catch(() => ({}));
             responseReceived = true;
             if (sent.ok && sentJson.ok) {
+              telegramMessageId = String(sentJson.result?.message_id || "");
+            } else {
+              lastError = String(sentJson.description || "Telegram HTTP " + sent.status);
+              // Telegram explicitly rejected this photo URL. Fall back to a text
+              // post with the original article link instead of losing the story.
+              if (method === "sendPhoto" && /failed to get HTTP URL content|wrong file identifier|failed to get|wrong type of the web page/i.test(lastError)) {
+                const fallback = await fetch("https://api.telegram.org/bot" + botToken + "/sendMessage", {
+                  method: "POST", headers: { "content-type": "application/json" },
+                  body: JSON.stringify({ chat_id: chat.chatId, text: caption, reply_markup: { inline_keyboard: buttons }, disable_web_page_preview: false }),
+                  signal: AbortSignal.timeout(12000)
+                });
+                const fallbackJson = await fallback.json().catch(() => ({}));
+                if (fallback.ok && fallbackJson.ok) {
+                  telegramMessageId = String(fallbackJson.result?.message_id || "");
+                } else {
+                  lastError = String(fallbackJson.description || "Telegram text fallback HTTP " + fallback.status);
+                }
+              }
+            }
+            if (telegramMessageId) {
               await db.from("news_deliveries").update({
                 status: "sent", sent_at: new Date().toISOString(),
-                telegram_message_id: String(sentJson.result?.message_id || ""),
+                telegram_message_id: telegramMessageId,
                 last_error: null, updated_at: new Date().toISOString()
               }).eq("article_id", raw.id).eq("chat_id", chat.chatId).eq("delivery_type", deliveryType);
               return { sent: 1, channel: Boolean(chat.isChannel) };
             }
-            lastError = String(sentJson.description || "Telegram HTTP " + sent.status);
           } catch (deliveryError) {
             lastError = deliveryError instanceof Error ? deliveryError.message : "Telegram network error";
           }
@@ -376,7 +396,7 @@ export async function GET(request: Request) {
         const { error: publishError } = await db.from("news_articles").update({
           status: "published", telegram_sent_at: new Date().toISOString(),
           processing_last_error: deliveryErrors.length ? deliveryErrors.join("; ") : null,
-          processing_next_attempt_at: null,
+          processing_next_attempt_at: new Date().toISOString(),
           processing_started_at: null
         }).eq("id", raw.id);
         if (publishError) throw new Error("Maqolani nashr qilish: " + publishError.message);
