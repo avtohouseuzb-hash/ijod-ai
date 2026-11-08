@@ -187,10 +187,12 @@ async function run(request: Request) {
       return NextResponse.json({ok:!errors.length,type,slot,sent,usd:usd.Rate,errors});
     }
     const {data:state}=await db.from("news_pipeline_state").select("source_offset").eq("id",true).maybeSingle();
-    const selectedCategories=[...new Set(recipients.flatMap(r=>r.categories.flatMap(topic=>({
+    const categoryParents:Record<string,string[]> = {
       "Bank va moliya":["Iqtisodiyot"],"Qurilish":["Iqtisodiyot"],"Ko‘chmas mulk":["Iqtisodiyot"],"Mebel va dizayn":["Iqtisodiyot"],
       "Texnika":["AI va IT"],"Ta’lim":["Fan"],"Madaniyat":["Jahon"],"Ko‘ngilochar":["Jahon"],"Salomatlik":["Fan"]
-    }[topic]||[topic]))))].filter(category=>["Iqtisodiyot","Fan","Jahon","AI va IT","O‘zbekiston","Biznes","Sport"].includes(category))];
+    };
+    const allowedCategories=["Iqtisodiyot","Fan","Jahon","AI va IT","O‘zbekiston","Biznes","Sport"];
+    const selectedCategories=[...new Set(recipients.flatMap(r=>r.categories.flatMap(topic=>categoryParents[topic]||[topic])))].filter(category=>allowedCategories.includes(category));
     if(!selectedCategories.length) throw new Error("Faol obunachilar uchun tanlangan yangilik mavzulari topilmadi.");
     const {count:sourceCount}=await db.from("news_sources").select("id",{count:"exact",head:true}).eq("enabled",true).in("category",selectedCategories);
     let offset=Math.max(0,Number(state?.source_offset||0));
