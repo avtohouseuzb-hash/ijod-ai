@@ -5,6 +5,12 @@ import { isNewsCronAuthorized } from "@/lib/news-cron-auth";
 export const maxDuration = 60;
 const TZ = "Asia/Tashkent";
 const NEWS_SLOTS = ["09:30","10:45","12:00","13:15","14:30","15:45","17:00","18:15","19:45","21:15"];
+const DAILY_SCHEDULE = [
+  { time: "08:00", type: "motivation" as const, windowMinutes: 15 },
+  { time: "08:15", type: "weather" as const, windowMinutes: 15 },
+  { time: "08:30", type: "currency" as const, windowMinutes: 15 },
+  ...NEWS_SLOTS.map(time => ({ time, type: "news" as const, windowMinutes: 20 }))
+];
 
 function localParts(date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-GB", {
@@ -78,17 +84,37 @@ async function run(request: Request) {
   const channelLanguage=process.env.NEWS_TELEGRAM_CHANNEL_LANGUAGE||"uz-latn";
   if(channel&&!recipients.some(r=>r.chatId===channel)) recipients.push({chatId:channel,language:channelLanguage,categories:[...new Set((subs||[]).flatMap(s=>s.categories||[]))]});
   if(!recipients.length) return NextResponse.json({ok:true,skipped:"no active Telegram recipients"});
-  let type:"motivation"|"weather"|"currency"|"news"|null=null,slot=hhmm;
-  if(hhmm==="08:00") type="motivation";
-  else if(hhmm==="08:15") type="weather";
-  else if(hhmm==="08:30") type="currency";
-  else if(NEWS_SLOTS.includes(hhmm)) type="news";
-  else return NextResponse.json({ok:true,skipped:"not a scheduled minute",time:hhmm});
-  const {data:existing}=await db.from("news_daily_posts").select("id,status").eq("post_date",today).eq("slot_key",slot).maybeSingle();
-  if(existing) return NextResponse.json({ok:true,skipped:"slot already claimed",slot,status:existing.status});
-  const {data:claimed,error:claimError}=await db.from("news_daily_posts").insert({post_date:today,slot_key:slot,post_type:type,status:"sending",recipients_total:recipients.length,started_at:now.toISOString(),payload:{timezone:TZ}}).select("id").single();
-  if(claimError||!claimed) return NextResponse.json({ok:true,skipped:"slot already claimed or database error",detail:claimError?.message});
-  const postId=claimed.id;
+  const currentMinute=Number(parts.hour)*60+Number(parts.minute);
+  let selectedSlot: typeof DAILY_SCHEDULE[number] | undefined;
+  for(const candidate of DAILY_SCHEDULE){
+    const [hour,minute]=candidate.time.split(":").map(Number);
+    const age=currentMinute-(hour*60+minute);
+    if(age<0||age>candidate.windowMinutes) continue;
+    const {data:row}=await db.from("news_daily_posts").select("id,status,started_at").eq("post_date",today).eq("slot_key",candidate.time).maybeSingle();
+    if(row?.status==="sent"||row?.status==="partial") continue;
+    if(row?.status==="sending"&&row.started_at&&Date.now()-new Date(row.started_at).getTime()<5*60*1000) continue;
+    selectedSlot=candidate;
+    break;
+  }
+  if(!selectedSlot) return NextResponse.json({ok:true,skipped:"no due schedule slot",time:hhmm});
+  const type=selectedSlot.type,slot=selectedSlot.time;
+  const {data:existing}=await db.from("news_daily_posts").select("id,status,started_at").eq("post_date",today).eq("slot_key",slot).maybeSingle();
+  let postId:string;
+  if(existing){
+    const {data:updated,error:updateError}=await db.from("news_daily_posts").update({
+      status:"sending",error:null,started_at:now.toISOString(),updated_at:now.toISOString(),
+      recipients_total:recipients.length
+    }).eq("id",existing.id).select("id").single();
+    if(updateError||!updated) return NextResponse.json({ok:false,error:updateError?.message||"Could not claim schedule slot"},{status:500});
+    postId=updated.id;
+  }else{
+    const {data:claimed,error:claimError}=await db.from("news_daily_posts").insert({
+      post_date:today,slot_key:slot,post_type:type,status:"sending",
+      recipients_total:recipients.length,started_at:now.toISOString(),payload:{timezone:TZ}
+    }).select("id").single();
+    if(claimError||!claimed) return NextResponse.json({ok:true,skipped:"slot already claimed or database error",detail:claimError?.message});
+    postId=claimed.id;
+  }
   try {
     let payload:Record<string,unknown>={};
     if(type==="motivation"){
@@ -106,11 +132,39 @@ async function run(request: Request) {
       if(!wx.ok) throw new Error("Ob-havo xizmati javob bermadi: "+wx.status);
       const weather=await wx.json(), current=weather.current, daily=weather.daily;
       if(!current||!daily) throw new Error("Ob-havo ma’lumoti to‘liq emas.");
+      const captions=recipients.map(r=>({chatId:r.chatId,caption:localized(weatherText(r.language,city,current,daily),r.language)}));
+      let weatherImage:Buffer|null=null;
+      if(settings?.weather_image_enabled===true&&process.env.OPENAI_API_KEY){
+        try{
+          const prompt="Create a premium editorial weather illustration for "+city+", Uzbekistan, based on this real forecast: temperature "+Math.round(current.temperature_2m)+" Celsius, apparent temperature "+Math.round(current.apparent_temperature)+" Celsius, weather code "+code+", wind "+Math.round(current.wind_speed_10m)+" km/h, precipitation "+(daily.precipitation_sum?.[0]??0)+" mm. Visually communicate the actual weather condition. Beautiful cinematic atmospheric scene, polished modern digital illustration, rich natural detail, vertical 4:5 composition, no text, no letters, no numbers, no logos, no watermark.";
+          const imageResponse=await fetch("https://api.openai.com/v1/images/generations",{
+            method:"POST",headers:{"content-type":"application/json",authorization:"Bearer "+process.env.OPENAI_API_KEY},
+            body:JSON.stringify({model:process.env.IJOD_WEATHER_IMAGE_MODEL||"gpt-image-2.5-sunburst",prompt,size:"1024x1536",quality:"low",output_format:"png"}),
+            signal:AbortSignal.timeout(45000)
+          });
+          const imageJson=await imageResponse.json().catch(()=>({}));
+          if(imageResponse.ok&&imageJson.data?.[0]?.b64_json) weatherImage=Buffer.from(imageJson.data[0].b64_json,"base64");
+          else console.error("Weather image generation failed",imageJson.error?.message||imageResponse.status);
+        }catch(imageError){console.error("Weather image generation failed",imageError);}
+      }
       let sent=0,errors:string[]=[];
-      for(const r of recipients){try{await sendTelegram(token,r.chatId,localized(weatherText(r.language,city,current,daily),r.language));sent++;}catch(e){errors.push(r.chatId+": "+(e instanceof Error?e.message:"send failed"));}}
-      payload={kind:type,city,current,daily,illustration:"weather emoji; AI image generation disabled to preserve free budget"};
+      for(const item of captions){
+        try{
+          if(weatherImage){
+            const form=new FormData();
+            form.append("chat_id",item.chatId);
+            form.append("caption",item.caption.slice(0,1000));
+            form.append("photo",new Blob([new Uint8Array(weatherImage)],{type:"image/png"}),"ijod-weather.png");
+            const response=await fetch("https://api.telegram.org/bot"+token+"/sendPhoto",{method:"POST",body:form,signal:AbortSignal.timeout(15000)});
+            const result=await response.json().catch(()=>({}));
+            if(!response.ok||!result.ok) throw new Error(String(result.description||"Telegram sendPhoto failed"));
+          }else await sendTelegram(token,item.chatId,item.caption);
+          sent++;
+        }catch(e){errors.push(item.chatId+": "+(e instanceof Error?e.message:"send failed"));}
+      }
+      payload={kind:type,city,current,daily,aiImageGenerated:Boolean(weatherImage)};
       await db.from("news_daily_posts").update({status:errors.length?(sent?"partial":"failed"):"sent",recipients_sent:sent,payload:{...payload,errors},sent_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("id",postId);
-      return NextResponse.json({ok:!errors.length,type,slot,sent,city,weather:current,aiImageGenerated:false,errors});
+      return NextResponse.json({ok:!errors.length,type,slot,sent,city,weather:current,aiImageGenerated:Boolean(weatherImage),errors});
     }
     if(type==="currency"){
       const response=await fetch("https://cbu.uz/uz/arkhiv-kursov-valyut/json/",{cache:"no-store",signal:AbortSignal.timeout(10000)});
@@ -123,8 +177,8 @@ async function run(request: Request) {
       let sent=0,errors:string[]=[];
       for(const r of recipients){
         const text=r.language==="ru"
-          ?"💱 КУРС ВАЛЮТ ЦБ Узбекистана\\n\\n🇺🇸 1 USD = "+Number(usd.Rate).toLocaleString("ru-RU")+" сум\\n\\n"+lines.join("\\n")+"\\n\\nДата курса: "+usd.Date
-          :localized("💱 O‘ZBEKISTONDA VALYUTA KURSLARI\\n\\n🇺🇸 1 AQSh dollari (USD)\\n"+Number(usd.Rate).toLocaleString("uz-UZ")+" SO‘M\\n\\n"+lines.join("\\n")+"\\n\\nManba: O‘zbekiston Markaziy banki · "+usd.Date,r.language);
+          ?"💱 КУРС ВАЛЮТ ЦБ Узбекистана\n\n🇺🇸 1 USD = "+Number(usd.Rate).toLocaleString("ru-RU")+" сум\n\n"+lines.join("\n")+"\n\nДата курса: "+usd.Date
+          :localized("💱 O‘ZBEKISTONDA VALYUTA KURSLARI\n\n🇺🇸 1 AQSh dollari (USD)\n"+Number(usd.Rate).toLocaleString("uz-UZ")+" SO‘M\n\n"+lines.join("\n")+"\n\nManba: O‘zbekiston Markaziy banki · "+usd.Date,r.language);
         try{await sendTelegram(token,r.chatId,text);sent++;}catch(e){errors.push(r.chatId+": "+(e instanceof Error?e.message:"send failed"));}
       }
       payload={kind:type,usd,otherRates:lines};
@@ -133,23 +187,33 @@ async function run(request: Request) {
     }
     const {data:state}=await db.from("news_pipeline_state").select("source_offset").eq("id",true).maybeSingle();
     const {count:sourceCount}=await db.from("news_sources").select("id",{count:"exact",head:true}).eq("enabled",true);
-    const offset=Math.max(0,Number(state?.source_offset||0));
-    const collectUrl=new URL(new URL(request.url).origin+"/api/news/collect");
-    collectUrl.searchParams.set("offset",String(offset)); collectUrl.searchParams.set("limit","10");
+    let offset=Math.max(0,Number(state?.source_offset||0));
     const headers={authorization:request.headers.get("authorization")||""};
-    const collectResponse=await fetch(collectUrl,{headers,cache:"no-store",signal:AbortSignal.timeout(50000)});
-    const collect=await collectResponse.json().catch(()=>({error:"collect response invalid"}));
-    if(!collectResponse.ok||collect.error) throw new Error("Manba yig‘ish xatosi: "+JSON.stringify(collect).slice(0,400));
-    const nextOffset=Number(collect.nextOffset||offset),hasMore=Boolean(collect.hasMore);
-    await db.from("news_pipeline_state").update({source_offset:hasMore&&nextOffset<Number(sourceCount||0)?nextOffset:0,last_collect_at:new Date().toISOString(),last_collect_result:collect,updated_at:new Date().toISOString()}).eq("id",true);
-    const processResponse=await fetch(new URL(request.url).origin+"/api/news/process",{headers,cache:"no-store",signal:AbortSignal.timeout(50000)});
-    const processed=await processResponse.json().catch(()=>({error:"process response invalid"}));
-    if(!processResponse.ok||processed.error) throw new Error("Yangilikni tarjima/yuborish xatosi: "+JSON.stringify(processed).slice(0,400));
-    payload={kind:type,collect,processed,sourceOffset:offset};
-    const sent=Number(processed.telegramMessagesSent||0);
-    const status=sent>0?"sent":Number(processed.processed||0)>0?"partial":"no_news";
-    await db.from("news_daily_posts").update({status,recipients_sent:sent,payload,sent_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("id",postId);
-    return NextResponse.json({ok:true,type,slot,collect,processed});
+    const batches:Array<{collect:any;processed:any;offset:number}>=[];
+    let sent=0,found=false;
+    for(let attempt=0;attempt<3;attempt++){
+      const collectUrl=new URL(new URL(request.url).origin+"/api/news/collect");
+      collectUrl.searchParams.set("offset",String(offset)); collectUrl.searchParams.set("limit","10");
+      const collectResponse=await fetch(collectUrl,{headers,cache:"no-store",signal:AbortSignal.timeout(25000)});
+      const collect=await collectResponse.json().catch(()=>({error:"collect response invalid"}));
+      if(!collectResponse.ok||collect.error) throw new Error("Manba yig‘ish xatosi: "+JSON.stringify(collect).slice(0,400));
+      const nextOffset=Number(collect.nextOffset??offset);
+      const hasMore=Boolean(collect.hasMore);
+      const next=hasMore&&nextOffset<Number(sourceCount||0)?nextOffset:0;
+      await db.from("news_pipeline_state").update({source_offset:next,last_collect_at:new Date().toISOString(),last_collect_result:collect,updated_at:new Date().toISOString()}).eq("id",true);
+      const processResponse=await fetch(new URL(request.url).origin+"/api/news/process",{headers,cache:"no-store",signal:AbortSignal.timeout(25000)});
+      const processed=await processResponse.json().catch(()=>({error:"process response invalid"}));
+      if(!processResponse.ok||processed.error) throw new Error("Yangilikni tarjima/yuborish xatosi: "+JSON.stringify(processed).slice(0,400));
+      batches.push({collect,processed,offset});
+      sent=Number(processed.telegramMessagesSent||0);
+      if(sent>0){found=true;break;}
+      if(!hasMore&&next===0) break;
+      offset=next;
+    }
+    payload={kind:type,batches,sourceOffset:offset};
+    const status=found?"sent":"no_news";
+    await db.from("news_daily_posts").update({status,recipients_sent:sent,payload,sent_at:found?new Date().toISOString():null,updated_at:new Date().toISOString()}).eq("id",postId);
+    return NextResponse.json({ok:found,type,slot,sent,batchesTried:batches.length,newsFound:found});
   }catch(error){
     const message=error instanceof Error?error.message:"Daily news job failed";
     await db.from("news_daily_posts").update({status:"failed",error:message,updated_at:new Date().toISOString()}).eq("id",postId);
