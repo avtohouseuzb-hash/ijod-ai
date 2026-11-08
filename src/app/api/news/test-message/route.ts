@@ -26,7 +26,7 @@ async function sendTelegram(token: string, chatId: string, message: string) {
   return result.result?.message_id ?? null;
 }
 
-async function getRecipient(db: ReturnType<typeof createClient>, chatId: string, channelId: string | undefined) {
+async function getRecipient(db: any, chatId: string, channelId: string | undefined) {
   if (channelId && chatId === channelId) {
     return { chat_id: chatId, chat_type: "channel", language: process.env.NEWS_TELEGRAM_CHANNEL_LANGUAGE || "uz-latn", categories: [] } as Recipient;
   }
