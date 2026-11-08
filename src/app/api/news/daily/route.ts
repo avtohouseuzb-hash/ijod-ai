@@ -25,7 +25,11 @@ function toCyrillic(input: string) {
   for(const [latin,cyr] of pairs) value=value.replace(new RegExp(latin,"gi"),match=>match===match.toUpperCase()?cyr.toUpperCase():cyr);
   return value;
 }
-function localized(text: string, language: string) { return language==="uz-cyrl" ? toCyrillic(text) : text; }
+function localized(text: string, language: string) {
+  return language==="uz-cyrl"
+    ? text.split(/(<[^>]*>)/g).map(part => part.startsWith("<") ? part : toCyrillic(part)).join("")
+    : text;
+}
 function season(month: number) {
   if ([12,1,2].includes(month)) return "qish";
   if ([3,4,5].includes(month)) return "bahor";
