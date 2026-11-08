@@ -107,6 +107,7 @@ async function run(request: Request) {
   if(!selectedSlot) return NextResponse.json({ok:true,skipped:"no due schedule slot",time:hhmm});
   const type=selectedSlot.type,slot=selectedSlot.time;
   const {data:existing}=await db.from("news_daily_posts").select("id,status,started_at").eq("post_date",today).eq("slot_key",slot).maybeSingle();
+  if(existing&&(existing.status==="sent"||existing.status==="partial")) return NextResponse.json({ok:true,skipped:"slot already delivered",slot,status:existing.status});
   let postId:string;
   if(existing){
     const {data:updated,error:updateError}=await db.from("news_daily_posts").update({
@@ -196,11 +197,25 @@ async function run(request: Request) {
     }
     const {data:state}=await db.from("news_pipeline_state").select("source_offset").eq("id",true).maybeSingle();
     const categoryParents:Record<string,string[]> = {
-      "Bank va moliya":["Iqtisodiyot"],"Qurilish":["Iqtisodiyot"],"Ko‘chmas mulk":["Iqtisodiyot"],"Mebel va dizayn":["Iqtisodiyot"],
-      "Texnika":["AI va IT"],"Ta’lim":["Fan"],"Madaniyat":["Jahon"],"Ko‘ngilochar":["Jahon"],"Salomatlik":["Fan"]
+      "Huquq":["O‘zbekiston"],"O‘zbekiston":["O‘zbekiston"],"Jahon":["Jahon"],"AI va IT":["AI va IT"],"Biznes":["Biznes"],"Iqtisodiyot":["Iqtisodiyot"],"Fan":["Fan"],"Sport":["Sport"],
+      "O‘zbekiston qonunchiligi":["O‘zbekiston"],"Xalqaro huquq":["Jahon"],"Sud va huquqiy amaliyot":["O‘zbekiston","Jahon"],"Normativ hujjatlar":["O‘zbekiston"],
+      "Fizika":["Fan"],"Kimyo":["Fan"],"Matematika":["Fan"],"Biologiya":["Fan"],"Astronomiya":["Fan"],"Geologiya":["Fan"],"Ekologiya":["Fan"],
+      "Sun’iy intellekt":["AI va IT"],"Dasturlash":["AI va IT"],"Kiberxavfsizlik":["AI va IT"],"Robototexnika":["AI va IT"],"IT kompaniyalar":["AI va IT","Biznes"],"Startap texnologiyalari":["AI va IT","Biznes"],
+      "Davlat":["O‘zbekiston"],"Jamiyat":["O‘zbekiston"],"Hududlar":["O‘zbekiston"],"Ijtimoiy yangiliklar":["O‘zbekiston"],"Siyosat":["O‘zbekiston","Jahon"],
+      "Jahon yangiliklari":["Jahon"],"Geosiyosat":["Jahon"],"Xalqaro munosabatlar":["Jahon"],"Davlatlar":["Jahon"],
+      "Jahon iqtisodiyoti":["Iqtisodiyot"],"Bozorlar":["Iqtisodiyot"],"Savdo":["Iqtisodiyot"],"Sanoat":["Iqtisodiyot"],"Makroiqtisodiyot":["Iqtisodiyot"],
+      "Bank":["Iqtisodiyot"],"Kredit":["Iqtisodiyot"],"Investitsiya":["Iqtisodiyot","Biznes"],"Soliq":["Iqtisodiyot"],"Sug‘urta":["Iqtisodiyot"],"Fintech":["Iqtisodiyot","AI va IT"],
+      "Qurilish texnologiyalari":["Iqtisodiyot"],"Kadastr":["O‘zbekiston","Iqtisodiyot"],"Qurilish materiallari":["Iqtisodiyot"],"Me’yorlar":["O‘zbekiston"],
+      "Uy-joy bozori":["Iqtisodiyot"],"Ijara":["Iqtisodiyot"],"Ipoteka":["Iqtisodiyot"],"Arxitektura":["Iqtisodiyot"],
+      "Mebel":["Iqtisodiyot"],"Interyer":["Iqtisodiyot"],"Eksteryer":["Iqtisodiyot"],"Dizayn materiallari":["Iqtisodiyot"],
+      "Avtomobil":["Iqtisodiyot"],"Maishiy texnika":["AI va IT"],"Ishlab chiqarish":["Iqtisodiyot"],"Transport":["Iqtisodiyot"],
+      "Ta’lim texnologiyalari":["Fan"],"Yangi metodlar":["Fan"],"Ilmiy tadqiqotlar":["Fan"],"Oliy ta’lim":["Fan","O‘zbekiston"],
+      "Tarix":["Jahon","O‘zbekiston"],"Kitoblar":["Jahon"],"Kino":["Jahon"],"San’at":["Jahon"],"Hajviya":["Jahon"],"Trendlar":["Jahon","AI va IT"],"Qiziqarli faktlar":["Fan","Jahon"],"Fantastika":["Jahon"],
+      "Tadbirkorlik":["Biznes"],"Marketing":["Biznes"],"Menejment":["Biznes"],"Biznes yangiliklari":["Biznes"],
+      "Tibbiyot":["Fan"],"Ilmiy izlanishlar":["Fan"],"Sog‘lom turmush":["Fan"]
     };
     const allowedCategories=["Iqtisodiyot","Fan","Jahon","AI va IT","O‘zbekiston","Biznes","Sport"];
-    const selectedCategories=[...new Set(recipients.flatMap(r=>r.categories.flatMap(topic=>categoryParents[topic]||[topic])))].filter(category=>allowedCategories.includes(category));
+    const selectedCategories=[...new Set(recipients.flatMap(r=>r.categories.flatMap(topic=>categoryParents[topic]||[])))].filter(category=>allowedCategories.includes(category));
     if(!selectedCategories.length) throw new Error("Faol obunachilar uchun tanlangan yangilik mavzulari topilmadi.");
     const {count:sourceCount}=await db.from("news_sources").select("id",{count:"exact",head:true}).eq("enabled",true).in("category",selectedCategories);
     let offset=Math.max(0,Number(state?.source_offset||0));
