@@ -249,6 +249,7 @@ export async function POST(request: Request) {
         const summary = translation?.summary || article.summary || "";
         const caption = (title + "\n\n" + summary + "\n\nManba: " + (article.source_name || "Manba")).slice(0, 1000);
         const buttons = [
+          [{ text: "👍", callback_data: "news_vote:" + article.id + ":1 }, { text: "👎", callback_data: "news_vote:" + article.id + ":-1 }],
           [{ text: "🔗 To‘liq yangilik", url: article.source_url }],
           ...(article.video_url ? [[{ text: "▶️ Videoni ko‘rish", url: article.video_url }]] : []),
           [{ text: "📰 IJOD AI News’da ochish", url: "https://ijod-ai.vercel.app/news" }]
