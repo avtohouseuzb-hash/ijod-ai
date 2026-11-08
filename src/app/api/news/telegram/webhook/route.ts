@@ -144,7 +144,32 @@ export async function POST(request: Request) {
     const { data: subscription } = await db.from("news_telegram_subscriptions").select("language,categories").eq("chat_id", chatId).maybeSingle();
     const lang = String(subscription?.language || "uz-latn");
     const msg = copy[lang] || copy["uz-latn"];
-    if (data.startsWith("news_lang:")) {
+    if (data.startsWith("news_vote:")) {
+      const match = data.match(/^news_vote:([0-9a-f-]{36}):(-?1)$/i);
+      const voterId = Number(callback.from?.id);
+      if (!match || !Number.isSafeInteger(voterId) || voterId <= 0) {
+        await telegram(token, "answerCallbackQuery", { callback_query_id: callback.id, text: "Ovoz ma’lumoti noto‘g‘ri.", show_alert: true });
+        return NextResponse.json({ ok: true });
+      }
+      const articleId = match[1];
+      const vote = Number(match[2]);
+      const { data: article, error: articleError } = await db.from("news_articles")
+        .select("id").eq("id", articleId).eq("status", "published").maybeSingle();
+      if (articleError || !article) {
+        await telegram(token, "answerCallbackQuery", { callback_query_id: callback.id, text: "Bu yangilik topilmadi yoki endi faol emas.", show_alert: true });
+        return NextResponse.json({ ok: true });
+      }
+      const { error: voteError } = await db.from("news_article_feedback").upsert({
+        article_id: articleId, telegram_user_id: voterId, chat_id: chatId,
+        vote, updated_at: new Date().toISOString()
+      }, { onConflict: "article_id,telegram_user_id" });
+      await telegram(token, "answerCallbackQuery", {
+        callback_query_id: callback.id,
+        text: voteError ? "Ovozni saqlab bo‘lmadi. Keyinroq urinib ko‘ring." : (vote === 1 ? "Rahmat! 👍" : "Fikringiz uchun rahmat.")
+      });
+      if (voteError) console.error("News feedback save failed", voteError.message);
+      return NextResponse.json({ ok: true, saved: !voteError });
+    } else if (data.startsWith("news_lang:")) {
       const language = data.slice("news_lang:".length);
       if (!(language in languageNames)) return NextResponse.json({ ok: true });
       await db.from("news_telegram_subscriptions").upsert({ chat_id: chatId, chat_type: callback.message?.chat?.type || "private", username: callback.from?.username || null, language, categories: Array.isArray(subscription?.categories) ? subscription.categories as string[] : [], enabled: true, updated_at: new Date().toISOString() }, { onConflict: "chat_id" });
