@@ -129,7 +129,8 @@ function topicKeyboard(selected: string[]) {
 }
 export async function POST(request: Request) {
   const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
-  if (webhookSecret && request.headers.get("x-telegram-bot-api-secret-token") !== webhookSecret) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!webhookSecret || request.headers.get("x-telegram-bot-api-secret-token") !== webhookSecret)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SECRET_KEY;

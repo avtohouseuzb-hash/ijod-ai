@@ -238,8 +238,10 @@ async function run(request: Request, adminAuthorized = false) {
       const processed=await processResponse.json().catch(()=>({error:"process response invalid"}));
       if(!processResponse.ok||processed.error) throw new Error("Yangilikni tarjima/yuborish xatosi: "+JSON.stringify(processed).slice(0,400));
       batches.push({collect,processed,offset});
-      sent=Number(processed.telegramMessagesSent||0);
-      if(sent>0){found=true;break;}
+      sent+=Number(processed.telegramMessagesSent||0);
+      if(Number(processed.telegramMessagesSent||0)>0) found=true;
+      // Continue the bounded source batches: one successful send must not stop
+      // the remaining batch checks for this editorial slot.
       if(!hasMore&&next===0) break;
       offset=next;
     }

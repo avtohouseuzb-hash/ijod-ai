@@ -8,6 +8,9 @@ type Translation = { title: string; summary: string };
 type EditorialResult = { publish: boolean; reason?: string; uz_latn: Translation; uz_cyrl: Translation; ru: Translation };
 type Article = { id: string; title: string; summary: string | null; source_name: string; source_url: string; image_url: string | null; video_url: string | null; category: string; status: string };
 type ArticleContext = { description: string; body: string };
+type NewsChat = { chatId: string; language: string; categories: string[]; isChannel?: boolean };
+type DeliveryRow = { chat_id: string; delivery_type: string; status: string; next_attempt_at: string | null };
+type TranslationRow = { language: string; title: string; summary: string | null };
 const topicRules: Record<string,{parents:string[];terms:string[]}> = {
  "O‘zbekiston qonunchiligi":{parents:["O‘zbekiston"],terms:["qonun","qonunchilik","kodeks","qaror","farmon","normativ"]},
  "Xalqaro huquq":{parents:["Jahon"],terms:["xalqaro huquq","xalqaro sud","human rights","international law"]},
@@ -141,12 +144,86 @@ function matchesTopics(article: Article, selected: string[]) {
   // Broad source labels are not proof of article relevance. Require topical evidence
   // for business/economy/technology even when the parent category is selected.
   const required = categoryRequiredTerms[article.category];
-  if (required && !required.some(term => text.includes(term))) return false;
-  const specific = selected.filter(topic => topicTerms[topic]);
+  const specific = selected.filter(topic => topicTerms[topic] || topicRules[topic]);
   const direct = selected.some(topic => broadTopics.has(topic) && mainCategoryParents[topic]?.includes(article.category));
-  if (!direct && specific.length && !specific.some(topic => topicTerms[topic].some(term => text.includes(term)))) return false;
-  if (!direct && !specific.length) return false;
-  return true;
+  const matchesSpecific = specific.some(topic => (topicTerms[topic] || topicRules[topic]?.terms || []).some(term => text.includes(term)));
+  const matchesBroad = direct && (!required || required.some(term => text.includes(term)));
+  // A specific topic (construction, furniture, law, health, etc.) must not be
+  // rejected by unrelated parent-category keywords such as economy terms.
+  return matchesSpecific || matchesBroad;
+}
+
+async function retryPendingDeliveries(db: any, token: string) {
+  const now = new Date().toISOString();
+  const { data: due, error } = await db.from("news_deliveries")
+    .select("article_id,chat_id,delivery_type,language,attempts")
+    .in("status", ["queued", "retry"])
+    .lte("next_attempt_at", now)
+    .order("created_at", { ascending: true })
+    .limit(5);
+  if (error) throw new Error("Delivery retry queue: " + error.message);
+  let sent = 0, failed = 0;
+  for (const item of due || []) {
+    const { data: article, error: articleError } = await db.from("news_articles")
+      .select("id,title,summary,source_name,source_url,image_url,video_url")
+      .eq("id", item.article_id).maybeSingle();
+    if (articleError || !article) { failed++; continue; }
+    if (item.delivery_type === "private") {
+      const { data: sub, error: subError } = await db.from("news_telegram_subscriptions")
+        .select("enabled").eq("chat_id", item.chat_id).maybeSingle();
+      if (subError || !sub?.enabled) {
+        await db.from("news_deliveries").update({
+          status: "failed", next_attempt_at: now,
+          last_error: subError?.message || "Obunachi faol emas.", updated_at: now
+        }).eq("article_id", item.article_id).eq("chat_id", item.chat_id).eq("delivery_type", item.delivery_type);
+        failed++; continue;
+      }
+    }
+    const { data: translation, error: translationError } = await db.from("news_translations")
+      .select("title,summary").eq("article_id", item.article_id).eq("language", item.language).maybeSingle();
+    if (translationError || !translation) { failed++; continue; }
+    const buttons = [
+      [{ text: "🔗 To‘liq yangilik", url: article.source_url }],
+      ...(article.video_url ? [[{ text: "▶️ Videoni ko‘rish", url: article.video_url }]] : []),
+      [{ text: "📰 IJOD AI News’da ochish", url: (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app") + "/news" }]
+    ];
+    const caption = ("📰 " + translation.title + "\n\n" + (translation.summary || "") + "\n\nManba: " + article.source_name).slice(0, 1000);
+    const send = async (method: string, payload: Record<string, unknown>) => {
+      const response = await fetch("https://api.telegram.org/bot" + token + "/" + method, {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000)
+      });
+      const result = await response.json().catch(() => ({}));
+      return { ok: response.ok && result.ok === true, result, status: response.status };
+    };
+    let outcome = article.image_url
+      ? await send("sendPhoto", { chat_id: item.chat_id, photo: article.image_url, caption, reply_markup: { inline_keyboard: buttons } })
+      : await send("sendMessage", { chat_id: item.chat_id, text: caption, reply_markup: { inline_keyboard: buttons }, disable_web_page_preview: false });
+    if (!outcome.ok && article.image_url && /failed to get HTTP URL content|wrong file identifier|failed to get|wrong type of the web page/i.test(String(outcome.result.description || ""))) {
+      outcome = await send("sendMessage", { chat_id: item.chat_id, text: caption, reply_markup: { inline_keyboard: buttons }, disable_web_page_preview: false });
+    }
+    const at = new Date().toISOString();
+    if (outcome.ok) {
+      const { error: saveError } = await db.from("news_deliveries").update({
+        status: "sent", sent_at: at, telegram_message_id: String(outcome.result.result?.message_id || ""),
+        next_attempt_at: at, last_error: null, updated_at: at
+      }).eq("article_id", item.article_id).eq("chat_id", item.chat_id).eq("delivery_type", item.delivery_type);
+      if (saveError) { failed++; continue; }
+      sent++;
+    } else {
+      const attempts = Number(item.attempts || 0);
+      const reason = String(outcome.result.description || "Telegram HTTP " + outcome.status).slice(0, 500);
+      const permanent = /bot was blocked|chat not found|not enough rights|bot is not a member|user is deactivated/i.test(reason);
+      const delay = Math.min(360, 5 * Math.pow(2, Math.min(Math.max(0, attempts - 1), 6)));
+      await db.from("news_deliveries").update({
+        status: permanent || attempts >= 5 ? "failed" : "retry",
+        next_attempt_at: new Date(Date.now() + delay * 60000).toISOString(),
+        last_error: reason, updated_at: at
+      }).eq("article_id", item.article_id).eq("chat_id", item.chat_id).eq("delivery_type", item.delivery_type);
+      failed++;
+    }
+  }
+  return { sent, failed, processed: (due || []).length };
 }
 
 async function fetchArticleContext(articleUrl: string): Promise<ArticleContext> {
@@ -177,38 +254,42 @@ export async function GET(request: Request) {
   if (!url || !key || !openaiKey)
     return NextResponse.json({ error: "Server config missing: Supabase yoki OpenAI kaliti." }, { status: 500 });
 
-  const db = createClient(url, key, { auth: { persistSession: false } });
+  // News tables are managed through SQL migrations and are not yet included in the generated Database type.
+  // Keep this server-only client dynamically typed until the schema types are regenerated.
+  const db: any = createClient(url, key, { auth: { persistSession: false } });
   const { data: subscribers } = await db.from("news_telegram_subscriptions")
     .select("chat_id,language,categories").eq("enabled", true);
-  const chats = (subscribers || []).map((s: { chat_id: string; language?: string | null; categories?: string[] | null }) => ({
+  const chats: NewsChat[] = (subscribers || []).map((s: { chat_id: string; language?: string | null; categories?: string[] | null }) => ({
     chatId: String(s.chat_id), language: String(s.language || "uz-latn"),
     categories: Array.isArray(s.categories) ? s.categories : []
   }));
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   const channelChatId = process.env.NEWS_TELEGRAM_CHAT_ID || "";
   const channelLanguage = process.env.NEWS_TELEGRAM_CHANNEL_LANGUAGE || "uz-latn";
-  const channelCategories = [...new Set(chats.flatMap(chat => chat.categories))];
-  const channelRecipient = channelChatId ? {
+  const retrySummary = botToken ? await retryPendingDeliveries(db, botToken) : { sent: 0, failed: 0, processed: 0 };
+  const channelCategories: string[] = [...new Set<string>(chats.flatMap((chat: NewsChat) => chat.categories))];
+  const channelRecipient: NewsChat | null = channelChatId ? {
     chatId: channelChatId, language: channelLanguage, categories: channelCategories, isChannel: true
   } : null;
 
   // Select news for subscriber interests first. A global LIMIT(5) used to let
   // unrelated categories fill the queue, so private subscribers received only
   // one matching story while the public channel received the whole batch.
-  const interestedCategories = [...new Set(chats.flatMap(chat => parentCategories(chat.categories)))];
+  const interestedCategories: string[] = [...new Set<string>(chats.flatMap((chat: NewsChat) => parentCategories(chat.categories)))];
   if (!interestedCategories.length) return NextResponse.json({ ok: true, processed: 0, message: "Faol obunachilar hali mavzu tanlamagan." });
-  const recentSince = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+  const nowIso = new Date().toISOString();
+  const staleBefore = new Date(Date.now() - 15 * 60 * 1000).toISOString();
   const { data: candidates, error } = await db.from("news_articles")
-    .select("id,title,summary,source_name,source_url,image_url,video_url,category,status")
+    .select("id,title,summary,source_name,source_url,image_url,video_url,category,status,processing_attempts,processing_started_at")
     .eq("status", "pending_translation").in("category", interestedCategories)
-    .gte("published_at", recentSince)
     .is("telegram_sent_at", null)
-    .or("processing_next_attempt_at.is.null,processing_next_attempt_at.lte." + new Date().toISOString())
-    .or("processing_started_at.is.null,processing_started_at.lt." + new Date(Date.now() - 10 * 60 * 1000).toISOString())
-    .order("published_at", { ascending: false }).limit(100);
+    .or("processing_next_attempt_at.is.null,processing_next_attempt_at.lte." + nowIso)
+    .or("processing_started_at.is.null,processing_started_at.lt." + staleBefore)
+    // Oldest first: the backlog must drain instead of starving older articles.
+    .order("published_at", { ascending: true }).limit(100);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   const articles = (candidates || []) as Article[];
-  const eligible = articles.filter(article => chats.some(chat => matchesTopics(article, chat.categories)));
+  const eligible = articles.filter(article => chats.some((chat: NewsChat) => matchesTopics(article, chat.categories)));
   if (!eligible.length) {
     return NextResponse.json({
       ok: true, processed: 0, candidatesChecked: articles.length,
@@ -224,7 +305,7 @@ export async function GET(request: Request) {
   for (const raw of selectedArticles) {
     // Atomic claim prevents overlapping cron/manual requests from delivering the same article twice.
     const claimTime = new Date().toISOString();
-    const staleBefore = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const staleBefore = new Date(Date.now() - 15 * 60 * 1000).toISOString();
     const { data: claimed, error: claimError } = await db.from("news_articles")
       .update({ processing_started_at: claimTime })
       .eq("id", raw.id)
@@ -258,7 +339,7 @@ export async function GET(request: Request) {
       const { data: cached, error: cacheError } = await db.from("news_translations")
         .select("language,title,summary").eq("article_id", raw.id);
       if (cacheError) throw new Error(cacheError.message);
-      const variants = new Map<string, Translation>((cached || []).map(t => [
+      const variants = new Map<string, Translation>((cached || []).map((t: TranslationRow) => [
         String(t.language), { title: String(t.title), summary: String(t.summary || "") }
       ]));
       const languages = ["uz-latn", "uz-cyrl", "ru"];
@@ -300,28 +381,30 @@ export async function GET(request: Request) {
       let telegramSent = 0;
       const deliveryErrors: string[] = [];
       let channelMessagesSent = 0;
-      const privateRecipients = chats.filter(chat => matchesTopics(raw, chat.categories));
+      const privateRecipients = chats.filter((chat: NewsChat) => matchesTopics(raw, chat.categories));
       const recipients = [
-        ...privateRecipients.map(chat => ({ ...chat, isChannel: false })),
+        ...privateRecipients.map((chat: NewsChat) => ({ ...chat, isChannel: false })),
         ...(channelRecipient && matchesTopics(raw, channelRecipient.categories) &&
-          !privateRecipients.some(chat => chat.chatId === channelRecipient.chatId) ? [channelRecipient] : [])
+          !privateRecipients.some((chat: NewsChat) => chat.chatId === channelRecipient.chatId) ? [channelRecipient] : [])
       ];
       if (botToken) {
         const buttons = [[{ text: "🔗 To‘liq yangilik", url: raw.source_url }],
           ...(raw.video_url ? [[{ text: "▶️ Videoni ko‘rish", url: raw.video_url }]] : []),
           [{ text: "📰 IJOD AI News’da ochish", url: (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app") + "/news" }]];
         const { data: previousDeliveries } = await db.from("news_deliveries")
-          .select("chat_id,delivery_type,status")
+          .select("chat_id,delivery_type,status,next_attempt_at")
           .eq("article_id", raw.id);
         // "sending"/"failed" can mean Telegram accepted a request but its
         // response was lost. Never auto-send those again: Bot API has no
         // idempotency key, so retrying an ambiguous timeout creates duplicates.
-        const alreadySent = new Set((previousDeliveries || []).filter(row => ["sent","sending","failed"].includes(row.status))
-          .map(row => String(row.chat_id) + ":" + String(row.delivery_type)));
-        const pendingRecipients = recipients.filter(chat =>
+        const alreadySent = new Set((previousDeliveries || []).filter((row: DeliveryRow) =>
+          ["sent","sending","failed"].includes(row.status) ||
+          (row.status === "retry" && row.next_attempt_at && new Date(row.next_attempt_at).getTime() > Date.now())
+        ).map((row: DeliveryRow) => String(row.chat_id) + ":" + String(row.delivery_type)));
+        const pendingRecipients = recipients.filter((chat: NewsChat) =>
           !alreadySent.has(chat.chatId + ":" + (chat.isChannel ? "channel" : "private"))
         );
-        const deliveries = await Promise.all(pendingRecipients.map(async chat => {
+        const deliveries = await Promise.all(pendingRecipients.map(async (chat: NewsChat) => {
           const deliveryType = chat.isChannel ? "channel" : "private";
           const item = variants.get(chat.language) || variants.get("uz-latn") || { title: raw.title, summary: raw.summary || "" };
           const caption = ("📰 " + item.title + "\n\n" + item.summary + "\n\nManba: " + raw.source_name).slice(0, 1000);
@@ -329,14 +412,22 @@ export async function GET(request: Request) {
           const payload = raw.image_url
             ? { chat_id: chat.chatId, photo: raw.image_url, caption, reply_markup: { inline_keyboard: buttons } }
             : { chat_id: chat.chatId, text: caption, reply_markup: { inline_keyboard: buttons }, disable_web_page_preview: false };
-          const { data: previous } = await db.from("news_deliveries").select("id,attempts")
+          const { data: previous, error: previousError } = await db.from("news_deliveries").select("id,attempts")
             .eq("article_id", raw.id).eq("chat_id", chat.chatId).eq("delivery_type", deliveryType).maybeSingle();
+          if (previousError) {
+            deliveryErrors.push(chat.chatId + ": delivery history: " + previousError.message);
+            return { sent: 0, channel: Boolean(chat.isChannel) };
+          }
           const attempt = Number(previous?.attempts || 0) + 1;
-          await db.from("news_deliveries").upsert({
+          const { error: queueError } = await db.from("news_deliveries").upsert({
             article_id: raw.id, chat_id: chat.chatId, delivery_type: deliveryType,
             language: chat.language, status: "sending", attempts: attempt,
-            next_attempt_at: null, last_error: null, updated_at: new Date().toISOString()
+            next_attempt_at: new Date().toISOString(), last_error: null, updated_at: new Date().toISOString()
           }, { onConflict: "article_id,chat_id,delivery_type" });
+          if (queueError) {
+            deliveryErrors.push(chat.chatId + ": delivery queue: " + queueError.message);
+            return { sent: 0, channel: Boolean(chat.isChannel) };
+          }
           let lastError = "Telegram send failed";
           let responseReceived = false;
           let telegramMessageId = "";
@@ -368,25 +459,30 @@ export async function GET(request: Request) {
               }
             }
             if (telegramMessageId) {
-              await db.from("news_deliveries").update({
+              const { error: sentUpdateError } = await db.from("news_deliveries").update({
                 status: "sent", sent_at: new Date().toISOString(),
                 telegram_message_id: telegramMessageId,
+                next_attempt_at: new Date().toISOString(),
                 last_error: null, updated_at: new Date().toISOString()
               }).eq("article_id", raw.id).eq("chat_id", chat.chatId).eq("delivery_type", deliveryType);
+              if (sentUpdateError) {
+                deliveryErrors.push(chat.chatId + ": Telegram sent, but delivery status save failed: " + sentUpdateError.message);
+              }
               return { sent: 1, channel: Boolean(chat.isChannel) };
             }
           } catch (deliveryError) {
             lastError = deliveryError instanceof Error ? deliveryError.message : "Telegram network error";
           }
           deliveryErrors.push(chat.chatId + ": " + lastError);
-          await db.from("news_deliveries").update({
-            // Retry only explicit Telegram rejections. A timeout/network error
-            // has an unknown outcome and is marked failed to prevent duplicates.
+          const { error: deliveryUpdateError } = await db.from("news_deliveries").update({
+            // Explicit Telegram rejection is safe to retry. Network timeouts have
+            // an unknown outcome and stay failed for manual reconciliation.
             status: responseReceived ? "retry" : "failed",
             last_error: responseReceived ? lastError : "Natija noaniq; dublikat oldini olish uchun avtomatik qayta yuborilmadi: " + lastError,
-            next_attempt_at: responseReceived ? new Date(Date.now() + 5 * 60 * 1000).toISOString() : null,
+            next_attempt_at: responseReceived ? new Date(Date.now() + 5 * 60 * 1000).toISOString() : new Date().toISOString(),
             updated_at: new Date().toISOString()
           }).eq("article_id", raw.id).eq("chat_id", chat.chatId).eq("delivery_type", deliveryType);
+          if (deliveryUpdateError) deliveryErrors.push(chat.chatId + ": delivery status update: " + deliveryUpdateError.message);
           return { sent: 0, channel: Boolean(chat.isChannel) };
         }));
         telegramSent += deliveries.reduce<number>((sum, item) => sum + item.sent, 0);
@@ -427,7 +523,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     ok: outcomes.every(x => x.translated), phase: "translate_and_deliver",
-    model, processed: outcomes.length, translated: outcomes.filter(x => x.translated).length,
+    model, retrySummary, processed: outcomes.length, translated: outcomes.filter(x => x.translated).length,
     telegramMessagesSent: outcomes.reduce((sum, x) => sum + x.telegramSent, 0),
     channelConfigured: Boolean(channelChatId),
     channelMessagesSent: outcomes.reduce((sum, x) => sum + Number(x.channelMessagesSent || 0), 0), outcomes
