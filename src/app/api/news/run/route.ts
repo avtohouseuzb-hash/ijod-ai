@@ -30,6 +30,25 @@ async function executePipeline(request: Request) {
         };
       }
     };
+    if (phase === "morning") {
+      const morning: Array<{slot:string;result:any}> = [];
+      for (const slot of ["08:00","08:15","08:30"]) {
+        const response = await fetch(base + "/api/news/daily?slot=" + slot, {
+          headers, cache: "no-store", signal: AbortSignal.timeout(50000)
+        });
+        const result = await readResponse(response);
+        morning.push({slot,result});
+        if (!response.ok || result.error) {
+          return NextResponse.json({ok:false,phase:"morning",morning},{status:502});
+        }
+      }
+      return NextResponse.json({
+        ok: morning.every(item => item.result.ok === true || item.result.skipped),
+        phase: "morning",
+        sent: morning.reduce((sum,item)=>sum+Number(item.result.sent||0),0),
+        results: morning
+      });
+    }
     if (phase === "collect") {
       const collectUrl = new URL(base + "/api/news/collect");
       collectUrl.searchParams.set("offset", String(offset));

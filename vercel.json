@@ -1,10 +1,4 @@
 {
-  "crons": [
-    {
-      "path": "/api/news/run",
-      "schedule": "0 2 * * *"
-    }
-  ],
   "git": {
     "deploymentEnabled": {
       "*": false,
