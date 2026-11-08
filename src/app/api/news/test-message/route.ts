@@ -60,7 +60,8 @@ async function buildWeatherMessage(city: string, latitude: number, longitude: nu
   if (!data.current || !data.daily) throw new Error("Ob-havo ma’lumoti to‘liq emas.");
   const c = data.current, d = data.daily;
   const condition = c.weather_code === 0 ? "ochiq" : c.weather_code <= 3 ? "qisman bulutli" : c.weather_code <= 48 ? "tumanli" : c.weather_code <= 67 ? "yomg‘irli" : c.weather_code <= 77 ? "qorli" : c.weather_code <= 82 ? "jala" : "momaqaldiroqli";
-  if (language === "ru") return "🧪 ТЕСТ · ПОГОДА — " + city + "\n\n🌡 Сейчас: " + Math.round(c.temperature_2m) + "°C (ощущается как " + Math.round(c.apparent_temperature) + "°C)\n📍 Условия: " + condition + "\n🌡 За день: " + Math.round(d.temperature_2m_min?.[0] ?? c.temperature_2m) + "…"+ Math.round(d.temperature_2m_max?.[0] ?? c.temperature_2m) + "°C\n💨 Ветер: " + Math.round(c.wind_speed_10m) + " км/ч\n🌧 Осадки: " + (d.precipitation_sum?.[0] ?? 0) + " мм\n\nИсточник: Open-Meteo · " + c.time;
+  const conditionRu = c.weather_code === 0 ? "ясно" : c.weather_code <= 3 ? "переменная облачность" : c.weather_code <= 48 ? "туман" : c.weather_code <= 67 ? "дождь" : c.weather_code <= 77 ? "снег" : c.weather_code <= 82 ? "ливень" : "гроза";
+  if (language === "ru") return "🧪 ТЕСТ · ПОГОДА — " + city + "\n\n🌡 Сейчас: " + Math.round(c.temperature_2m) + "°C (ощущается как " + Math.round(c.apparent_temperature) + "°C)\n📍 Условия: " + conditionRu + "\n🌡 За день: " + Math.round(d.temperature_2m_min?.[0] ?? c.temperature_2m) + "…"+ Math.round(d.temperature_2m_max?.[0] ?? c.temperature_2m) + "°C\n💨 Ветер: " + Math.round(c.wind_speed_10m) + " км/ч\n🌧 Осадки: " + (d.precipitation_sum?.[0] ?? 0) + " мм\n\nИсточник: Open-Meteo · " + c.time;
   let text = "🧪 TEST XABAR · OB-HAVO — " + city + "\n\n🌡 Hozir: " + Math.round(c.temperature_2m) + "°C (his qilinishi " + Math.round(c.apparent_temperature) + "°C)\n📍 Holat: " + condition + "\n🌡 Bugun: " + Math.round(d.temperature_2m_min?.[0] ?? c.temperature_2m) + "…"+ Math.round(d.temperature_2m_max?.[0] ?? c.temperature_2m) + "°C\n💨 Shamol: " + Math.round(c.wind_speed_10m) + " km/soat\n🌧 Yog‘ingarchilik: " + (d.precipitation_sum?.[0] ?? 0) + " mm\n\nManba: Open-Meteo · " + c.time;
   if (language === "uz-cyrl") text = cyrillic(text);
   return text;
@@ -138,8 +139,9 @@ export async function POST(request: Request) {
       if (translationError) throw new Error("Yangilik tarjimasini olishda xatolik: " + translationError.message);
       const title = translation?.title || article.title;
       const summary = translation?.summary || article.summary || "";
-      message = "🧪 TEST XABAR · AI NEWS\n\n" + title + "\n\n" + summary + "\n\nManba: " + article.source_name + "\n" + article.source_url;
-      if (language === "uz-cyrl") message = cyrillic(message);
+      const displayTitle = language === "uz-cyrl" ? cyrillic(title) : title;
+      const displaySummary = language === "uz-cyrl" ? cyrillic(summary) : summary;
+      message = "🧪 TEST XABAR · AI NEWS\n\n" + displayTitle + "\n\n" + displaySummary + "\n\nManba: " + article.source_name + "\n" + article.source_url;
       details = { articleId: article.id, editorialScore: article.editorial_score ?? null, language };
     }
     const messageId = await sendTelegram(token, chatId, message);
