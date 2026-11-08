@@ -92,7 +92,8 @@ async function resolveNewsPhotoUrl(imageUrl: string | null, sourceUrl: string): 
 }
 
 function newsKeyboard(sourceUrl: string): TelegramKeyboard {
-  const newsUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app").replace(/\\/$/, "") + "/news";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app";
+  const newsUrl = (siteUrl.endsWith("/") ? siteUrl.slice(0, -1) : siteUrl) + "/news";
   return { inline_keyboard: [
     [{ text: "🔗 To‘liq yangilik", url: sourceUrl }],
     [{ text: "📰 IJOD AI News’da ochish", url: newsUrl }]
