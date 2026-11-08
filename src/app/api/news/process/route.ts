@@ -5,8 +5,8 @@ import { isNewsCronOrAdminAuthorized } from "@/lib/news-cron-auth";
 export const maxDuration = 60;
 
 type Translation = { title: string; summary: string };
-type EditorialResult = { publish: boolean; reason?: string; uz_latn: Translation; uz_cyrl: Translation; ru: Translation };
-type Article = { id: string; title: string; summary: string | null; source_name: string; source_url: string; image_url: string | null; video_url: string | null; category: string; status: string };
+type EditorialResult = { publish: boolean; reason?: string; quality?: { relevance?: number; usefulness?: number; source_reliability?: number; originality?: number; clarity?: number }; uz_latn: Translation; uz_cyrl: Translation; ru: Translation };
+type Article = { id: string; title: string; summary: string | null; source_name: string; source_url: string; image_url: string | null; video_url: string | null; category: string; status: string; editorial_score?: number | null; published_at?: string | null };
 type ArticleContext = { description: string; body: string };
 type NewsChat = { chatId: string; language: string; categories: string[]; isChannel?: boolean };
 type DeliveryRow = { chat_id: string; delivery_type: string; status: string; next_attempt_at: string | null };
@@ -156,7 +156,7 @@ function matchesTopics(article: Article, selected: string[]) {
 async function retryPendingDeliveries(db: any, token: string) {
   const now = new Date().toISOString();
   const { data: due, error } = await db.from("news_deliveries")
-    .select("article_id,chat_id,delivery_type,language,attempts")
+    .select("id,article_id,chat_id,delivery_type,language,attempts")
     .in("status", ["queued", "retry"])
     .lte("next_attempt_at", now)
     .order("created_at", { ascending: true })
@@ -164,10 +164,13 @@ async function retryPendingDeliveries(db: any, token: string) {
   if (error) throw new Error("Delivery retry queue: " + error.message);
   let sent = 0, failed = 0;
   for (const item of due || []) {
+    const attempts = Number(item.attempts || 0) + 1;
+    const { error: claimError } = await db.from("news_deliveries").update({ status: "sending", attempts, updated_at: now }).eq("id", item.id).in("status", ["queued", "retry"]);
+    if (claimError) { failed++; continue; }
     const { data: article, error: articleError } = await db.from("news_articles")
       .select("id,title,summary,source_name,source_url,image_url,video_url")
       .eq("id", item.article_id).maybeSingle();
-    if (articleError || !article) { failed++; continue; }
+    if (articleError || !article) { await db.from("news_deliveries").update({ status: "failed", last_error: articleError?.message || "Maqola topilmadi.", updated_at: now }).eq("id", item.id); failed++; continue; }
     if (item.delivery_type === "private") {
       const { data: sub, error: subError } = await db.from("news_telegram_subscriptions")
         .select("enabled").eq("chat_id", item.chat_id).maybeSingle();
@@ -181,8 +184,9 @@ async function retryPendingDeliveries(db: any, token: string) {
     }
     const { data: translation, error: translationError } = await db.from("news_translations")
       .select("title,summary").eq("article_id", item.article_id).eq("language", item.language).maybeSingle();
-    if (translationError || !translation) { failed++; continue; }
+    if (translationError || !translation) { await db.from("news_deliveries").update({ status: "failed", last_error: translationError?.message || "Tarjima topilmadi.", updated_at: now }).eq("id", item.id); failed++; continue; }
     const buttons = [
+      [{ text: "👍", callback_data: "news_vote:" + item.article_id + ":1 }, { text: "👎", callback_data: "news_vote:" + item.article_id + ":-1 }],
       [{ text: "🔗 To‘liq yangilik", url: article.source_url }],
       ...(article.video_url ? [[{ text: "▶️ Videoni ko‘rish", url: article.video_url }]] : []),
       [{ text: "📰 IJOD AI News’da ochish", url: (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app") + "/news" }]
@@ -211,7 +215,6 @@ async function retryPendingDeliveries(db: any, token: string) {
       if (saveError) { failed++; continue; }
       sent++;
     } else {
-      const attempts = Number(item.attempts || 0);
       const reason = String(outcome.result.description || "Telegram HTTP " + outcome.status).slice(0, 500);
       const permanent = /bot was blocked|chat not found|not enough rights|bot is not a member|user is deactivated/i.test(reason);
       const delay = Math.min(360, 5 * Math.pow(2, Math.min(Math.max(0, attempts - 1), 6)));
@@ -280,7 +283,7 @@ export async function GET(request: Request) {
   const nowIso = new Date().toISOString();
   const staleBefore = new Date(Date.now() - 15 * 60 * 1000).toISOString();
   const { data: candidates, error } = await db.from("news_articles")
-    .select("id,title,summary,source_name,source_url,image_url,video_url,category,status,processing_attempts,processing_started_at")
+    .select("id,title,summary,source_name,source_url,image_url,video_url,category,status,processing_attempts,processing_started_at,editorial_score,published_at")
     .eq("status", "pending_translation").in("category", interestedCategories)
     .is("telegram_sent_at", null)
     .or("processing_next_attempt_at.is.null,processing_next_attempt_at.lte." + nowIso)
@@ -299,7 +302,13 @@ export async function GET(request: Request) {
     });
   }
   // Process a small batch per request to avoid one article blocking the entire queue.
-  const selectedArticles = eligible.slice(0, 1);
+  const { data: roundRobinState } = await db.from("news_pipeline_state").select("last_processed_category").eq("id", true).maybeSingle();
+  const lastCategory = String(roundRobinState?.last_processed_category || "");
+  const selectedArticles = [...eligible].sort((a, b) => {
+    const repeatA = a.category === lastCategory ? 1 : 0;
+    const repeatB = b.category === lastCategory ? 1 : 0;
+    return repeatA - repeatB || Number(b.editorial_score || 0) - Number(a.editorial_score || 0) || new Date(b.published_at || 0).getTime() - new Date(a.published_at || 0).getTime();
+  }).slice(0, 1);
 
   const model = process.env.IJOD_NEWS_TRANSLATION_MODEL || process.env.IJOD_NEWS_MODEL || "gpt-6-luna";
   const outcomes: Array<{ id: string; translated: boolean; telegramSent: number; channelMessagesSent?: number; error?: string; deliveryErrors?: string[]; matchedRecipients?: number }> = [];
@@ -321,6 +330,7 @@ export async function GET(request: Request) {
       continue;
     }
     if (!claimed) continue;
+    await db.from("news_pipeline_state").update({ last_processed_category: raw.category, updated_at: new Date().toISOString() }).eq("id", true);
     try {
       const cleanTitle = raw.title.replace(/[^\p{L}\p{N}]+/gu, " ").trim();
       const titleWords = cleanTitle.split(/\s+/).filter(Boolean);
@@ -345,14 +355,14 @@ export async function GET(request: Request) {
         String(t.language), { title: String(t.title), summary: String(t.summary || "") }
       ]));
       const languages = ["uz-latn", "uz-cyrl", "ru"];
-      if (languages.some(language => !variants.has(language))) {
+      if (languages.some(language => !variants.has(language)) || raw.editorial_score == null) {
         const ai = await fetch("https://api.openai.com/v1/responses", {
           method: "POST",
           headers: { "content-type": "application/json", authorization: "Bearer " + openaiKey },
           body: JSON.stringify({
             model,
-            instructions: "You are IJOD AI News editor and strict quality gate. Reject fragments, codes/identifiers, incomplete RSS titles, vague headlines, empty context, malformed snippets, or stories that do not explain who did what. Never guess missing context. If not useful, return publish:false and a short reason. If useful, return publish:true and translate faithfully into Uzbek Latin, Uzbek Cyrillic and Russian. Each version needs a clear specific headline and factual 2-3 sentence summary. Preserve names, dates, numbers and uncertainty. Return valid json with publish, reason, uz_latn, uz_cyrl, ru; each translation has title and summary.",
-            input: "Evaluate quality using all supplied source material. RSS snippets can be short; do not reject only because they are short. Use the original-page description/body if supplied. Reject only if the headline and available article context are genuinely unrelated, vague, fragmentary, or do not establish a concrete event/finding. Do not invent missing facts. Return JSON with publish, reason, uz_latn, uz_cyrl and ru. " + JSON.stringify({ source: raw.source_name, title: raw.title, rss_summary: raw.summary || "", original_page_description: description, original_article_text: articleBody }),
+            instructions: "You are IJOD AI News senior editor and strict quality gate. Score each story from 1 to 10 using five integer criteria: relevance, usefulness, source_reliability, originality, clarity. Reject fragments, codes/identifiers, incomplete RSS titles, vague headlines, empty context, malformed snippets, or stories that do not explain who did what. Never guess missing context. Publish only if the weighted score is at least 6. If not useful or score below 6, return publish:false and a short reason. If useful, translate faithfully into Uzbek Latin, Uzbek Cyrillic and Russian. Each version needs a clear specific headline and factual 2-3 sentence summary. Preserve names, dates, numbers and uncertainty. Return JSON with publish, reason, quality object, uz_latn, uz_cyrl, ru.",
+            input: "Rate relevance, usefulness, source_reliability, originality and clarity from 1 to 10. Weighted score: relevance 25%, usefulness 25%, source reliability 20%, originality 15%, clarity 15%. Publish only when overall score >= 6 and there is a concrete useful story. RSS snippets can be short; use original-page context when available. Never invent facts. Return quality:{relevance,usefulness,source_reliability,originality,clarity}, publish, reason, uz_latn, uz_cyrl, ru. " + JSON.stringify({ source: raw.source_name, title: raw.title, rss_summary: raw.summary || "", original_page_description: description, original_article_text: articleBody }),
             text: { format: { type: "json_object" } },
             max_output_tokens: 1800
           }),
@@ -364,11 +374,22 @@ export async function GET(request: Request) {
           .filter((part: { type?: string }) => part.type === "output_text")
           .map((part: { text?: string }) => part.text || "").join(" ").trim();
         const parsed = JSON.parse(output) as EditorialResult;
-        if (parsed.publish !== true) {
-          await db.from("news_articles").update({ status: "draft" }).eq("id", raw.id);
-          outcomes.push({ id: raw.id, translated: false, telegramSent: 0, error: "Tahrir filtri: " + String(parsed.reason || "yangilik aniq va tushunarli emas").slice(0, 180) });
+        const quality = {
+          relevance: Math.max(1, Math.min(10, Math.round(Number(parsed.quality?.relevance) || 1))),
+          usefulness: Math.max(1, Math.min(10, Math.round(Number(parsed.quality?.usefulness) || 1))),
+          source_reliability: Math.max(1, Math.min(10, Math.round(Number(parsed.quality?.source_reliability) || 1))),
+          originality: Math.max(1, Math.min(10, Math.round(Number(parsed.quality?.originality) || 1))),
+          clarity: Math.max(1, Math.min(10, Math.round(Number(parsed.quality?.clarity) || 1)))
+        };
+        const editorialScore = Math.round(quality.relevance * 0.25 + quality.usefulness * 0.25 + quality.source_reliability * 0.20 + quality.originality * 0.15 + quality.clarity * 0.15);
+        const rejectReason = String(parsed.reason || "Sifat balli nashr chegarasidan past.").slice(0, 500);
+        if (parsed.publish !== true || editorialScore < 6) {
+          await db.from("news_articles").update({ status: "draft", editorial_score: editorialScore, editorial_reason: rejectReason, editorial_quality: quality, processing_started_at: null, processing_last_error: rejectReason }).eq("id", raw.id);
+          outcomes.push({ id: raw.id, translated: false, telegramSent: 0, editorialScore, error: "Tahrir filtri: " + rejectReason.slice(0, 180) });
           continue;
         }
+        const { error: scoreSaveError } = await db.from("news_articles").update({ editorial_score: editorialScore, editorial_reason: null, editorial_quality: quality }).eq("id", raw.id);
+        if (scoreSaveError) throw new Error("Editorial score save: " + scoreSaveError.message);
         const pairs = [["uz-latn", "uz_latn"], ["uz-cyrl", "uz_cyrl"], ["ru", "ru"]] as const;
         for (const [language, keyName] of pairs) {
           const item = parsed[keyName];
@@ -390,7 +411,7 @@ export async function GET(request: Request) {
           !privateRecipients.some((chat: NewsChat) => chat.chatId === channelRecipient.chatId) ? [channelRecipient] : [])
       ];
       if (botToken) {
-        const buttons = [[{ text: "🔗 To‘liq yangilik", url: raw.source_url }],
+        const buttons = [[{ text: "👍", callback_data: "news_vote:" + raw.id + ":1 }, { text: "👎", callback_data: "news_vote:" + raw.id + ":-1 }], [{ text: "🔗 To‘liq yangilik", url: raw.source_url }],
           ...(raw.video_url ? [[{ text: "▶️ Videoni ko‘rish", url: raw.video_url }]] : []),
           [{ text: "📰 IJOD AI News’da ochish", url: (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app") + "/news" }]];
         const { data: previousDeliveries } = await db.from("news_deliveries")
