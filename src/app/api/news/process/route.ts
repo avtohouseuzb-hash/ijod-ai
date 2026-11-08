@@ -141,9 +141,9 @@ function matchesTopics(article: Article, selected: string[]) {
   // Broad source labels are not proof of article relevance. Require topical evidence
   // for business/economy/technology even when the parent category is selected.
   const required = categoryRequiredTerms[article.category];
-  const specific = selected.filter(topic => topicTerms[topic]);
+  const specific = selected.filter(topic => topicTerms[topic] || topicRules[topic]);
   const direct = selected.some(topic => broadTopics.has(topic) && mainCategoryParents[topic]?.includes(article.category));
-  const matchesSpecific = specific.some(topic => topicTerms[topic].some(term => text.includes(term)));
+  const matchesSpecific = specific.some(topic => (topicTerms[topic] || topicRules[topic]?.terms || []).some(term => text.includes(term)));
   const matchesBroad = direct && (!required || required.some(term => text.includes(term)));
   // A specific topic (construction, furniture, law, health, etc.) must not be
   // rejected by unrelated parent-category keywords such as economy terms.
