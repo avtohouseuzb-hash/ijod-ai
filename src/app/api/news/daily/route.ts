@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-import { isNewsCronAuthorized } from "@/lib/news-cron-auth";
+import { isNewsCronAuthorized, isNewsCronOrAdminAuthorized } from "@/lib/news-cron-auth";
 
 export const maxDuration = 60;
 const TZ = "Asia/Tashkent";
@@ -255,16 +255,9 @@ async function run(request: Request, adminAuthorized = false) {
 }
 export async function GET(request:Request){return run(request);}
 export async function POST(request:Request){
-  const bearer=request.headers.get("authorization")||"";
-  const accessToken=bearer.startsWith("Bearer ")?bearer.slice(7):"";
-  const url=process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const publicKey=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  const serviceKey=process.env.SUPABASE_SECRET_KEY;
-  if(!accessToken||!url||!publicKey||!serviceKey) return NextResponse.json({error:"Avval hisobingizga kiring yoki server sozlamalarini tekshiring."},{status:401});
-  const auth=createClient(url,publicKey,{auth:{persistSession:false,autoRefreshToken:false}});
-  const {data:{user},error}=await auth.auth.getUser(accessToken);
-  if(error||!user?.email) return NextResponse.json({error:"Sessiya yaroqsiz."},{status:401});
-  const admins=(process.env.AI_NEWS_ADMIN_EMAILS||"").split(",").map(value=>value.trim().toLowerCase()).filter(Boolean);
-  if(!admins.includes(user.email.toLowerCase())) return NextResponse.json({error:"Admin huquqi talab qilinadi."},{status:403});
+  // Use the same allow-listed admin/cron verifier as collect and process.
+  // This avoids a second, slightly different Supabase session check.
+  if(!await isNewsCronOrAdminAuthorized(request))
+    return NextResponse.json({error:"Unauthorized"},{status:401});
   return run(request,true);
 }
