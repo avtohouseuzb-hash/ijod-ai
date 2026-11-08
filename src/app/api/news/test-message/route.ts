@@ -172,7 +172,8 @@ export async function POST(request: Request) {
       const displayTitle = language === "uz-cyrl" ? cyrillic(title) : title;
       const displaySummary = language === "uz-cyrl" ? cyrillic(summary) : summary;
       message = "🧪 TEST XABAR · AI NEWS\n\n" + displayTitle + "\n\n" + displaySummary + "\n\nManba: " + article.source_name + "\n" + article.source_url;
-      details = { articleId: article.id, editorialScore: article.editorial_score ?? null, language, imageAvailable: Boolean(photoUrl) };
+      photoUrl = String(article.image_url || "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1200&q=85");
+      details = { articleId: article.id, editorialScore: article.editorial_score ?? null, language, imageAvailable: Boolean(article.image_url) };
     }
     let messageId: number | null = null;
     let imageSent = false;
