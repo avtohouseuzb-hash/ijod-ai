@@ -73,7 +73,7 @@ export default function NewsAdminPage(){
      }catch(error){lastError=error instanceof Error?error.message:"Manba yig‘ishda xatolik.";}
     }
     if(lastError)throw new Error(lastError+" Offset saqlandi; qayta bosganda shu joydan davom etadi.");
-    const collect=data.steps?.collect||data;
+    const collect=data.details?.collect||data.steps?.collect||data;
     batches.push(collect);
     offset=Number(data.nextOffset??collect.nextOffset??offset);
     hasMoreSources=Boolean(data.hasMore??collect.hasMore);
@@ -92,7 +92,8 @@ export default function NewsAdminPage(){
     const raw=await response.text();let processed:any;
     try{processed=raw?JSON.parse(raw):{};}catch{throw new Error("Tarjima serveri JSON qaytarmadi (HTTP "+response.status+").");}
     if(!response.ok)throw new Error(processed.error||processed.message||"Tarjima jarayonida xatolik (HTTP "+response.status+").");
-    const result=processed.steps?.process||processed;
+    const result=processed.details?.process||processed.steps?.process||processed;
+    if(processed.ok===false && !result.processed) throw new Error(processed.error||result.message||"Yangiliklarni qayta ishlash bajarilmadi.");
     processBatches.push(result);
     const count=Number(result.processed||0);
     // A full batch means more articles may remain. Failed deliveries are
