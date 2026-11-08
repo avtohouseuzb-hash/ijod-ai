@@ -187,14 +187,21 @@ async function run(request: Request) {
       return NextResponse.json({ok:!errors.length,type,slot,sent,usd:usd.Rate,errors});
     }
     const {data:state}=await db.from("news_pipeline_state").select("source_offset").eq("id",true).maybeSingle();
-    const {count:sourceCount}=await db.from("news_sources").select("id",{count:"exact",head:true}).eq("enabled",true);
+    const selectedCategories=[...new Set(recipients.flatMap(r=>r.categories.flatMap(topic=>({
+      "Bank va moliya":["Iqtisodiyot"],"Qurilish":["Iqtisodiyot"],"Ko‘chmas mulk":["Iqtisodiyot"],"Mebel va dizayn":["Iqtisodiyot"],
+      "Texnika":["AI va IT"],"Ta’lim":["Fan"],"Madaniyat":["Jahon"],"Ko‘ngilochar":["Jahon"],"Salomatlik":["Fan"]
+    }[topic]||[topic]))))].filter(category=>["Iqtisodiyot","Fan","Jahon","AI va IT","O‘zbekiston","Biznes","Sport"].includes(category))];
+    if(!selectedCategories.length) throw new Error("Faol obunachilar uchun tanlangan yangilik mavzulari topilmadi.");
+    const {count:sourceCount}=await db.from("news_sources").select("id",{count:"exact",head:true}).eq("enabled",true).in("category",selectedCategories);
     let offset=Math.max(0,Number(state?.source_offset||0));
+    if(offset>=Number(sourceCount||0)) offset=0;
     const headers={authorization:request.headers.get("authorization")||""};
     const batches:Array<{collect:any;processed:any;offset:number}>=[];
     let sent=0,found=false;
     for(let attempt=0;attempt<3;attempt++){
       const collectUrl=new URL(new URL(request.url).origin+"/api/news/collect");
       collectUrl.searchParams.set("offset",String(offset)); collectUrl.searchParams.set("limit","10");
+      collectUrl.searchParams.set("categories",selectedCategories.join(","));
       const collectResponse=await fetch(collectUrl,{headers,cache:"no-store",signal:AbortSignal.timeout(25000)});
       const collect=await collectResponse.json().catch(()=>({error:"collect response invalid"}));
       if(!collectResponse.ok||collect.error) throw new Error("Manba yig‘ish xatosi: "+JSON.stringify(collect).slice(0,400));
