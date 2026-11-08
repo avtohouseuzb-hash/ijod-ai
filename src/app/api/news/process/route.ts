@@ -150,7 +150,7 @@ function matchesTopics(article: Article, selected: string[]) {
   return matchesSpecific || matchesBroad;
 }
 
-async function retryPendingDeliveries(db: ReturnType<typeof createClient>, token: string) {
+async function retryPendingDeliveries(db: any, token: string) {
   const now = new Date().toISOString();
   const { data: due, error } = await db.from("news_deliveries")
     .select("article_id,chat_id,delivery_type,language,attempts")
@@ -251,7 +251,9 @@ export async function GET(request: Request) {
   if (!url || !key || !openaiKey)
     return NextResponse.json({ error: "Server config missing: Supabase yoki OpenAI kaliti." }, { status: 500 });
 
-  const db = createClient(url, key, { auth: { persistSession: false } });
+  // News tables are managed through SQL migrations and are not yet included in the generated Database type.
+  // Keep this server-only client dynamically typed until the schema types are regenerated.
+  const db: any = createClient(url, key, { auth: { persistSession: false } });
   const { data: subscribers } = await db.from("news_telegram_subscriptions")
     .select("chat_id,language,categories").eq("enabled", true);
   const chats = (subscribers || []).map((s: { chat_id: string; language?: string | null; categories?: string[] | null }) => ({
