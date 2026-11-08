@@ -165,8 +165,10 @@ async function retryPendingDeliveries(db: any, token: string) {
   let sent = 0, failed = 0;
   for (const item of due || []) {
     const attempts = Number(item.attempts || 0) + 1;
-    const { error: claimError } = await db.from("news_deliveries").update({ status: "sending", attempts, updated_at: now }).eq("id", item.id).in("status", ["queued", "retry"]);
-    if (claimError) { failed++; continue; }
+    const { data: claimedDelivery, error: claimError } = await db.from("news_deliveries")
+      .update({ status: "sending", attempts, updated_at: now })
+      .eq("id", item.id).in("status", ["queued", "retry"]).select("id").maybeSingle();
+    if (claimError || !claimedDelivery) { if (claimError) failed++; continue; }
     const { data: article, error: articleError } = await db.from("news_articles")
       .select("id,title,summary,source_name,source_url,image_url,video_url")
       .eq("id", item.article_id).maybeSingle();
