@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-import { isNewsCronAuthorized } from "@/lib/news-cron-auth";
+import { isNewsCronOrAdminAuthorized } from "@/lib/news-cron-auth";
 
 export const maxDuration = 60;
 
@@ -169,7 +169,7 @@ async function fetchArticleContext(articleUrl: string): Promise<ArticleContext> 
 }
 
 export async function GET(request: Request) {
-  if (!await isNewsCronAuthorized(request))
+  if (!await isNewsCronOrAdminAuthorized(request))
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SECRET_KEY;
