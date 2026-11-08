@@ -7,7 +7,7 @@ function cronSecrets() {
   return [process.env.NEWS_CRON_SECRET, process.env.CRON_SECRET].filter((value): value is string => Boolean(value));
 }
 
-async function executePipeline(request: Request) {
+async function executePipeline(request: Request, adminAuthorized = false) {
   const authHeader = request.headers.get("authorization") || "";
   if (!cronSecrets().some(secret => authHeader === "Bearer " + secret)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -34,12 +34,15 @@ async function executePipeline(request: Request) {
       const morning: Array<{slot:string;result:any}> = [];
       for (const slot of ["08:00","08:15","08:30"]) {
         const response = await fetch(base + "/api/news/daily?slot=" + slot, {
-          headers, cache: "no-store", signal: AbortSignal.timeout(50000)
+          method: adminAuthorized ? "POST" : "GET",
+          headers: adminAuthorized ? { authorization: request.headers.get("authorization") || "" } : headers,
+          cache: "no-store", signal: AbortSignal.timeout(50000)
         });
         const result = await readResponse(response);
         morning.push({slot,result});
-        if (!response.ok || result.error) {
-          return NextResponse.json({ok:false,phase:"morning",morning},{status:502});
+        if (!response.ok || result.error || result.ok === false) {
+          const reason = result.error || result.errors?.join("; ") || result.message || ("Slot " + slot + " xatosi: " + JSON.stringify(result).slice(0,500));
+          return NextResponse.json({ok:false,phase:"morning",error:reason,morning},{status:502});
         }
       }
       return NextResponse.json({
@@ -106,5 +109,5 @@ export async function POST(request: Request) {
     method: "GET",
     headers: { authorization: "Bearer " + secret }
   });
-  return executePipeline(internalRequest);
+  return executePipeline(request, true);
 }
