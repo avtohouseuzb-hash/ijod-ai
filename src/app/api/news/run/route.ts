@@ -40,17 +40,17 @@ async function executePipeline(request: Request, adminAuthorized = false) {
         });
         const result = await readResponse(response);
         morning.push({slot,result});
-        if (!response.ok || result.error || result.ok === false) {
-          const reason = result.error || result.errors?.join("; ") || result.message || ("Slot " + slot + " xatosi: " + JSON.stringify(result).slice(0,500));
-          return NextResponse.json({ok:false,phase:"morning",error:reason,morning},{status:502});
-        }
+        // Attempt every morning message even if one fails, so one bad Telegram recipient
+        // or a temporary weather/rate provider outage does not suppress the other posts.
       }
+      const failures = morning.filter(item => !item.result.ok && !item.result.skipped);
       return NextResponse.json({
-        ok: morning.every(item => item.result.ok === true || item.result.skipped),
+        ok: failures.length === 0,
         phase: "morning",
+        error: failures.length ? failures.map(item => item.slot + ": " + (item.result.error || item.result.errors?.join("; ") || JSON.stringify(item.result).slice(0,300))).join(" | ") : undefined,
         sent: morning.reduce((sum,item)=>sum+Number(item.result.sent||0),0),
         results: morning
-      });
+      }, {status: failures.length ? 502 : 200});
     }
     if (phase === "collect") {
       const collectUrl = new URL(base + "/api/news/collect");
@@ -105,9 +105,11 @@ export async function POST(request: Request) {
 
   const secret = process.env.NEWS_CRON_SECRET || process.env.CRON_SECRET;
   if (!secret) return NextResponse.json({ error: "NEWS_CRON_SECRET yoki CRON_SECRET sozlanmagan." }, { status: 500 });
+  // Admin is checked above. Run all internal pipeline calls with the dedicated
+  // cron secret, because collect/process/daily endpoints intentionally reject user JWTs.
   const internalRequest = new Request(new URL(request.url), {
     method: "GET",
     headers: { authorization: "Bearer " + secret }
   });
-  return executePipeline(request, true);
+  return executePipeline(internalRequest);
 }
