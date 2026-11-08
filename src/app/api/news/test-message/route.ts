@@ -2,7 +2,6 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { isNewsCronOrAdminAuthorized } from "@/lib/news-cron-auth";
 
-export const runtime = "nodejs";
 export const maxDuration = 20;
 
 type TestType = "motivation" | "weather" | "currency" | "news";
