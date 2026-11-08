@@ -53,7 +53,7 @@ export default function NewsAdminPage(){
    const morningRaw=await morningResponse.text();
    let morning:any;
    try{morning=morningRaw?JSON.parse(morningRaw):{};}catch{throw new Error("Ertalabki xabarlar serveri noto‘g‘ri javob qaytardi.");}
-   if(!morningResponse.ok)throw new Error(morning.error||"Motivatsiya, ob-havo yoki valyuta kurslarini yuborishda xatolik.");
+   if(!morningResponse.ok||morning.ok===false)throw new Error(morning.error||morning.results?.map((x:any)=>x.result?.error||x.result?.errors?.join("; ")).filter(Boolean).join("; ")||"Motivatsiya, ob-havo yoki valyuta kurslarini yuborishda xatolik.");
    const batches:any[]=[];
    const progressKey="ijod-news-collect-offset";
    let offset=Number(window.localStorage.getItem(progressKey)||0);
