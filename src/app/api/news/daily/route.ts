@@ -73,8 +73,8 @@ async function sendTelegram(token: string, chatId: string, text: string, parseMo
   const result = await response.json().catch(()=>({}));
   if (!response.ok || !result.ok) throw new Error(String(result.description || "Telegram send failed"));
 }
-async function run(request: Request) {
-  if (!await isNewsCronAuthorized(request)) return NextResponse.json({error:"Unauthorized"},{status:401});
+async function run(request: Request, adminAuthorized = false) {
+  if (!adminAuthorized && !await isNewsCronAuthorized(request)) return NextResponse.json({error:"Unauthorized"},{status:401});
   const url=process.env.NEXT_PUBLIC_SUPABASE_URL, key=process.env.SUPABASE_SECRET_KEY, token=process.env.TELEGRAM_BOT_TOKEN;
   if(!url||!key||!token) return NextResponse.json({error:"Supabase yoki Telegram sozlamasi topilmadi."},{status:500});
   const db=createClient(url,key,{auth:{persistSession:false}});
@@ -254,4 +254,17 @@ async function run(request: Request) {
   }
 }
 export async function GET(request:Request){return run(request);}
-export async function POST(request:Request){return run(request);}
+export async function POST(request:Request){
+  const bearer=request.headers.get("authorization")||"";
+  const accessToken=bearer.startsWith("Bearer ")?bearer.slice(7):"";
+  const url=process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const publicKey=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  const serviceKey=process.env.SUPABASE_SECRET_KEY;
+  if(!accessToken||!url||!publicKey||!serviceKey) return NextResponse.json({error:"Avval hisobingizga kiring yoki server sozlamalarini tekshiring."},{status:401});
+  const auth=createClient(url,publicKey,{auth:{persistSession:false,autoRefreshToken:false}});
+  const {data:{user},error}=await auth.auth.getUser(accessToken);
+  if(error||!user?.email) return NextResponse.json({error:"Sessiya yaroqsiz."},{status:401});
+  const admins=(process.env.AI_NEWS_ADMIN_EMAILS||"").split(",").map(value=>value.trim().toLowerCase()).filter(Boolean);
+  if(!admins.includes(user.email.toLowerCase())) return NextResponse.json({error:"Admin huquqi talab qilinadi."},{status:403});
+  return run(request,true);
+}
