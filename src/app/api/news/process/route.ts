@@ -452,11 +452,15 @@ export async function GET(request: Request) {
               }
             }
             if (telegramMessageId) {
-              await db.from("news_deliveries").update({
+              const { error: sentUpdateError } = await db.from("news_deliveries").update({
                 status: "sent", sent_at: new Date().toISOString(),
                 telegram_message_id: telegramMessageId,
+                next_attempt_at: new Date().toISOString(),
                 last_error: null, updated_at: new Date().toISOString()
               }).eq("article_id", raw.id).eq("chat_id", chat.chatId).eq("delivery_type", deliveryType);
+              if (sentUpdateError) {
+                deliveryErrors.push(chat.chatId + ": Telegram sent, but delivery status save failed: " + sentUpdateError.message);
+              }
               return { sent: 1, channel: Boolean(chat.isChannel) };
             }
           } catch (deliveryError) {
