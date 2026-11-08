@@ -12,7 +12,7 @@ async function isAdmin(request:Request){
 export async function POST(request:Request){
  if(!await isAdmin(request))return NextResponse.json({error:"Admin huquqi talab qilinadi."},{status:403});
  const token=process.env.TELEGRAM_BOT_TOKEN;const site=process.env.NEXT_PUBLIC_SITE_URL;const secret=process.env.TELEGRAM_WEBHOOK_SECRET;
- if(!token||!site)return NextResponse.json({error:"TELEGRAM_BOT_TOKEN yoki NEXT_PUBLIC_SITE_URL sozlanmagan."},{status:500});
+ if(!token||!site||!secret)return NextResponse.json({error:"TELEGRAM_BOT_TOKEN, NEXT_PUBLIC_SITE_URL va TELEGRAM_WEBHOOK_SECRET sozlanishi shart."},{status:500});
  const webhookUrl=site.replace(/\/$/,"")+"/api/news/telegram/webhook";
  const payload:Record<string,unknown>={url:webhookUrl,allowed_updates:["message","callback_query"],drop_pending_updates:false};
  if(secret)payload.secret_token=secret;
