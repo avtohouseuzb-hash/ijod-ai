@@ -217,7 +217,7 @@ export async function GET(request: Request) {
   const selectedArticles = eligible.slice(0, 5);
 
   const model = process.env.IJOD_NEWS_TRANSLATION_MODEL || process.env.IJOD_NEWS_MODEL || "gpt-6-luna";
-  const outcomes: Array<{ id: string; translated: boolean; telegramSent: number; channelMessagesSent?: number; error?: string }> = [];
+  const outcomes: Array<{ id: string; translated: boolean; telegramSent: number; channelMessagesSent?: number; error?: string; deliveryErrors?: string[]; matchedRecipients?: number }> = [];
 
   for (const raw of selectedArticles) {
     try {
@@ -282,16 +282,16 @@ export async function GET(request: Request) {
       let telegramSent = 0;
       const deliveryErrors: string[] = [];
       let channelMessagesSent = 0;
+      const privateRecipients = chats.filter(chat => matchesTopics(raw, chat.categories));
+      const recipients = [
+        ...privateRecipients.map(chat => ({ ...chat, isChannel: false })),
+        ...(channelRecipient && matchesTopics(raw, channelRecipient.categories) &&
+          !privateRecipients.some(chat => chat.chatId === channelRecipient.chatId) ? [channelRecipient] : [])
+      ];
       if (botToken) {
         const buttons = [[{ text: "🔗 To‘liq yangilik", url: raw.source_url }],
           ...(raw.video_url ? [[{ text: "▶️ Videoni ko‘rish", url: raw.video_url }]] : []),
           [{ text: "📰 IJOD AI News’da ochish", url: (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app") + "/news" }]];
-        const privateRecipients = chats.filter(chat => matchesTopics(raw, chat.categories));
-        const recipients = [
-          ...privateRecipients.map(chat => ({ ...chat, isChannel: false })),
-          ...(channelRecipient && matchesTopics(raw, channelRecipient.categories) &&
-            !privateRecipients.some(chat => chat.chatId === channelRecipient.chatId) ? [channelRecipient] : [])
-        ];
         const { data: previousDeliveries } = await db.from("news_deliveries")
           .select("chat_id,delivery_type,status")
           .eq("article_id", raw.id);
