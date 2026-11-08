@@ -285,8 +285,10 @@ export async function GET(request: Request) {
     .is("telegram_sent_at", null)
     .or("processing_next_attempt_at.is.null,processing_next_attempt_at.lte." + nowIso)
     .or("processing_started_at.is.null,processing_started_at.lt." + staleBefore)
-    // Oldest first: the backlog must drain instead of starving older articles.
-    .order("published_at", { ascending: true }).limit(100);
+    // Do not let years-old Google News feed metadata starve current stories.
+    // Only process recent articles and always prioritize the newest first.
+    .gte("published_at", new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString())
+    .order("published_at", { ascending: false }).limit(100);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   const articles = (candidates || []) as Article[];
   const eligible = articles.filter(article => chats.some((chat: NewsChat) => matchesTopics(article, chat.categories)));
