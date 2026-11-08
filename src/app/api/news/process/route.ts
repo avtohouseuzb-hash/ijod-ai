@@ -188,7 +188,7 @@ async function retryPendingDeliveries(db: any, token: string) {
       .select("title,summary").eq("article_id", item.article_id).eq("language", item.language).maybeSingle();
     if (translationError || !translation) { await db.from("news_deliveries").update({ status: "failed", last_error: translationError?.message || "Tarjima topilmadi.", updated_at: now }).eq("id", item.id); failed++; continue; }
     const buttons = [
-      [{ text: "👍", callback_data: "news_vote:" + item.article_id + ":1 }, { text: "👎", callback_data: "news_vote:" + item.article_id + ":-1 }],
+      [{ text: "👍", callback_data: "news_vote:" + item.article_id + ":1" }, { text: "👎", callback_data: "news_vote:" + item.article_id + ":-1" }],
       [{ text: "🔗 To‘liq yangilik", url: article.source_url }],
       ...(article.video_url ? [[{ text: "▶️ Videoni ko‘rish", url: article.video_url }]] : []),
       [{ text: "📰 IJOD AI News’da ochish", url: (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app") + "/news" }]
@@ -423,7 +423,7 @@ export async function GET(request: Request) {
           !privateRecipients.some((chat: NewsChat) => chat.chatId === channelRecipient.chatId) ? [channelRecipient] : [])
       ];
       if (botToken) {
-        const buttons = [[{ text: "👍", callback_data: "news_vote:" + raw.id + ":1 }, { text: "👎", callback_data: "news_vote:" + raw.id + ":-1 }], [{ text: "🔗 To‘liq yangilik", url: raw.source_url }],
+        const buttons = [[{ text: "👍", callback_data: "news_vote:" + raw.id + ":1" }, { text: "👎", callback_data: "news_vote:" + raw.id + ":-1" }], [{ text: "🔗 To‘liq yangilik", url: raw.source_url }],
           ...(raw.video_url ? [[{ text: "▶️ Videoni ko‘rish", url: raw.video_url }]] : []),
           [{ text: "📰 IJOD AI News’da ochish", url: (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app") + "/news" }]];
         const { data: previousDeliveries } = await db.from("news_deliveries")
