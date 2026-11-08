@@ -26,6 +26,32 @@ async function sendTelegram(token: string, chatId: string, message: string) {
   return result.result?.message_id ?? null;
 }
 
+async function sendTelegramWithPhoto(token: string, chatId: string, caption: string, photoUrl: string) {
+  const response = await fetch("https://api.telegram.org/bot" + token + "/sendPhoto", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, photo: photoUrl, caption: caption.slice(0, 1024) }),
+    signal: AbortSignal.timeout(12000)
+  });
+  const result = await response.json().catch(() => ({})) as { ok?: boolean; description?: string; result?: { message_id?: number } };
+  if (!response.ok || !result.ok) throw new Error(result.description || "Telegram rasmni qabul qilmadi.");
+  return result.result?.message_id ?? null;
+}
+
+function weatherPhotoUrl(code: number, time: string) {
+  const hour = Number(time.slice(11, 13));
+  const day = hour >= 6 && hour < 18;
+  let icon = "01";
+  if (code === 0) icon = "01";
+  else if (code <= 2) icon = "02";
+  else if (code === 3) icon = "04";
+  else if (code <= 48) icon = "50";
+  else if (code <= 67) icon = "10";
+  else if (code <= 77) icon = "13";
+  else if (code <= 82) icon = "09";
+  else icon = "11";
+  return "https://openweathermap.org/img/wn/" + icon + (day ? "d" : "n") + "@4x.png";
+}
+
 async function getRecipient(db: any, chatId: string, channelId: string | undefined) {
   if (channelId && chatId === channelId) {
     return { chat_id: chatId, chat_type: "channel", language: process.env.NEWS_TELEGRAM_CHANNEL_LANGUAGE || "uz-latn", categories: [] } as Recipient;
@@ -114,7 +140,11 @@ export async function POST(request: Request) {
   try {
     let message = "";
     let details: Record<string, unknown> = {};
-    if (type === "motivation") message = motivationMessage(language);
+    if (type === "motivation") {
+      message = motivationMessage(language);
+      photoUrl = "https://images.unsplash.com/photo-1490730141103-6cac27aaab94?auto=format&fit=crop&w=1200&q=85";
+      details = { imageProvider: "Unsplash", imageType: "sunrise" };
+    }
     if (type === "weather") {
       const { data: settings, error } = await db.from("news_daily_settings").select("city,latitude,longitude").eq("id", true).maybeSingle();
       if (error) throw new Error("Ob-havo sozlamasini o‘qib bo‘lmadi: " + error.message);
@@ -129,7 +159,7 @@ export async function POST(request: Request) {
     }
     if (type === "news") {
       const { data: article, error } = await db.from("news_articles")
-        .select("id,title,summary,source_name,source_url,category,editorial_score")
+        .select("id,title,summary,source_name,source_url,image_url,category,editorial_score")
         .eq("status", "published").order("published_at", { ascending: false }).limit(1).maybeSingle();
       if (error) throw new Error("Yangilikni olishda xatolik: " + error.message);
       if (!article) throw new Error("Test uchun nashr qilingan yangilik topilmadi.");
@@ -143,8 +173,19 @@ export async function POST(request: Request) {
       message = "🧪 TEST XABAR · AI NEWS\n\n" + displayTitle + "\n\n" + displaySummary + "\n\nManba: " + article.source_name + "\n" + article.source_url;
       details = { articleId: article.id, editorialScore: article.editorial_score ?? null, language };
     }
-    const messageId = await sendTelegram(token, chatId, message);
-    return NextResponse.json({ ok: true, type, chatId, language, messageId, details, note: "Faqat tanlangan chatga test yuborildi. Kundalik jadval va delivery yozuvlari o‘zgartirilmadi." });
+    let messageId: number | null = null;
+    let imageSent = false;
+    let imageError: string | null = null;
+    if (photoUrl) {
+      try {
+        messageId = await sendTelegramWithPhoto(token, chatId, message, photoUrl);
+        imageSent = true;
+      } catch (error) {
+        imageError = error instanceof Error ? error.message : "Rasm yuborilmadi.";
+      }
+    }
+    if (!imageSent) messageId = await sendTelegram(token, chatId, message);
+    return NextResponse.json({ ok: true, type, chatId, language, messageId, imageSent, imageError, details, note: "Faqat tanlangan chatga test yuborildi. Kundalik jadval va delivery yozuvlari o‘zgartirilmadi." });
   } catch (error) {
     return NextResponse.json({ ok: false, type, chatId, error: error instanceof Error ? error.message : "Test xabar yuborilmadi." }, { status: 502 });
   }
