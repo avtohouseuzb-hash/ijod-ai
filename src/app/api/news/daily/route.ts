@@ -201,8 +201,10 @@ async function run(request: Request, adminAuthorized = false) {
     // The independent 10-minute pipeline owns RSS collection. A scheduled
     // Telegram slot only processes the current queue; collecting again here
     // duplicated work and could exceed the 60-second Vercel function limit.
+    const processAuthorization=request.headers.get("authorization") || "";
     const processResponse=await fetch(new URL(request.url).origin+"/api/news/process",{
-      headers,cache:"no-store",signal:AbortSignal.timeout(45000)
+      headers: processAuthorization ? { authorization: processAuthorization } : {},
+      cache:"no-store",signal:AbortSignal.timeout(45000)
     });
     const processed=await processResponse.json().catch(()=>({error:"process response invalid"}));
     if(!processResponse.ok||processed.error||processed.ok===false) throw new Error("Yangilikni tarjima/yuborish xatosi: "+JSON.stringify(processed).slice(0,900));
