@@ -238,29 +238,16 @@ async function fetchArticleContext(articleUrl: string): Promise<ArticleContext> 
     });
     if (!response.ok) return { description: "", body: "", imageUrl: null };
     const html = (await response.text()).slice(0, 500000);
+    const metaTags = html.match(/<meta\b[^>]*>/gi) || [];
+    const readMeta = (tag: string, attr: string) =>
+      tag.match(new RegExp("\\b" + attr + "\\s*=\\s*['\"]([^'\"]+)['\"]", "i"))?.[1] || "";
     const getMeta = (keys: string[]) => {
-      for (const key of keys) {
-        const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\async function fetchArticleContext(articleUrl: string): Promise<ArticleContext> {
-  try {
-    const response = await fetch(articleUrl, {
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; IJODAI-NewsBot/1.0)", "Accept": "text/html,application/xhtml+xml" },
-      redirect: "follow", signal: AbortSignal.timeout(2500)
-    });
-    if (!response.ok) return { description: "", body: "" };
-    const html = (await response.text()).slice(0, 500000);
-    const meta = html.match(/<meta\b[^>]*(?:name|property)=["'](?:description|og:description|twitter:description)["'][^>]*content=["']([^"']+)["'][^>]*>/i)
-      || html.match(/<meta\b[^>]*content=["']([^"']+)["'][^>]*(?:name|property)=["'](?:description|og:description|twitter:description)["'][^>]*>/i);
-    const description = (meta?.[1] || "").replace(/<[^>]*>/g, " ").replace(/&amp;/g, "&").replace(/&quot;/g, '"').trim();
-    const articleHtml = html.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i)?.[1] || "";
-    const body = articleHtml.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ")
-      .replace(/<[^>]+>/g, " ").replace(/&nbsp;|&#160;/g, " ").replace(/&amp;/g, "&")
-      .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/\s+/g, " ").trim().slice(0, 7000);
-    return { description, body };
-  } catch { return { description: "", body: "" }; }
-}");
-        const match = html.match(new RegExp('<meta\\b(?=[^>]*(?:property|name)=["\\']' + escaped + '["\\'])[^>]*content=["\\']([^"\\']+)["\\'][^>]*>', "i"))
-          || html.match(new RegExp('<meta\\b(?=[^>]*content=["\\']([^"\\']+)["\\'])[^>]*(?:property|name)=["\\']' + escaped + '["\\'][^>]*>', "i"));
-        if (match?.[1]) return match[1].replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'");
+      for (const tag of metaTags) {
+        const name = (readMeta(tag, "property") || readMeta(tag, "name")).toLowerCase();
+        if (keys.includes(name)) {
+          return (readMeta(tag, "content") || "").replace(/&amp;/g, "&")
+            .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'");
+        }
       }
       return "";
     };
@@ -280,7 +267,6 @@ async function fetchArticleContext(articleUrl: string): Promise<ArticleContext> 
     return { description, body, imageUrl };
   } catch { return { description: "", body: "", imageUrl: null }; }
 }
-
 export async function GET(request: Request) {
   if (!await isNewsCronOrAdminAuthorized(request))
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
