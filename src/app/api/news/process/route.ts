@@ -189,7 +189,6 @@ async function retryPendingDeliveries(db: any, token: string) {
     if (translationError || !translation) { await db.from("news_deliveries").update({ status: "failed", last_error: translationError?.message || "Tarjima topilmadi.", updated_at: now }).eq("id", item.id); failed++; continue; }
     const buttons = [
       [{ text: "👍", callback_data: "news_vote:" + item.article_id + ":1" }, { text: "👎", callback_data: "news_vote:" + item.article_id + ":-1" }],
-      [{ text: "🔗 To‘liq yangilik", url: article.source_url }],
       ...(article.video_url ? [[{ text: "▶️ Videoni ko‘rish", url: article.video_url }]] : []),
       [{ text: "📰 IJOD AI News’da ochish", url: (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app") + "/news" }]
     ];
