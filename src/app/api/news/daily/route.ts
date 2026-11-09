@@ -205,13 +205,13 @@ async function run(request: Request, adminAuthorized = false) {
       headers,cache:"no-store",signal:AbortSignal.timeout(45000)
     });
     const processed=await processResponse.json().catch(()=>({error:"process response invalid"}));
-    if(!processResponse.ok||processed.error) throw new Error("Yangilikni tarjima/yuborish xatosi: "+JSON.stringify(processed).slice(0,900));
+    if(!processResponse.ok||processed.error||processed.ok===false) throw new Error("Yangilikni tarjima/yuborish xatosi: "+JSON.stringify(processed).slice(0,900));
     const sent=Number(processed.telegramMessagesSent||0);
     const found=sent>0;
     const payload={kind:type,processed};
     const status=found?"sent":"no_news";
     await db.from("news_daily_posts").update({status,recipients_sent:sent,payload,sent_at:found?new Date().toISOString():null,updated_at:new Date().toISOString()}).eq("id",postId);
-    return NextResponse.json({ok:found,type,slot,sent,batchesTried:batches.length,newsFound:found});
+    return NextResponse.json({ok:found,type,slot,sent,newsFound:found});
   }catch(error){
     const message=error instanceof Error?error.message:"Daily news job failed";
     await db.from("news_daily_posts").update({status:"failed",error:message,updated_at:new Date().toISOString()}).eq("id",postId);
