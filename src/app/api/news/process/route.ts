@@ -380,7 +380,7 @@ export async function GET(request: Request) {
       const meaningfulWords = titleWords.filter(word => !/^\d+$/.test(word));
       let description = (raw.summary || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
       let articleBody = "";
-      if (description.length < 220) {
+      if (description.length < 220 || !raw.image_url) {
         const extra = await fetchArticleContext(raw.source_url);
         if (extra.description) description = [description, extra.description].filter(Boolean).join(" ");
         articleBody = extra.body;
