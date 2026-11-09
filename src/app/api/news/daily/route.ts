@@ -99,7 +99,7 @@ async function run(request: Request, adminAuthorized = false) {
     const age=currentMinute-(hour*60+minute);
     if(age<0||age>candidate.windowMinutes) continue;
     const {data:row}=await db.from("news_daily_posts").select("id,status,started_at").eq("post_date",today).eq("slot_key",candidate.time).maybeSingle();
-    if(row?.status==="sent"||row?.status==="partial") continue;
+    if(row?.status==="sent"||row?.status==="partial"||row?.status==="no_news") continue;
     if(row?.status==="sending"&&row.started_at&&Date.now()-new Date(row.started_at).getTime()<5*60*1000) continue;
     selectedSlot=candidate;
     break;
@@ -110,11 +110,14 @@ async function run(request: Request, adminAuthorized = false) {
   if(existing&&(existing.status==="sent"||existing.status==="partial")) return NextResponse.json({ok:true,skipped:"slot already delivered",slot,status:existing.status});
   let postId:string;
   if(existing){
+    const staleSendingBefore=new Date(Date.now()-5*60*1000).toISOString();
     const {data:updated,error:updateError}=await db.from("news_daily_posts").update({
       status:"sending",error:null,started_at:now.toISOString(),updated_at:now.toISOString(),
       recipients_total:recipients.length
-    }).eq("id",existing.id).select("id").single();
-    if(updateError||!updated) return NextResponse.json({ok:false,error:updateError?.message||"Could not claim schedule slot"},{status:500});
+    }).eq("id",existing.id)
+      .or("status.in.(failed,queued),and(status.eq.sending,started_at.lt."+staleSendingBefore+")")
+      .select("id").maybeSingle();
+    if(updateError||!updated) return NextResponse.json({ok:true,skipped:"slot already claimed by another worker",slot,status:existing.status,detail:updateError?.message});
     postId=updated.id;
   }else{
     const {data:claimed,error:claimError}=await db.from("news_daily_posts").insert({
@@ -195,57 +198,17 @@ async function run(request: Request, adminAuthorized = false) {
       await db.from("news_daily_posts").update({status:errors.length?(sent?"partial":"failed"):"sent",recipients_sent:sent,payload:{...payload,errors},sent_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("id",postId);
       return NextResponse.json({ok:!errors.length,type,slot,sent,usd:usd.Rate,errors});
     }
-    const {data:state}=await db.from("news_pipeline_state").select("source_offset").eq("id",true).maybeSingle();
-    const categoryParents:Record<string,string[]> = {
-      "Huquq":["O‘zbekiston"],"O‘zbekiston":["O‘zbekiston"],"Jahon":["Jahon"],"AI va IT":["AI va IT"],"Biznes":["Biznes"],"Iqtisodiyot":["Iqtisodiyot"],"Fan":["Fan"],"Sport":["Sport"],
-      "O‘zbekiston qonunchiligi":["O‘zbekiston"],"Xalqaro huquq":["Jahon"],"Sud va huquqiy amaliyot":["O‘zbekiston","Jahon"],"Normativ hujjatlar":["O‘zbekiston"],
-      "Fizika":["Fan"],"Kimyo":["Fan"],"Matematika":["Fan"],"Biologiya":["Fan"],"Astronomiya":["Fan"],"Geologiya":["Fan"],"Ekologiya":["Fan"],
-      "Sun’iy intellekt":["AI va IT"],"Dasturlash":["AI va IT"],"Kiberxavfsizlik":["AI va IT"],"Robototexnika":["AI va IT"],"IT kompaniyalar":["AI va IT","Biznes"],"Startap texnologiyalari":["AI va IT","Biznes"],
-      "Davlat":["O‘zbekiston"],"Jamiyat":["O‘zbekiston"],"Hududlar":["O‘zbekiston"],"Ijtimoiy yangiliklar":["O‘zbekiston"],"Siyosat":["O‘zbekiston","Jahon"],
-      "Jahon yangiliklari":["Jahon"],"Geosiyosat":["Jahon"],"Xalqaro munosabatlar":["Jahon"],"Davlatlar":["Jahon"],
-      "Jahon iqtisodiyoti":["Iqtisodiyot"],"Bozorlar":["Iqtisodiyot"],"Savdo":["Iqtisodiyot"],"Sanoat":["Iqtisodiyot"],"Makroiqtisodiyot":["Iqtisodiyot"],
-      "Bank":["Iqtisodiyot"],"Kredit":["Iqtisodiyot"],"Investitsiya":["Iqtisodiyot","Biznes"],"Soliq":["Iqtisodiyot"],"Sug‘urta":["Iqtisodiyot"],"Fintech":["Iqtisodiyot","AI va IT"],
-      "Qurilish texnologiyalari":["Iqtisodiyot"],"Kadastr":["O‘zbekiston","Iqtisodiyot"],"Qurilish materiallari":["Iqtisodiyot"],"Me’yorlar":["O‘zbekiston"],
-      "Uy-joy bozori":["Iqtisodiyot"],"Ijara":["Iqtisodiyot"],"Ipoteka":["Iqtisodiyot"],"Arxitektura":["Iqtisodiyot"],
-      "Mebel":["Iqtisodiyot"],"Interyer":["Iqtisodiyot"],"Eksteryer":["Iqtisodiyot"],"Dizayn materiallari":["Iqtisodiyot"],
-      "Avtomobil":["Iqtisodiyot"],"Maishiy texnika":["AI va IT"],"Ishlab chiqarish":["Iqtisodiyot"],"Transport":["Iqtisodiyot"],
-      "Ta’lim texnologiyalari":["Fan"],"Yangi metodlar":["Fan"],"Ilmiy tadqiqotlar":["Fan"],"Oliy ta’lim":["Fan","O‘zbekiston"],
-      "Tarix":["Jahon","O‘zbekiston"],"Kitoblar":["Jahon"],"Kino":["Jahon"],"San’at":["Jahon"],"Hajviya":["Jahon"],"Trendlar":["Jahon","AI va IT"],"Qiziqarli faktlar":["Fan","Jahon"],"Fantastika":["Jahon"],
-      "Tadbirkorlik":["Biznes"],"Marketing":["Biznes"],"Menejment":["Biznes"],"Biznes yangiliklari":["Biznes"],
-      "Tibbiyot":["Fan"],"Ilmiy izlanishlar":["Fan"],"Sog‘lom turmush":["Fan"]
-    };
-    const allowedCategories=["Iqtisodiyot","Fan","Jahon","AI va IT","O‘zbekiston","Biznes","Sport"];
-    const selectedCategories=[...new Set(recipients.flatMap(r=>r.categories.flatMap(topic=>categoryParents[topic]||[])))].filter(category=>allowedCategories.includes(category));
-    if(!selectedCategories.length) throw new Error("Faol obunachilar uchun tanlangan yangilik mavzulari topilmadi.");
-    const {count:sourceCount}=await db.from("news_sources").select("id",{count:"exact",head:true}).eq("enabled",true).in("category",selectedCategories);
-    let offset=Math.max(0,Number(state?.source_offset||0));
-    if(offset>=Number(sourceCount||0)) offset=0;
-    const headers={authorization:request.headers.get("authorization")||""};
-    const batches:Array<{collect:any;processed:any;offset:number}>=[];
-    let sent=0,found=false;
-    for(let attempt=0;attempt<3;attempt++){
-      const collectUrl=new URL(new URL(request.url).origin+"/api/news/collect");
-      collectUrl.searchParams.set("offset",String(offset)); collectUrl.searchParams.set("limit","10");
-      collectUrl.searchParams.set("categories",selectedCategories.join(","));
-      const collectResponse=await fetch(collectUrl,{headers,cache:"no-store",signal:AbortSignal.timeout(25000)});
-      const collect=await collectResponse.json().catch(()=>({error:"collect response invalid"}));
-      if(!collectResponse.ok||collect.error) throw new Error("Manba yig‘ish xatosi: "+JSON.stringify(collect).slice(0,400));
-      const nextOffset=Number(collect.nextOffset??offset);
-      const hasMore=Boolean(collect.hasMore);
-      const next=hasMore&&nextOffset<Number(sourceCount||0)?nextOffset:0;
-      await db.from("news_pipeline_state").update({source_offset:next,last_collect_at:new Date().toISOString(),last_collect_result:collect,updated_at:new Date().toISOString()}).eq("id",true);
-      const processResponse=await fetch(new URL(request.url).origin+"/api/news/process",{headers,cache:"no-store",signal:AbortSignal.timeout(25000)});
-      const processed=await processResponse.json().catch(()=>({error:"process response invalid"}));
-      if(!processResponse.ok||processed.error||processed.ok===false) throw new Error("Yangilikni tarjima/yuborish xatosi: "+JSON.stringify(processed).slice(0,900));
-      batches.push({collect,processed,offset});
-      sent+=Number(processed.telegramMessagesSent||0);
-      if(Number(processed.telegramMessagesSent||0)>0) found=true;
-      // Continue the bounded source batches: one successful send must not stop
-      // the remaining batch checks for this editorial slot.
-      if(!hasMore&&next===0) break;
-      offset=next;
-    }
-    payload={kind:type,batches,sourceOffset:offset};
+    // The independent 10-minute pipeline owns RSS collection. A scheduled
+    // Telegram slot only processes the current queue; collecting again here
+    // duplicated work and could exceed the 60-second Vercel function limit.
+    const processResponse=await fetch(new URL(request.url).origin+"/api/news/process",{
+      headers,cache:"no-store",signal:AbortSignal.timeout(45000)
+    });
+    const processed=await processResponse.json().catch(()=>({error:"process response invalid"}));
+    if(!processResponse.ok||processed.error) throw new Error("Yangilikni tarjima/yuborish xatosi: "+JSON.stringify(processed).slice(0,900));
+    const sent=Number(processed.telegramMessagesSent||0);
+    const found=sent>0;
+    const payload={kind:type,processed};
     const status=found?"sent":"no_news";
     await db.from("news_daily_posts").update({status,recipients_sent:sent,payload,sent_at:found?new Date().toISOString():null,updated_at:new Date().toISOString()}).eq("id",postId);
     return NextResponse.json({ok:found,type,slot,sent,batchesTried:batches.length,newsFound:found});
