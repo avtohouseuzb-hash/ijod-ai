@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { isNewsCronOrAdminAuthorized } from "@/lib/news-cron-auth";
 
-export const maxDuration = 20;
+export const maxDuration = 60;
 
 type TestType = "motivation" | "weather" | "currency" | "news";
 type Recipient = { chat_id: string; chat_type: string; language: string; categories: string[] };
@@ -69,40 +69,58 @@ async function sendTelegramWithPhoto(token: string, chatId: string, caption: str
   if (!response.ok || !result.ok) throw new Error(result.description || "Telegram rasmni qabul qilmadi.");
   return result.result?.message_id ?? null;
 }
+async function isReachableImage(url: string): Promise<boolean> {
+  try {
+    const response = await fetch(url, {
+      headers: { "user-agent": "Mozilla/5.0 (compatible; IJODAINews/1.0)", accept: "image/*" },
+      redirect: "follow", signal: AbortSignal.timeout(5000)
+    });
+    return response.ok && (response.headers.get("content-type") || "").toLowerCase().startsWith("image/");
+  } catch {
+    return false;
+  }
+}
+
 async function resolveNewsPhotoUrl(imageUrl: string | null, sourceUrl: string): Promise<string | null> {
-  const candidates = [imageUrl, sourceUrl].filter((value): value is string => Boolean(value));
+  const candidates = [...new Set([imageUrl, sourceUrl].filter((value): value is string => Boolean(value)))];
   for (const candidate of candidates) {
     try {
       const response = await fetch(candidate, {
-        headers: { "user-agent": "Mozilla/5.0 (compatible; IJODAINews/1.0)", accept: "image/avif,image/webp,image/apng,image/*,text/html,*/*;q=0.8" },
-        redirect: "follow", signal: AbortSignal.timeout(12000)
+        headers: { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130 Safari/537.36", accept: "image/avif,image/webp,image/apng,image/*,text/html,*/*;q=0.8" },
+        redirect: "follow", signal: AbortSignal.timeout(6000)
       });
-      if (!response.ok) continue;
-      const contentType = response.headers.get("content-type") || "";
-      if (contentType.startsWith("image/")) return response.url || candidate;
-      if (!contentType.includes("text/html")) continue;
-      const html = (await response.text()).slice(0, 500000);
-      const tags = html.match(/<meta\b[^>]*>/gi) || [];
-      for (const tag of tags) {
-        const read = (attribute: string) =>
-          tag.match(new RegExp("\\b" + attribute + "\\s*=\\s*['" + '"' + "]([^'" + '"' + "]+)['" + '"' + "]", "i"))?.[1] || "";
-        const property = (read("property") || read("name")).toLowerCase();
-        if (!["og:image", "og:image:url", "twitter:image", "twitter:image:src"].includes(property)) continue;
-        const raw = read("content").replace(/&amp;/g, "&").replace(/&quot;/g, '"').trim();
-        if (!raw) continue;
-        const image = new URL(raw, response.url || candidate);
-        if (image.protocol !== "https:" && image.protocol !== "http:") continue;
-        // Verify the image is publicly retrievable before passing it to Telegram.
-        const imageResponse = await fetch(image.toString(), {
-          headers: { "user-agent": "Mozilla/5.0 (compatible; IJODAINews/1.0)", accept: "image/*" },
-          redirect: "follow", signal: AbortSignal.timeout(10000)
-        });
-        if (imageResponse.ok && (imageResponse.headers.get("content-type") || "").startsWith("image/")) {
-          return imageResponse.url || image.toString();
+      if (response.ok) {
+        const contentType = (response.headers.get("content-type") || "").toLowerCase();
+        if (contentType.startsWith("image/")) return response.url || candidate;
+        if (contentType.includes("text/html")) {
+          const html = (await response.text()).slice(0, 500000);
+          const tags = html.match(/<meta\b[^>]*>/gi) || [];
+          for (const tag of tags) {
+            const read = (attribute: string) => {
+              const match = tag.match(new RegExp("(?:^|\\\\s)" + attribute + "\\\\s*=\\\\s*(['" + '"' + "])([^'" + '"' + "]+)\\\\1", "i"));
+              return match?.[2] || "";
+            };
+            const property = (read("property") || read("name")).toLowerCase();
+            if (!["og:image", "og:image:url", "twitter:image", "twitter:image:src"].includes(property)) continue;
+            const raw = read("content").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
+            if (!raw) continue;
+            const image = new URL(raw, response.url || candidate);
+            if (image.protocol !== "https:" && image.protocol !== "http:") continue;
+            if (await isReachableImage(image.toString())) return image.toString();
+            // A publisher CDN may block direct requests; try the public image proxy.
+            const proxy = "https://images.weserv.nl/?url=" + encodeURIComponent(image.host + image.pathname + image.search);
+            if (await isReachableImage(proxy)) return proxy;
+          }
         }
       }
     } catch {
-      // Continue to the canonical article URL if a stored image URL is blocked.
+      // Try the image proxy below when the publisher blocks server-side requests.
+    }
+    // Stored RSS image URLs can be valid even when the publisher blocks direct fetches.
+    if (/^https?:\/\//i.test(candidate) && candidate !== sourceUrl) {
+      const parsed = new URL(candidate);
+      const proxy = "https://images.weserv.nl/?url=" + encodeURIComponent(parsed.host + parsed.pathname + parsed.search);
+      if (await isReachableImage(proxy)) return proxy;
     }
   }
   return null;
@@ -264,23 +282,33 @@ export async function POST(request: Request) {
       if (!articles?.length) {
         throw new Error("Tanlangan mavzularda hali nashr qilingan yangilik yo‘q. Boshqa mavzudagi xabar yuborilmadi.");
       }
-      // Pick the newest article that also has a translation for this recipient.
+      // Pick the newest translated article with an image that the server can actually retrieve.
       let article: (typeof articles)[number] | null = null;
       let translation: { title: string; summary: string | null } | null = null;
+      let imageAttempts = 0;
       for (const candidate of articles) {
+        if (imageAttempts >= 8) break;
         const { data, error: translationError } = await db.from("news_translations")
           .select("title,summary").eq("article_id", candidate.id).eq("language", language).maybeSingle();
         if (translationError) throw new Error("Yangilik tarjimasini olishda xatolik: " + translationError.message);
-        if (data?.title) { article = candidate; translation = data; break; }
+        if (!data?.title) continue;
+        imageAttempts++;
+        const resolved = await resolveNewsPhotoUrl(candidate.image_url, candidate.source_url);
+        if (!resolved) continue;
+        article = candidate;
+        translation = data;
+        photoUrl = resolved;
+        break;
       }
-      if (!article) throw new Error("Tanlangan mavzulardagi yangiliklar uchun " + language + " tarjima hali tayyor emas. Noto‘g‘ri mavzudagi xabar yuborilmadi.");
-      const title = translation?.title || article.title;
-      const summary = translation?.summary || article.summary || "";
+      if (!article || !translation) {
+        throw new Error("So‘nggi 8 ta tarjima qilingan yangilikdan Telegram yubora oladigan rasm topilmadi. Manba saytlar rasmni bloklayotgan bo‘lishi mumkin; keyinroq qayta urinib ko‘ring.");
+      }
+      const title = translation.title || article.title;
+      const summary = translation.summary || article.summary || "";
       const displayTitle = language === "uz-cyrl" ? cyrillic(title) : title;
       const displaySummary = language === "uz-cyrl" ? cyrillic(summary) : summary;
       message = "🧪 TEST XABAR · AI NEWS\n\n" + displayTitle + "\n\n" + displaySummary + "\n\nManba: " + article.source_name;
-      photoUrl = await resolveNewsPhotoUrl(article.image_url, article.source_url) || "";
-      details = { articleId: article.id, category: article.category, selectedCategories: recipientCategories, matchedCategories: articleCategories, editorialScore: article.editorial_score ?? null, language, imageAvailable: Boolean(photoUrl), imageResolvedFrom: photoUrl ? (article.image_url || article.source_url) : null };
+      details = { articleId: article.id, category: article.category, selectedCategories: recipientCategories, matchedCategories: articleCategories, editorialScore: article.editorial_score ?? null, language, imageAvailable: true, imageResolvedFrom: article.image_url || article.source_url };
     }
     let messageId: number | null = null;
     let imageSent = false;
