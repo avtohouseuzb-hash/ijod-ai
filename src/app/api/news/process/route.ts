@@ -489,12 +489,6 @@ export async function GET(request: Request) {
       let telegramSent = 0;
       const deliveryErrors: string[] = [];
       let channelMessagesSent = 0;
-      const privateRecipients = chats.filter((chat: NewsChat) => matchesTopics(raw, chat.categories));
-      const recipients = [
-        ...privateRecipients.map((chat: NewsChat) => ({ ...chat, isChannel: false })),
-        ...(channelRecipient && matchesTopics(raw, channelRecipient.categories) &&
-          !privateRecipients.some((chat: NewsChat) => chat.chatId === channelRecipient.chatId) ? [channelRecipient] : [])
-      ];
       if (botToken) {
         const buttons = [[{ text: "👍", callback_data: "news_vote:" + raw.id + ":1" }, { text: "👎", callback_data: "news_vote:" + raw.id + ":-1" }], [{ text: "🔗 To‘liq yangilik", url: raw.source_url }],
           ...(raw.video_url ? [[{ text: "▶️ Videoni ko‘rish", url: raw.video_url }]] : []),
