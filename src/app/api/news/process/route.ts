@@ -7,7 +7,7 @@ export const maxDuration = 60;
 type Translation = { title: string; summary: string };
 type EditorialResult = { publish: boolean; reason?: string; quality?: { relevance?: number; usefulness?: number; source_reliability?: number; originality?: number; clarity?: number }; uz_latn: Translation; uz_cyrl: Translation; ru: Translation };
 type Article = { id: string; title: string; summary: string | null; source_name: string; source_url: string; image_url: string | null; video_url: string | null; category: string; status: string; editorial_score?: number | null; published_at?: string | null };
-type ArticleContext = { description: string; body: string };
+type ArticleContext = { description: string; body: string; imageUrl: string | null };
 type NewsChat = { chatId: string; language: string; categories: string[]; isChannel?: boolean };
 type DeliveryRow = { chat_id: string; delivery_type: string; status: string; next_attempt_at: string | null };
 type TranslationRow = { language: string; title: string; summary: string | null };
@@ -235,6 +235,16 @@ async function fetchArticleContext(articleUrl: string): Promise<ArticleContext> 
   try {
     const response = await fetch(articleUrl, {
       headers: { "User-Agent": "Mozilla/5.0 (compatible; IJODAI-NewsBot/1.0)", "Accept": "text/html,application/xhtml+xml" },
+      redirect: "follow", signal: AbortSignal.timeout(5000)
+    });
+    if (!response.ok) return { description: "", body: "", imageUrl: null };
+    const html = (await response.text()).slice(0, 500000);
+    const getMeta = (keys: string[]) => {
+      for (const key of keys) {
+        const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\async function fetchArticleContext(articleUrl: string): Promise<ArticleContext> {
+  try {
+    const response = await fetch(articleUrl, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; IJODAI-NewsBot/1.0)", "Accept": "text/html,application/xhtml+xml" },
       redirect: "follow", signal: AbortSignal.timeout(2500)
     });
     if (!response.ok) return { description: "", body: "" };
@@ -248,6 +258,28 @@ async function fetchArticleContext(articleUrl: string): Promise<ArticleContext> 
       .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/\s+/g, " ").trim().slice(0, 7000);
     return { description, body };
   } catch { return { description: "", body: "" }; }
+}");
+        const match = html.match(new RegExp('<meta\\b(?=[^>]*(?:property|name)=["\\']' + escaped + '["\\'])[^>]*content=["\\']([^"\\']+)["\\'][^>]*>', "i"))
+          || html.match(new RegExp('<meta\\b(?=[^>]*content=["\\']([^"\\']+)["\\'])[^>]*(?:property|name)=["\\']' + escaped + '["\\'][^>]*>', "i"));
+        if (match?.[1]) return match[1].replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'");
+      }
+      return "";
+    };
+    const description = getMeta(["og:description", "twitter:description", "description"]).trim();
+    const rawImage = getMeta(["og:image", "og:image:url", "twitter:image", "twitter:image:src"]);
+    let imageUrl: string | null = null;
+    if (rawImage) {
+      try {
+        const resolved = new URL(rawImage, response.url || articleUrl);
+        if (resolved.protocol === "https:" || resolved.protocol === "http:") imageUrl = resolved.toString();
+      } catch { /* Ignore malformed source image URLs. */ }
+    }
+    const articleHtml = html.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i)?.[1] || "";
+    const body = articleHtml.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " ").replace(/&nbsp;|&#160;/g, " ").replace(/&amp;/g, "&")
+      .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/\s+/g, " ").trim().slice(0, 7000);
+    return { description, body, imageUrl };
+  } catch { return { description: "", body: "", imageUrl: null }; }
 }
 
 export async function GET(request: Request) {
@@ -352,6 +384,10 @@ export async function GET(request: Request) {
         const extra = await fetchArticleContext(raw.source_url);
         if (extra.description) description = [description, extra.description].filter(Boolean).join(" ");
         articleBody = extra.body;
+        if (!raw.image_url && extra.imageUrl) {
+          raw.image_url = extra.imageUrl;
+          await db.from("news_articles").update({ image_url: extra.imageUrl }).eq("id", raw.id);
+        }
       }
       if (meaningfulWords.length < 2 ||
           /^(?:[A-Z]{2,6}\s*\(?[A-Z]{1,4}\)?\s*\d{1,4}|untitled|no title|news update)$/i.test(raw.title.trim())) {
@@ -490,7 +526,7 @@ export async function GET(request: Request) {
       const deliveryErrors: string[] = [];
       let channelMessagesSent = 0;
       if (botToken) {
-        const buttons = [[{ text: "👍", callback_data: "news_vote:" + raw.id + ":1" }, { text: "👎", callback_data: "news_vote:" + raw.id + ":-1" }], [{ text: "🔗 To‘liq yangilik", url: raw.source_url }],
+        const buttons = [[{ text: "👍", callback_data: "news_vote:" + raw.id + ":1" }, { text: "👎", callback_data: "news_vote:" + raw.id + ":-1" }],
           ...(raw.video_url ? [[{ text: "▶️ Videoni ko‘rish", url: raw.video_url }]] : []),
           [{ text: "📰 IJOD AI News’da ochish", url: (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app") + "/news" }]];
         const { data: previousDeliveries } = await db.from("news_deliveries")
