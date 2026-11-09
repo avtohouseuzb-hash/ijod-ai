@@ -359,108 +359,124 @@ export async function GET(request: Request) {
         outcomes.push({ id: raw.id, translated: false, telegramSent: 0, error: "Sarlavha yoki mazmun yetarlicha aniq emas — nashrdan chiqarildi." });
         continue;
       }
+      // First identify the actual audience. Do not spend translation tokens for users
+      // whose selected topics do not match this article.
+      if (!recipients.length) {
+        await db.from("news_articles").update({
+          processing_started_at: null,
+          processing_last_error: null
+        }).eq("id", raw.id);
+        outcomes.push({ id: raw.id, translated: false, telegramSent: 0, error: "Foydalanuvchilarga mos auditoriya topilmadi." });
+        continue;
+      }
+
+      // Stage 1: editorial relevance and quality check only. Source text is never
+      // translated before it passes this gate.
+      const editorial = await fetch("https://api.openai.com/v1/responses", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: "Bearer " + openaiKey },
+        body: JSON.stringify({
+          model,
+          instructions: "You are IJOD AI News senior editor. Evaluate the source article for factual clarity, usefulness, reliability, relevance and originality. Do NOT translate or rewrite it. Reject fragments, codes/identifiers, incomplete RSS titles, vague headlines, empty context, malformed snippets, or stories that do not explain who did what. Never guess missing context. Return only JSON with publish, reason, and quality:{relevance,usefulness,source_reliability,originality,clarity}, each score an integer from 1 to 10. Publish only if weighted score is at least 6.",
+          input: "Evaluate this original, untranslated source article for IJOD AI News readers. Return a valid JSON object only. Weighted score: relevance 25%, usefulness 25%, source reliability 20%, originality 15%, clarity 15%. Do not translate. Article context: " +
+            JSON.stringify({ source: raw.source_name, title: raw.title, rss_summary: raw.summary || "", original_page_description: description, original_article_text: articleBody }),
+          text: { format: { type: "json_object" } },
+          max_output_tokens: 700
+        }),
+        signal: AbortSignal.timeout(18000)
+      });
+      if (!editorial.ok) throw new Error("GPT editorial API: " + (await editorial.text()).slice(0, 400));
+      const editorialResult = await editorial.json();
+      const editorialOutput = (editorialResult.output || []).flatMap((item: { content?: Array<{ type?: string; text?: string }> } | null | undefined) => item?.content || [])
+        .filter((part: { type?: string }) => part.type === "output_text")
+        .map((part: { text?: string }) => part.text || "").join(" ").trim();
+      const parsed = JSON.parse(editorialOutput) as Pick<EditorialResult, "publish" | "reason" | "quality">;
+      const quality = {
+        relevance: Math.max(1, Math.min(10, Math.round(Number(parsed.quality?.relevance) || 1))),
+        usefulness: Math.max(1, Math.min(10, Math.round(Number(parsed.quality?.usefulness) || 1))),
+        source_reliability: Math.max(1, Math.min(10, Math.round(Number(parsed.quality?.source_reliability) || 1))),
+        originality: Math.max(1, Math.min(10, Math.round(Number(parsed.quality?.originality) || 1))),
+        clarity: Math.max(1, Math.min(10, Math.round(Number(parsed.quality?.clarity) || 1)))
+      };
+      const editorialScore = Math.round(quality.relevance * 0.25 + quality.usefulness * 0.25 + quality.source_reliability * 0.20 + quality.originality * 0.15 + quality.clarity * 0.15);
+      editorialScoreForOutcome = editorialScore;
+      const rejectReason = String(parsed.reason || "Sifat balli nashr chegarasidan past.").slice(0, 500);
+      if (parsed.publish !== true || editorialScore < 6) {
+        await db.from("news_articles").update({
+          status: "draft", editorial_score: editorialScore, editorial_reason: rejectReason,
+          editorial_quality: quality, processing_started_at: null, processing_last_error: rejectReason
+        }).eq("id", raw.id);
+        outcomes.push({ id: raw.id, translated: false, telegramSent: 0, editorialScore, error: "Tahrir filtri: " + rejectReason.slice(0, 180) });
+        continue;
+      }
+      const { error: scoreSaveError } = await db.from("news_articles")
+        .update({ editorial_score: editorialScore, editorial_reason: null, editorial_quality: quality }).eq("id", raw.id);
+      if (scoreSaveError) throw new Error("Editorial score save: " + scoreSaveError.message);
+
+      // Stage 2: translate only into languages actually needed by matched recipients.
+      const languageMap: Record<string, string> = {
+        "uz-latn": "uz_latn", "uz-cyrl": "uz_cyrl", "ru": "ru"
+      };
+      const requiredLanguages = [...new Set(recipients.map((recipient: NewsChat) =>
+        languageMap[recipient.language] ? recipient.language : "uz-latn"
+      ))];
       const { data: cached, error: cacheError } = await db.from("news_translations")
         .select("language,title,summary").eq("article_id", raw.id);
       if (cacheError) throw new Error(cacheError.message);
       const variants = new Map<string, Translation>((cached || []).map((t: TranslationRow) => [
         String(t.language), { title: String(t.title), summary: String(t.summary || "") }
       ]));
-      const languages = ["uz-latn", "uz-cyrl", "ru"];
-      if (languages.some(language => !variants.has(language)) || raw.editorial_score == null) {
-        const ai = await fetch("https://api.openai.com/v1/responses", {
+      const isCompleteTranslation = (item: unknown): item is Translation => {
+        if (!item || typeof item !== "object") return false;
+        const value = item as Partial<Translation>;
+        return typeof value.title === "string" && value.title.trim().length > 0 &&
+          typeof value.summary === "string" && value.summary.trim().length > 0;
+      };
+      const saveTranslation = async (language: string, item: Translation) => {
+        const row = { article_id: raw.id, language, title: item.title.trim().slice(0, 500), summary: item.summary.trim().slice(0, 1400) };
+        const { error: saveError } = await db.from("news_translations").upsert(row, { onConflict: "article_id,language" });
+        if (saveError) throw new Error("Tarjimani saqlash (" + language + "): " + saveError.message);
+        variants.set(language, { title: row.title, summary: row.summary });
+      };
+      const missingLanguages = requiredLanguages.filter(language => !variants.has(language));
+      if (missingLanguages.length) {
+        const requestedKeys = missingLanguages.map(language => languageMap[language]);
+        const languageNames: Record<string, string> = {
+          "uz-latn": "Uzbek Latin", "uz-cyrl": "Uzbek Cyrillic", "ru": "Russian"
+        };
+        const translation = await fetch("https://api.openai.com/v1/responses", {
           method: "POST",
           headers: { "content-type": "application/json", authorization: "Bearer " + openaiKey },
           body: JSON.stringify({
             model,
-            instructions: "You are IJOD AI News senior editor and strict quality gate. Score each story from 1 to 10 using five integer criteria: relevance, usefulness, source_reliability, originality, clarity. Reject fragments, codes/identifiers, incomplete RSS titles, vague headlines, empty context, malformed snippets, or stories that do not explain who did what. Never guess missing context. Publish only if the weighted score is at least 6. If not useful or score below 6, return publish:false and a short reason. If useful, translate faithfully into Uzbek Latin, Uzbek Cyrillic and Russian. Each version needs a clear specific headline and factual 2-3 sentence summary. Preserve names, dates, numbers and uncertainty. Return JSON with publish, reason, quality object, uz_latn, uz_cyrl, ru.",
-            input: "Rate relevance, usefulness, source_reliability, originality and clarity from 1 to 10. Weighted score: relevance 25%, usefulness 25%, source reliability 20%, originality 15%, clarity 15%. Publish only when overall score >= 6 and there is a concrete useful story. RSS snippets can be short; use original-page context when available. Never invent facts. Return a valid json object (JSON format) with quality:{relevance,usefulness,source_reliability,originality,clarity}, publish, reason, uz_latn, uz_cyrl, ru. " + JSON.stringify({ source: raw.source_name, title: raw.title, rss_summary: raw.summary || "", original_page_description: description, original_article_text: articleBody }),
+            instructions: "You are IJOD AI News translator. Translate faithfully from the original source into ONLY the requested languages. Do not add facts. Each requested language must contain a clear headline and factual 2-3 sentence summary. Preserve names, dates, numbers and uncertainty. Return a valid JSON object with exactly the requested language keys; each value has title and summary.",
+            input: "Translate this already-approved story into only these requested languages: " +
+              missingLanguages.map(language => languageNames[language]).join(", ") +
+              ". JSON keys required: " + requestedKeys.join(", ") +
+              ". Return valid json. Source context: " +
+              JSON.stringify({ source: raw.source_name, title: raw.title, rss_summary: raw.summary || "", original_page_description: description, original_article_text: articleBody }),
             text: { format: { type: "json_object" } },
-            max_output_tokens: 1800
+            max_output_tokens: 1400
           }),
           signal: AbortSignal.timeout(18000)
         });
-        if (!ai.ok) throw new Error("GPT API: " + (await ai.text()).slice(0, 400));
-        const result = await ai.json();
-        const output = (result.output || []).flatMap((item: { content?: Array<{ type?: string; text?: string }> } | null | undefined) => item?.content || [])
+        if (!translation.ok) throw new Error("GPT translation API: " + (await translation.text()).slice(0, 400));
+        const translationResult = await translation.json();
+        const translationOutput = (translationResult.output || []).flatMap((item: { content?: Array<{ type?: string; text?: string }> } | null | undefined) => item?.content || [])
           .filter((part: { type?: string }) => part.type === "output_text")
           .map((part: { text?: string }) => part.text || "").join(" ").trim();
-        const parsed = JSON.parse(output) as EditorialResult;
-        const quality = {
-          relevance: Math.max(1, Math.min(10, Math.round(Number(parsed.quality?.relevance) || 1))),
-          usefulness: Math.max(1, Math.min(10, Math.round(Number(parsed.quality?.usefulness) || 1))),
-          source_reliability: Math.max(1, Math.min(10, Math.round(Number(parsed.quality?.source_reliability) || 1))),
-          originality: Math.max(1, Math.min(10, Math.round(Number(parsed.quality?.originality) || 1))),
-          clarity: Math.max(1, Math.min(10, Math.round(Number(parsed.quality?.clarity) || 1)))
-        };
-        const editorialScore = Math.round(quality.relevance * 0.25 + quality.usefulness * 0.25 + quality.source_reliability * 0.20 + quality.originality * 0.15 + quality.clarity * 0.15);
-        editorialScoreForOutcome = editorialScore;
-        const rejectReason = String(parsed.reason || "Sifat balli nashr chegarasidan past.").slice(0, 500);
-        if (parsed.publish !== true || editorialScore < 6) {
-          await db.from("news_articles").update({ status: "draft", editorial_score: editorialScore, editorial_reason: rejectReason, editorial_quality: quality, processing_started_at: null, processing_last_error: rejectReason }).eq("id", raw.id);
-          outcomes.push({ id: raw.id, translated: false, telegramSent: 0, editorialScore, error: "Tahrir filtri: " + rejectReason.slice(0, 180) });
-          continue;
+        let translated: Record<string, unknown>;
+        try { translated = JSON.parse(translationOutput) as Record<string, unknown>; }
+        catch { throw new Error("GPT tarjimasi yaroqli JSON qaytarmadi."); }
+        for (const language of missingLanguages) {
+          const keyName = languageMap[language];
+          const item = translated[keyName];
+          if (!isCompleteTranslation(item)) throw new Error("GPT tarjimasi yetishmayapti: " + language);
+          await saveTranslation(language, item);
         }
-        const { error: scoreSaveError } = await db.from("news_articles").update({ editorial_score: editorialScore, editorial_reason: null, editorial_quality: quality }).eq("id", raw.id);
-        if (scoreSaveError) throw new Error("Editorial score save: " + scoreSaveError.message);
-
-        const pairs = [["uz-latn", "uz_latn"], ["uz-cyrl", "uz_cyrl"], ["ru", "ru"]] as const;
-        const isCompleteTranslation = (item: unknown): item is Translation => {
-          if (!item || typeof item !== "object") return false;
-          const value = item as Partial<Translation>;
-          return typeof value.title === "string" && value.title.trim().length > 0 &&
-            typeof value.summary === "string" && value.summary.trim().length > 0;
-        };
-        const saveTranslation = async (language: string, item: Translation) => {
-          const row = { article_id: raw.id, language, title: item.title.trim().slice(0, 500), summary: item.summary.trim().slice(0, 1400) };
-          const { error: saveError } = await db.from("news_translations").upsert(row, { onConflict: "article_id,language" });
-          if (saveError) throw new Error("Tarjimani saqlash (" + language + "): " + saveError.message);
-          variants.set(language, { title: row.title, summary: row.summary });
-        };
-
-        // Keep cached translations and save every valid language independently.
-        // A single missing locale must not discard the other successful translations.
-        const missingPairs: Array<readonly [string, string]> = [];
-        for (const [language, keyName] of pairs) {
-          if (variants.has(language)) continue;
-          const item = (parsed as unknown as Record<string, unknown>)[keyName];
-          if (isCompleteTranslation(item)) await saveTranslation(language, item);
-          else missingPairs.push([language, keyName]);
-        }
-
-        // Retry only the missing locales once, rather than regenerating all three.
-        // This extra request runs only when the first response is incomplete.
-        if (missingPairs.length) {
-          const missingLanguageNames = missingPairs.map(([language]) =>
-            language === "uz-latn" ? "Uzbek Latin" : language === "uz-cyrl" ? "Uzbek Cyrillic" : "Russian"
-          );
-          const repair = await fetch("https://api.openai.com/v1/responses", {
-            method: "POST",
-            headers: { "content-type": "application/json", authorization: "Bearer " + openaiKey },
-            body: JSON.stringify({
-              model,
-              instructions: "You are IJOD AI News translator. Return only a valid JSON object. Translate faithfully and completely into every requested language. Each translation must contain a specific headline and factual 2-3 sentence summary. Preserve names, dates, numbers and uncertainty. Do not omit any requested key.",
-              input: "Create only these missing translation keys: " + missingPairs.map(([, key]) => key).join(", ") +
-                ". Language mapping: uz_latn=Uzbek Latin, uz_cyrl=Uzbek Cyrillic, ru=Russian. Return each key with title and summary. Source context: " +
-                JSON.stringify({ source: raw.source_name, title: raw.title, rss_summary: raw.summary || "", original_page_description: description, original_article_text: articleBody }),
-              text: { format: { type: "json_object" } },
-              max_output_tokens: 1200
-            }),
-            signal: AbortSignal.timeout(18000)
-          });
-          if (!repair.ok) throw new Error("Tarjima tiklash GPT API: " + (await repair.text()).slice(0, 300));
-          const repairResult = await repair.json();
-          const repairOutput = (repairResult.output || []).flatMap((item: { content?: Array<{ type?: string; text?: string }> } | null | undefined) => item?.content || [])
-            .filter((part: { type?: string }) => part.type === "output_text")
-            .map((part: { text?: string }) => part.text || "").join(" ").trim();
-          let repaired: Record<string, unknown>;
-          try { repaired = JSON.parse(repairOutput) as Record<string, unknown>; }
-          catch { throw new Error("GPT tarjima tiklashda yaroqli JSON qaytarmadi."); }
-          for (const [language, keyName] of missingPairs) {
-            const item = repaired[keyName];
-            if (!isCompleteTranslation(item)) throw new Error("GPT tarjimasi yetishmayapti: " + language);
-            await saveTranslation(language, item);
-          }
-        }
+      }
+      if (requiredLanguages.some(language => !variants.has(language))) {
+        throw new Error("Foydalanuvchiga kerakli tarjima topilmadi.");
       }
 
       let telegramSent = 0;
