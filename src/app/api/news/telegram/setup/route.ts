@@ -11,7 +11,7 @@ async function isAdmin(request:Request){
 }
 export async function POST(request:Request){
  if(!await isAdmin(request))return NextResponse.json({error:"Admin huquqi talab qilinadi."},{status:403});
- const token=process.env.TELEGRAM_BOT_TOKEN;const site="https://ijod-ai.uz";const secret=process.env.TELEGRAM_WEBHOOK_SECRET;
+ const token=process.env.TELEGRAM_BOT_TOKEN;const site="https://www.ijod-ai.uz";const secret=process.env.TELEGRAM_WEBHOOK_SECRET;
  if(!token||!secret)return NextResponse.json({error:"TELEGRAM_BOT_TOKEN va TELEGRAM_WEBHOOK_SECRET sozlanishi shart."},{status:500});
  const webhookUrl=site.replace(/\/$/,"")+"/api/news/telegram/webhook";
  const payload:Record<string,unknown>={url:webhookUrl,allowed_updates:["message","callback_query"],drop_pending_updates:false};
@@ -19,7 +19,11 @@ export async function POST(request:Request){
  const response=await fetch("https://api.telegram.org/bot"+token+"/setWebhook",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)});
  const result=await response.json();
  if(!response.ok||!result.ok){console.error("Telegram webhook setup failed",result);return NextResponse.json({error:result.description||"Telegram webhook sozlanmadi."},{status:502});}
- return NextResponse.json({ok:true,webhookUrl,description:result.description||"Webhook configured"});
+ const infoResponse=await fetch("https://api.telegram.org/bot"+token+"/getWebhookInfo");
+ const info=await infoResponse.json();
+ if(!infoResponse.ok||!info.ok){console.error("Telegram getWebhookInfo failed",info);return NextResponse.json({ok:true,webhookUrl,description:result.description||"Webhook configured",verificationWarning:info.description||"Webhook holatini tekshirib bo‘lmadi."});}
+ const webhook=info.result||{};
+ return NextResponse.json({ok:true,webhookUrl,description:result.description||"Webhook configured",verifiedUrl:webhook.url||null,pendingUpdateCount:webhook.pending_update_count??0,lastErrorDate:webhook.last_error_date??null,lastErrorMessage:webhook.last_error_message??null,allowedUpdates:webhook.allowed_updates??[]});
 }
 export async function GET(request:Request){
  if(!await isAdmin(request))return NextResponse.json({error:"Admin huquqi talab qilinadi."},{status:403});

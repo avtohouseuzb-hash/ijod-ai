@@ -5,7 +5,13 @@ async function telegram(token: string, method: string, payload: Record<string, u
   const response = await fetch("https://api.telegram.org/bot" + token + "/" + method, {
     method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload),
   });
-  if (!response.ok) console.error("Telegram API error", method, await response.text());
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || result.ok === false) {
+    const description = String(result.description || "Telegram API request failed");
+    console.error("Telegram API error", { method, status: response.status, description });
+    throw new Error("Telegram " + method + ": " + description);
+  }
+  return result;
 }
 const topicGroups: Record<string,string[]> = {
   "Huquq":["O‘zbekiston qonunchiligi","Xalqaro huquq","Sud va huquqiy amaliyot","Normativ hujjatlar"],
