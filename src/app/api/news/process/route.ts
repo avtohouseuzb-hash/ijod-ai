@@ -239,7 +239,7 @@ async function retryPendingDeliveries(db: any, token: string) {
     const buttons = [
       [{ text: "👍", callback_data: "news_vote:" + item.article_id + ":1" }, { text: "👎", callback_data: "news_vote:" + item.article_id + ":-1" }],
       ...(article.video_url ? [[{ text: "▶️ Videoni ko‘rish", url: article.video_url }]] : []),
-      [{ text: "📰 IJOD AI News’da ochish", url: (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app") + "/news" }]
+      [{ text: "📰 IJOD AI News’da ochish", url: (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.uz") + "/news" }]
     ];
     const caption = ("📰 " + translation.title + "\n\n" + (translation.summary || "") + "\n\nManba: " + article.source_name).slice(0, 1000);
     const send = async (method: string, payload: Record<string, unknown>) => {
@@ -599,7 +599,7 @@ export async function GET(request: Request) {
       if (botToken) {
         const buttons = [[{ text: "👍", callback_data: "news_vote:" + raw.id + ":1" }, { text: "👎", callback_data: "news_vote:" + raw.id + ":-1" }],
           ...(raw.video_url ? [[{ text: "▶️ Videoni ko‘rish", url: raw.video_url }]] : []),
-          [{ text: "📰 IJOD AI News’da ochish", url: (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app") + "/news" }]];
+          [{ text: "📰 IJOD AI News’da ochish", url: (process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.uz") + "/news" }]];
         const { data: previousDeliveries } = await db.from("news_deliveries")
           .select("chat_id,delivery_type,status,next_attempt_at")
           .eq("article_id", raw.id);
