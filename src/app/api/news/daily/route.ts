@@ -93,6 +93,18 @@ async function run(request: Request, adminAuthorized = false) {
   let selectedSlot: typeof DAILY_SCHEDULE[number] | undefined;
   if(requestedSlot){
     selectedSlot=DAILY_SCHEDULE.find(candidate=>candidate.time===requestedSlot);
+  } else {
+    // Recover failed slots after their original 20-minute window has passed.
+    // A failed slot is retried at most three times; successful/no-news slots remain final.
+    const {data:failedSlots,error:failedSlotsError}=await db.from("news_daily_posts")
+      .select("slot_key,payload,updated_at").eq("post_date",today).eq("status","failed")
+      .order("updated_at",{ascending:true}).limit(10);
+    if(failedSlotsError) console.error("Could not load failed news slots",failedSlotsError.message);
+    const retryable=(failedSlots||[]).find((row:any)=>{
+      const attempts=Number(row.payload?.retryCount||0);
+      return attempts<3 && NEWS_SLOTS.includes(row.slot_key);
+    });
+    if(retryable) selectedSlot=DAILY_SCHEDULE.find(candidate=>candidate.time===retryable.slot_key);
   }
   for(const candidate of selectedSlot ? [] : DAILY_SCHEDULE){
     const [hour,minute]=candidate.time.split(":").map(Number);
@@ -106,14 +118,15 @@ async function run(request: Request, adminAuthorized = false) {
   }
   if(!selectedSlot) return NextResponse.json({ok:true,skipped:"no due schedule slot",time:hhmm});
   const type=selectedSlot.type,slot=selectedSlot.time;
-  const {data:existing}=await db.from("news_daily_posts").select("id,status,started_at").eq("post_date",today).eq("slot_key",slot).maybeSingle();
+  const {data:existing}=await db.from("news_daily_posts").select("id,status,started_at,payload").eq("post_date",today).eq("slot_key",slot).maybeSingle();
   if(existing&&(existing.status==="sent"||existing.status==="partial")) return NextResponse.json({ok:true,skipped:"slot already delivered",slot,status:existing.status});
   let postId:string;
   if(existing){
     const staleSendingBefore=new Date(Date.now()-5*60*1000).toISOString();
     const {data:updated,error:updateError}=await db.from("news_daily_posts").update({
       status:"sending",error:null,started_at:now.toISOString(),updated_at:now.toISOString(),
-      recipients_total:recipients.length
+      recipients_total:recipients.length,
+      payload:{...(existing.payload||{}),retryCount:Number(existing.payload?.retryCount||0)+1,timezone:TZ}
     }).eq("id",existing.id)
       .or("status.in.(failed,queued),and(status.eq.sending,started_at.lt."+staleSendingBefore+")")
       .select("id").maybeSingle();
@@ -216,7 +229,12 @@ async function run(request: Request, adminAuthorized = false) {
     return NextResponse.json({ok:found,type,slot,sent,newsFound:found});
   }catch(error){
     const message=error instanceof Error?error.message:"Daily news job failed";
-    await db.from("news_daily_posts").update({status:"failed",error:message,updated_at:new Date().toISOString()}).eq("id",postId);
+    const {data:failedRow}=await db.from("news_daily_posts").select("payload").eq("id",postId).maybeSingle();
+    await db.from("news_daily_posts").update({
+      status:"failed",error:message,
+      payload:{...(failedRow?.payload||{}),lastFailureAt:new Date().toISOString()},
+      updated_at:new Date().toISOString()
+    }).eq("id",postId);
     return NextResponse.json({ok:false,type,slot,error:message},{status:500});
   }
 }

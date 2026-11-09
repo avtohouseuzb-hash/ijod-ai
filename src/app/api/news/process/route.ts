@@ -11,6 +11,23 @@ type ArticleContext = { description: string; body: string; imageUrl: string | nu
 type NewsChat = { chatId: string; language: string; categories: string[]; isChannel?: boolean };
 type DeliveryRow = { chat_id: string; delivery_type: string; status: string; next_attempt_at: string | null };
 type TranslationRow = { language: string; title: string; summary: string | null };
+
+function extractResponsesText(result: any): string {
+  if (typeof result?.output_text === "string" && result.output_text.trim()) return result.output_text.trim();
+  return (result?.output || []).flatMap((item: { content?: Array<{ type?: string; text?: string }> } | null | undefined) => item?.content || [])
+    .filter((part: { type?: string; text?: string }) => part.type === "output_text" || part.type === "text")
+    .map((part: { text?: string }) => part.text || "").join("\n").trim();
+}
+
+function parseResponsesJson(text: string): Record<string, any> {
+  const normalized = text.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
+  const start = normalized.indexOf("{");
+  const end = normalized.lastIndexOf("}");
+  if (start < 0 || end <= start) throw new Error("AI javobi JSON obyektini o‘z ichiga olmaydi.");
+  const parsed = JSON.parse(normalized.slice(start, end + 1));
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("AI JSON javobi noto‘g‘ri formatda.");
+  return parsed as Record<string, any>;
+}
 const topicRules: Record<string,{parents:string[];terms:string[]}> = {
  "O‘zbekiston qonunchiligi":{parents:["O‘zbekiston"],terms:["qonun","qonunchilik","kodeks","qaror","farmon","normativ"]},
  "Xalqaro huquq":{parents:["Jahon"],terms:["xalqaro huquq","xalqaro sud","human rights","international law"]},
@@ -290,7 +307,7 @@ async function fetchArticleContext(articleUrl: string): Promise<ArticleContext> 
     const html = (await response.text()).slice(0, 500000);
     const metaTags = html.match(/<meta\b[^>]*>/gi) || [];
     const readMeta = (tag: string, attr: string) =>
-      tag.match(new RegExp("\\b" + attr + "\\s*=\\s*['\"]([^'\"]+)['\"]", "i"))?.[1] || "";
+      tag.match(new RegExp("\\b" + attr + "\s*=\s*['\"]([^'\"]+)['\"]", "i"))?.[1] || "";
     const getMeta = (keys: string[]) => {
       for (const tag of metaTags) {
         const name = (readMeta(tag, "property") || readMeta(tag, "name")).toLowerCase();
@@ -465,10 +482,9 @@ export async function GET(request: Request) {
       });
       if (!editorial.ok) throw new Error("GPT editorial API: " + (await editorial.text()).slice(0, 400));
       const editorialResult = await editorial.json();
-      const editorialOutput = (editorialResult.output || []).flatMap((item: { content?: Array<{ type?: string; text?: string }> } | null | undefined) => item?.content || [])
-        .filter((part: { type?: string }) => part.type === "output_text")
-        .map((part: { text?: string }) => part.text || "").join(" ").trim();
-      const parsed = JSON.parse(editorialOutput) as Pick<EditorialResult, "publish" | "reason" | "quality">;
+      const editorialOutput = extractResponsesText(editorialResult);
+      if (!editorialOutput) throw new Error("AI tahrir javobi bo‘sh yoki matn formati noma’lum.");
+      const parsed = parseResponsesJson(editorialOutput) as Pick<EditorialResult, "publish" | "reason" | "quality">;
       const quality = {
         relevance: Math.max(1, Math.min(10, Math.round(Number(parsed.quality?.relevance) || 1))),
         usefulness: Math.max(1, Math.min(10, Math.round(Number(parsed.quality?.usefulness) || 1))),
@@ -540,12 +556,11 @@ export async function GET(request: Request) {
         });
         if (!translation.ok) throw new Error("GPT translation API: " + (await translation.text()).slice(0, 400));
         const translationResult = await translation.json();
-        const translationOutput = (translationResult.output || []).flatMap((item: { content?: Array<{ type?: string; text?: string }> } | null | undefined) => item?.content || [])
-          .filter((part: { type?: string }) => part.type === "output_text")
-          .map((part: { text?: string }) => part.text || "").join(" ").trim();
+        const translationOutput = extractResponsesText(translationResult);
+        if (!translationOutput) throw new Error("GPT tarjimasi bo‘sh javob qaytardi.");
         let translated: Record<string, unknown>;
-        try { translated = JSON.parse(translationOutput) as Record<string, unknown>; }
-        catch { throw new Error("GPT tarjimasi yaroqli JSON qaytarmadi."); }
+        try { translated = parseResponsesJson(translationOutput); }
+        catch (error) { throw new Error("GPT tarjimasi yaroqli JSON qaytarmadi: " + (error instanceof Error ? error.message : "parse error")); }
         const languagesStillMissing: string[] = [];
         for (const language of missingLanguages) {
           const item = translated[languageMap[language]];
@@ -569,12 +584,11 @@ export async function GET(request: Request) {
           });
           if (!repair.ok) throw new Error("GPT tarjimani tiklash (" + language + "): " + (await repair.text()).slice(0, 400));
           const repairResult = await repair.json();
-          const repairOutput = (repairResult.output || []).flatMap((entry: { content?: Array<{ type?: string; text?: string }> } | null | undefined) => entry?.content || [])
-            .filter((part: { type?: string }) => part.type === "output_text")
-            .map((part: { text?: string }) => part.text || "").join(" ").trim();
+          const repairOutput = extractResponsesText(repairResult);
+          if (!repairOutput) throw new Error("GPT tiklash bo‘sh javob qaytardi (" + language + ").");
           let repaired: Record<string, unknown>;
-          try { repaired = JSON.parse(repairOutput) as Record<string, unknown>; }
-          catch { throw new Error("GPT tiklash javobi yaroqli JSON emas (" + language + ")."); }
+          try { repaired = parseResponsesJson(repairOutput); }
+          catch (error) { throw new Error("GPT tiklash javobi yaroqli JSON emas (" + language + "): " + (error instanceof Error ? error.message : "parse error")); }
           const item = repaired[languageMap[language]];
           if (!isCompleteTranslation(item)) throw new Error("GPT tiklashdan keyin ham tarjima yetishmayapti: " + language);
           await saveTranslation(language, item);
