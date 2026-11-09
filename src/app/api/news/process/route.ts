@@ -546,10 +546,37 @@ export async function GET(request: Request) {
         let translated: Record<string, unknown>;
         try { translated = JSON.parse(translationOutput) as Record<string, unknown>; }
         catch { throw new Error("GPT tarjimasi yaroqli JSON qaytarmadi."); }
+        const languagesStillMissing: string[] = [];
         for (const language of missingLanguages) {
-          const keyName = languageMap[language];
-          const item = translated[keyName];
-          if (!isCompleteTranslation(item)) throw new Error("GPT tarjimasi yetishmayapti: " + language);
+          const item = translated[languageMap[language]];
+          if (isCompleteTranslation(item)) await saveTranslation(language, item);
+          else languagesStillMissing.push(language);
+        }
+        // Repair only the missing language(s); never regenerate variants already saved.
+        for (const language of languagesStillMissing) {
+          const repair = await fetch("https://api.openai.com/v1/responses", {
+            method: "POST",
+            headers: { "content-type": "application/json", authorization: "Bearer " + openaiKey },
+            body: JSON.stringify({
+              model,
+              instructions: "Return one faithful translation only. Output a valid JSON object with exactly the requested key. Do not add facts.",
+              input: "Create the missing " + languageNames[language] + " translation for this approved news story. The output must be a valid JSON object (JSON format) with exactly this key: " + languageMap[language] + ". The value must contain non-empty title and summary fields. Source context: " +
+                JSON.stringify({ source: raw.source_name, title: raw.title, rss_summary: raw.summary || "", original_page_description: description, original_article_text: articleBody }),
+              text: { format: { type: "json_object" } },
+              max_output_tokens: 700
+            }),
+            signal: AbortSignal.timeout(18000)
+          });
+          if (!repair.ok) throw new Error("GPT tarjimani tiklash (" + language + "): " + (await repair.text()).slice(0, 400));
+          const repairResult = await repair.json();
+          const repairOutput = (repairResult.output || []).flatMap((entry: { content?: Array<{ type?: string; text?: string }> } | null | undefined) => entry?.content || [])
+            .filter((part: { type?: string }) => part.type === "output_text")
+            .map((part: { text?: string }) => part.text || "").join(" ").trim();
+          let repaired: Record<string, unknown>;
+          try { repaired = JSON.parse(repairOutput) as Record<string, unknown>; }
+          catch { throw new Error("GPT tiklash javobi yaroqli JSON emas (" + language + ")."); }
+          const item = repaired[languageMap[language]];
+          if (!isCompleteTranslation(item)) throw new Error("GPT tiklashdan keyin ham tarjima yetishmayapti: " + language);
           await saveTranslation(language, item);
         }
       }
