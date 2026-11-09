@@ -307,7 +307,7 @@ async function fetchArticleContext(articleUrl: string): Promise<ArticleContext> 
     const html = (await response.text()).slice(0, 500000);
     const metaTags = html.match(/<meta\b[^>]*>/gi) || [];
     const readMeta = (tag: string, attr: string) =>
-      tag.match(new RegExp("\\b" + attr + "\s*=\s*['\"]([^'\"]+)['\"]", "i"))?.[1] || "";
+      tag.match(new RegExp("\\b" + attr + "\\s*=\\s*['\"]([^'\"]+)['\"]", "i"))?.[1] || "";
     const getMeta = (keys: string[]) => {
       for (const tag of metaTags) {
         const name = (readMeta(tag, "property") || readMeta(tag, "name")).toLowerCase();
