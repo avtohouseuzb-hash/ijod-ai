@@ -79,8 +79,8 @@ const languageKeyboard = { inline_keyboard: [[
 ]] };
 const languageNames: Record<string, string> = { "uz-latn": "O‘zbekcha (Lotin)", "uz-cyrl": "Ўзбекча (Кирилл)", ru: "Русский" };
 const aboutKeyboard = { inline_keyboard: [
-  [{ text: "📰 Yangiliklar bo‘limi", url: "https://ijod-ai.vercel.app/news" }],
-  [{ text: "✨ IJOD AI Mini App", url: "https://ijod-ai.vercel.app/" }],
+  [{ text: "📰 Yangiliklar bo‘limi", url: "https://ijod-ai.uz/news" }],
+  [{ text: "✨ IJOD AI Mini App", url: "https://ijod-ai.uz/" }],
 ] };
 const copy: Record<string, { saved: string; stopped: string; started: string; choose: string; topics: string; done: string; latestEmpty: string; about: string; help: string }> = {
   "uz-latn": {
@@ -252,7 +252,7 @@ export async function POST(request: Request) {
           [{ text: "👍", callback_data: "news_vote:" + article.id + ":1" }, { text: "👎", callback_data: "news_vote:" + article.id + ":-1" }],
           [{ text: "🔗 To‘liq yangilik", url: article.source_url }],
           ...(article.video_url ? [[{ text: "▶️ Videoni ko‘rish", url: article.video_url }]] : []),
-          [{ text: "📰 IJOD AI News’da ochish", url: "https://ijod-ai.vercel.app/news" }]
+          [{ text: "📰 IJOD AI News’da ochish", url: "https://ijod-ai.uz/news" }]
         ];
         const directVideo = Boolean(article.video_url && /\.(mp4|m4v|mov|webm)(?:[?#]|$)/i.test(article.video_url));
         const method = directVideo ? "sendVideo" : article.image_url ? "sendPhoto" : "sendMessage";
