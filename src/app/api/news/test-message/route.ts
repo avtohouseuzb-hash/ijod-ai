@@ -44,58 +44,73 @@ async function sendTelegram(token: string, chatId: string, message: string, repl
 }
 
 async function sendTelegramWithPhoto(token: string, chatId: string, caption: string, photoUrl: string, replyMarkup?: TelegramKeyboard) {
+  const photoResponse = await fetch(photoUrl, {
+    headers: { "user-agent": "Mozilla/5.0 (compatible; IJODAINews/1.0)", accept: "image/*" },
+    redirect: "follow", signal: AbortSignal.timeout(12000)
+  });
+  const contentType = photoResponse.headers.get("content-type") || "";
+  if (!photoResponse.ok || !contentType.startsWith("image/")) {
+    throw new Error("Manba rasmi serverdan yuklanmadi (HTTP " + photoResponse.status + ", " + contentType + ").");
+  }
+  const bytes = await photoResponse.arrayBuffer();
+  if (!bytes.byteLength || bytes.byteLength > 10 * 1024 * 1024) {
+    throw new Error("Rasm hajmi bo‘sh yoki Telegram uchun 10 MB dan katta.");
+  }
+  const extension = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : contentType.includes("gif") ? "gif" : "jpg";
+  const form = new FormData();
+  form.append("chat_id", chatId);
+  form.append("photo", new Blob([bytes], { type: contentType }), "ijod-news." + extension);
+  form.append("caption", caption.slice(0, 1024));
+  if (replyMarkup) form.append("reply_markup", JSON.stringify(replyMarkup));
   const response = await fetch("https://api.telegram.org/bot" + token + "/sendPhoto", {
-    method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, photo: photoUrl, caption: caption.slice(0, 1024), ...(replyMarkup ? { reply_markup: replyMarkup } : {}) }),
-    signal: AbortSignal.timeout(12000)
+    method: "POST", body: form, signal: AbortSignal.timeout(20000)
   });
   const result = await response.json().catch(() => ({})) as { ok?: boolean; description?: string; result?: { message_id?: number } };
   if (!response.ok || !result.ok) throw new Error(result.description || "Telegram rasmni qabul qilmadi.");
   return result.result?.message_id ?? null;
 }
-
 async function resolveNewsPhotoUrl(imageUrl: string | null, sourceUrl: string): Promise<string | null> {
   const candidates = [imageUrl, sourceUrl].filter((value): value is string => Boolean(value));
   for (const candidate of candidates) {
     try {
       const response = await fetch(candidate, {
-        headers: { "user-agent": "Mozilla/5.0 (compatible; IJODAINews/1.0)", accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8" },
-        redirect: "follow", signal: AbortSignal.timeout(9000)
+        headers: { "user-agent": "Mozilla/5.0 (compatible; IJODAINews/1.0)", accept: "image/avif,image/webp,image/apng,image/*,text/html,*/*;q=0.8" },
+        redirect: "follow", signal: AbortSignal.timeout(12000)
       });
       if (!response.ok) continue;
       const contentType = response.headers.get("content-type") || "";
       if (contentType.startsWith("image/")) return response.url || candidate;
       if (!contentType.includes("text/html")) continue;
-      const html = await response.text();
-      const tags = html.match(/<meta\\b[^>]*>/gi) || [];
+      const html = (await response.text()).slice(0, 500000);
+      const tags = html.match(/<meta\b[^>]*>/gi) || [];
       for (const tag of tags) {
-        const property = tag.match(/(?:property|name)=[\"'](?:og:image|twitter:image)[\"']/i);
-        if (!property) continue;
-        const raw = tag.match(/content=[\"']([^\"']+)[\"']/i)?.[1];
+        const read = (attribute: string) =>
+          tag.match(new RegExp("\\b" + attribute + "\\s*=\\s*['" + '"' + "]([^'" + '"' + "]+)['" + '"' + "]", "i"))?.[1] || "";
+        const property = (read("property") || read("name")).toLowerCase();
+        if (!["og:image", "og:image:url", "twitter:image", "twitter:image:src"].includes(property)) continue;
+        const raw = read("content").replace(/&amp;/g, "&").replace(/&quot;/g, '"').trim();
         if (!raw) continue;
-        const image = new URL(raw.replace(/&amp;/g, "&"), response.url || candidate).toString();
-        const imageResponse = await fetch(image, {
-          method: "HEAD", headers: { "user-agent": "Mozilla/5.0", accept: "image/*" },
-          redirect: "follow", signal: AbortSignal.timeout(7000)
+        const image = new URL(raw, response.url || candidate);
+        if (image.protocol !== "https:" && image.protocol !== "http:") continue;
+        // Verify the image is publicly retrievable before passing it to Telegram.
+        const imageResponse = await fetch(image.toString(), {
+          headers: { "user-agent": "Mozilla/5.0 (compatible; IJODAINews/1.0)", accept: "image/*" },
+          redirect: "follow", signal: AbortSignal.timeout(10000)
         });
         if (imageResponse.ok && (imageResponse.headers.get("content-type") || "").startsWith("image/")) {
-          return imageResponse.url || image;
+          return imageResponse.url || image.toString();
         }
-        // Some CDNs reject HEAD but accept GET; Telegram can fetch the public URL itself.
-        if (image.startsWith("https://")) return image;
       }
     } catch {
-      // Try the canonical article page if the stored image URL was malformed.
+      // Continue to the canonical article URL if a stored image URL is blocked.
     }
   }
   return null;
 }
-
-function newsKeyboard(sourceUrl: string): TelegramKeyboard {
+function newsKeyboard(): TelegramKeyboard {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://ijod-ai.vercel.app";
   const newsUrl = (siteUrl.endsWith("/") ? siteUrl.slice(0, -1) : siteUrl) + "/news";
   return { inline_keyboard: [
-    [{ text: "🔗 To‘liq yangilik", url: sourceUrl }],
     [{ text: "📰 IJOD AI News’da ochish", url: newsUrl }]
   ] };
 }
@@ -263,7 +278,7 @@ export async function POST(request: Request) {
       const summary = translation?.summary || article.summary || "";
       const displayTitle = language === "uz-cyrl" ? cyrillic(title) : title;
       const displaySummary = language === "uz-cyrl" ? cyrillic(summary) : summary;
-      message = "🧪 TEST XABAR · AI NEWS\n\n" + displayTitle + "\n\n" + displaySummary + "\n\nManba: " + article.source_name + "\n" + article.source_url;
+      message = "🧪 TEST XABAR · AI NEWS\n\n" + displayTitle + "\n\n" + displaySummary + "\n\nManba: " + article.source_name;
       photoUrl = await resolveNewsPhotoUrl(article.image_url, article.source_url) || "";
       details = { articleId: article.id, category: article.category, selectedCategories: recipientCategories, matchedCategories: articleCategories, editorialScore: article.editorial_score ?? null, language, imageAvailable: Boolean(photoUrl), imageResolvedFrom: photoUrl ? (article.image_url || article.source_url) : null };
     }
@@ -271,7 +286,7 @@ export async function POST(request: Request) {
     let imageSent = false;
     let imageError: string | null = null;
     const keyboard = type === "news" && details && typeof details === "object" && "articleId" in details
-      ? newsKeyboard(String((await db.from("news_articles").select("source_url").eq("id", String(details.articleId)).maybeSingle()).data?.source_url || "https://ijod-ai.vercel.app/news"))
+      ? newsKeyboard()
       : undefined;
     if (photoUrl) {
       try {
@@ -285,8 +300,10 @@ export async function POST(request: Request) {
       }
     }
     if (!imageSent) {
-      // Preserve the two navigation buttons even when a publisher blocks its image.
-      messageId = await sendTelegram(token, chatId, message, keyboard, type === "news" ? false : true);
+      if (type === "news") {
+        throw new Error(imageError || "Yangilik uchun rasm topilmadi; rasmli test yuborilmadi.");
+      }
+      messageId = await sendTelegram(token, chatId, message, keyboard, true);
     }
     return NextResponse.json({ ok: true, type, chatId, language, messageId, imageSent, imageError, details, note: "Faqat tanlangan chatga test yuborildi. Kundalik jadval va delivery yozuvlari o‘zgartirilmadi." });
   } catch (error) {
