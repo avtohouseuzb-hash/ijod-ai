@@ -250,10 +250,11 @@ async function retryPendingDeliveries(db: any, token: string) {
       const result = await response.json().catch(() => ({}));
       return { ok: response.ok && result.ok === true, result, status: response.status };
     };
-    let outcome = article.image_url
-      ? await send("sendPhoto", { chat_id: item.chat_id, photo: article.image_url, caption, reply_markup: { inline_keyboard: buttons } })
+    const retryImage = await downloadNewsImage(article.image_url, article.source_url);
+    let outcome = retryImage
+      ? await sendTelegramNewsPhoto(token, item.chat_id, caption, retryImage, { inline_keyboard: buttons })
       : await send("sendMessage", { chat_id: item.chat_id, text: caption, reply_markup: { inline_keyboard: buttons }, disable_web_page_preview: false });
-    if (!outcome.ok && article.image_url && /failed to get HTTP URL content|wrong file identifier|failed to get|wrong type of the web page/i.test(String(outcome.result.description || ""))) {
+    if (!outcome.ok && retryImage && /failed to get HTTP URL content|wrong file identifier|failed to get|wrong type of the web page/i.test(String(outcome.result.description || ""))) {
       outcome = await send("sendMessage", { chat_id: item.chat_id, text: caption, reply_markup: { inline_keyboard: buttons }, disable_web_page_preview: false });
     }
     const at = new Date().toISOString();
