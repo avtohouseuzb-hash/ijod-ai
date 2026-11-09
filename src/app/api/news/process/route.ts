@@ -16,11 +16,11 @@ function extractResponsesText(result: any): string {
   if (typeof result?.output_text === "string" && result.output_text.trim()) return result.output_text.trim();
   return (result?.output || []).flatMap((item: { content?: Array<{ type?: string; text?: string }> } | null | undefined) => item?.content || [])
     .filter((part: { type?: string; text?: string }) => part.type === "output_text" || part.type === "text")
-    .map((part: { text?: string }) => part.text || "").join("\\n").trim();
+    .map((part: { text?: string }) => part.text || "").join("\n").trim();
 }
 
 function parseResponsesJson(text: string): Record<string, any> {
-  const normalized = text.replace(/^\\s*```(?:json)?\\s*/i, "").replace(/\\s*```\\s*$/, "").trim();
+  const normalized = text.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
   const start = normalized.indexOf("{");
   const end = normalized.lastIndexOf("}");
   if (start < 0 || end <= start) throw new Error("AI javobi JSON obyektini o‘z ichiga olmaydi.");
@@ -307,7 +307,7 @@ async function fetchArticleContext(articleUrl: string): Promise<ArticleContext> 
     const html = (await response.text()).slice(0, 500000);
     const metaTags = html.match(/<meta\b[^>]*>/gi) || [];
     const readMeta = (tag: string, attr: string) =>
-      tag.match(new RegExp("\\b" + attr + "\\s*=\\s*['\"]([^'\"]+)['\"]", "i"))?.[1] || "";
+      tag.match(new RegExp("\\b" + attr + "\s*=\s*['\"]([^'\"]+)['\"]", "i"))?.[1] || "";
     const getMeta = (keys: string[]) => {
       for (const tag of metaTags) {
         const name = (readMeta(tag, "property") || readMeta(tag, "name")).toLowerCase();
