@@ -102,7 +102,7 @@ async function run(request: Request, adminAuthorized = false) {
     if(failedSlotsError) console.error("Could not load failed news slots",failedSlotsError.message);
     const retryable=(failedSlots||[]).find((row:any)=>{
       const attempts=Number(row.payload?.retryCount||0);
-      return attempts<3 && DAILY_SCHEDULE.some(candidate=>candidate.time===row.slot_key);
+      return attempts<3 && NEWS_SLOTS.includes(row.slot_key);
     });
     if(retryable) selectedSlot=DAILY_SCHEDULE.find(candidate=>candidate.time===retryable.slot_key);
   }
