@@ -192,7 +192,7 @@ async function sendTelegramNewsPhoto(
 ) {
   const form = new FormData();
   form.append("chat_id", chatId);
-  form.append("photo", new Blob([image.bytes], { type: image.contentType }), "ijod-news." + (image.contentType.includes("png") ? "png" : image.contentType.includes("webp") ? "webp" : "jpg"));
+  form.append("photo", new Blob([image.bytes.buffer.slice(image.bytes.byteOffset, image.bytes.byteOffset + image.bytes.byteLength) as ArrayBuffer], { type: image.contentType }), "ijod-news." + (image.contentType.includes("png") ? "png" : image.contentType.includes("webp") ? "webp" : "jpg"));
   form.append("caption", caption);
   form.append("reply_markup", JSON.stringify(replyMarkup));
   const response = await fetch("https://api.telegram.org/bot" + token + "/sendPhoto", {
