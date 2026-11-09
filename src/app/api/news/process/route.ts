@@ -359,6 +359,13 @@ export async function GET(request: Request) {
         outcomes.push({ id: raw.id, translated: false, telegramSent: 0, error: "Sarlavha yoki mazmun yetarlicha aniq emas — nashrdan chiqarildi." });
         continue;
       }
+      // First identify the actual audience before spending tokens on translation.
+      const privateRecipients = chats.filter((chat: NewsChat) => matchesTopics(raw, chat.categories));
+      const recipients = [
+        ...privateRecipients.map((chat: NewsChat) => ({ ...chat, isChannel: false })),
+        ...(channelRecipient && matchesTopics(raw, channelRecipient.categories) &&
+          !privateRecipients.some((chat: NewsChat) => chat.chatId === channelRecipient.chatId) ? [channelRecipient] : [])
+      ];
       // First identify the actual audience. Do not spend translation tokens for users
       // whose selected topics do not match this article.
       if (!recipients.length) {
