@@ -153,6 +153,55 @@ function matchesTopics(article: Article, selected: string[]) {
   return matchesSpecific || matchesBroad;
 }
 
+
+type NewsImageAsset = { bytes: Uint8Array; contentType: string; url: string };
+
+async function downloadNewsImage(imageUrl: string | null, sourceUrl: string): Promise<NewsImageAsset | null> {
+  const candidates: string[] = [];
+  if (imageUrl && imageUrl !== sourceUrl && /^https?:\/\//i.test(imageUrl)) candidates.push(imageUrl);
+  const page = await fetchArticleContext(sourceUrl);
+  if (page.imageUrl && !candidates.includes(page.imageUrl)) candidates.push(page.imageUrl);
+  for (const candidate of candidates) {
+    const variants = [candidate];
+    try {
+      const parsed = new URL(candidate);
+      variants.push("https://images.weserv.nl/?url=" + encodeURIComponent(parsed.host + parsed.pathname + parsed.search));
+    } catch { /* Ignore malformed candidate. */ }
+    for (const url of variants) {
+      try {
+        const response = await fetch(url, {
+          headers: { "User-Agent": "Mozilla/5.0 (compatible; IJODAI-NewsBot/1.0)", Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8" },
+          redirect: "follow", signal: AbortSignal.timeout(7000)
+        });
+        const contentType = (response.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
+        if (!response.ok || !contentType.startsWith("image/")) continue;
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        if (!bytes.length || bytes.byteLength > 10 * 1024 * 1024) continue;
+        return { bytes, contentType, url: response.url || url };
+      } catch {
+        // Try the next candidate or image proxy.
+      }
+    }
+  }
+  return null;
+}
+
+async function sendTelegramNewsPhoto(
+  token: string, chatId: string, caption: string, image: NewsImageAsset,
+  replyMarkup: { inline_keyboard: Array<Array<Record<string, string>>> }
+) {
+  const form = new FormData();
+  form.append("chat_id", chatId);
+  form.append("photo", new Blob([image.bytes], { type: image.contentType }), "ijod-news." + (image.contentType.includes("png") ? "png" : image.contentType.includes("webp") ? "webp" : "jpg"));
+  form.append("caption", caption);
+  form.append("reply_markup", JSON.stringify(replyMarkup));
+  const response = await fetch("https://api.telegram.org/bot" + token + "/sendPhoto", {
+    method: "POST", body: form, signal: AbortSignal.timeout(15000)
+  });
+  const result = await response.json().catch(() => ({}));
+  return { ok: response.ok && result.ok === true, result, status: response.status };
+}
+
 async function retryPendingDeliveries(db: any, token: string) {
   const now = new Date().toISOString();
   const { data: due, error } = await db.from("news_deliveries")
@@ -365,11 +414,11 @@ export async function GET(request: Request) {
       const meaningfulWords = titleWords.filter(word => !/^\d+$/.test(word));
       let description = (raw.summary || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
       let articleBody = "";
-      if (description.length < 220 || !raw.image_url) {
+      if (description.length < 220 || !raw.image_url || raw.image_url === raw.source_url) {
         const extra = await fetchArticleContext(raw.source_url);
         if (extra.description) description = [description, extra.description].filter(Boolean).join(" ");
         articleBody = extra.body;
-        if (!raw.image_url && extra.imageUrl) {
+        if ((!raw.image_url || raw.image_url === raw.source_url) && extra.imageUrl) {
           raw.image_url = extra.imageUrl;
           await db.from("news_articles").update({ image_url: extra.imageUrl }).eq("id", raw.id);
         }
@@ -507,6 +556,15 @@ export async function GET(request: Request) {
         throw new Error("Foydalanuvchiga kerakli tarjima topilmadi.");
       }
 
+      // Resolve and download the publisher image once, then upload actual bytes
+      // to Telegram for every matched recipient. Telegram cannot reliably fetch
+      // publisher hotlink URLs itself.
+      const newsImage = botToken ? await downloadNewsImage(raw.image_url, raw.source_url) : null;
+      if (newsImage && newsImage.url !== raw.image_url) {
+        raw.image_url = newsImage.url;
+        await db.from("news_articles").update({ image_url: newsImage.url, media_type: "image" }).eq("id", raw.id);
+      }
+
       let telegramSent = 0;
       const deliveryErrors: string[] = [];
       let channelMessagesSent = 0;
@@ -531,9 +589,9 @@ export async function GET(request: Request) {
           const deliveryType = chat.isChannel ? "channel" : "private";
           const item = variants.get(chat.language) || variants.get("uz-latn") || { title: raw.title, summary: raw.summary || "" };
           const caption = ("📰 " + item.title + "\n\n" + item.summary + "\n\nManba: " + raw.source_name).slice(0, 1000);
-          const method = raw.image_url ? "sendPhoto" : "sendMessage";
-          const payload = raw.image_url
-            ? { chat_id: chat.chatId, photo: raw.image_url, caption, reply_markup: { inline_keyboard: buttons } }
+          const method = newsImage ? "sendPhoto" : "sendMessage";
+          const payload = newsImage
+            ? { chat_id: chat.chatId, caption, reply_markup: { inline_keyboard: buttons } }
             : { chat_id: chat.chatId, text: caption, reply_markup: { inline_keyboard: buttons }, disable_web_page_preview: false };
           const { data: previous, error: previousError } = await db.from("news_deliveries").select("id,attempts")
             .eq("article_id", raw.id).eq("chat_id", chat.chatId).eq("delivery_type", deliveryType).maybeSingle();
@@ -555,13 +613,15 @@ export async function GET(request: Request) {
           let responseReceived = false;
           let telegramMessageId = "";
           try {
-            const sent = await fetch("https://api.telegram.org/bot" + botToken + "/" + method, {
-              method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload),
-              signal: AbortSignal.timeout(12000)
-            });
-            const sentJson = await sent.json().catch(() => ({}));
+            const sent = newsImage
+              ? await sendTelegramNewsPhoto(botToken, chat.chatId, caption, newsImage, { inline_keyboard: buttons })
+              : await fetch("https://api.telegram.org/bot" + botToken + "/" + method, {
+                  method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload),
+                  signal: AbortSignal.timeout(12000)
+                }).then(async response => ({ ok: response.ok, status: response.status, result: await response.json().catch(() => ({})) }));
+            const sentJson = sent.result || {};
             responseReceived = true;
-            if (sent.ok && sentJson.ok) {
+            if (sent.ok && sentJson.ok !== false) {
               telegramMessageId = String(sentJson.result?.message_id || "");
             } else {
               lastError = String(sentJson.description || "Telegram HTTP " + sent.status);
