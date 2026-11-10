@@ -26,7 +26,7 @@ const personalities = [
 ];
 
 
-function MoodAvatar({ mood, className = "" }: { mood: Mood; className?: string }) {
+function MoodAvatar({ mood, className = "", speakingLevel = 0 }: { mood: Mood; className?: string; speakingLevel?: number }) {
   const colors: Record<Mood, { bg: string; stroke: string; mouth: string }> = {
     neutral: { bg: "#F2EAFE", stroke: "#7837D8", mouth: "M32 44 Q40 50 48 44" },
     kind: { bg: "#FCE7F3", stroke: "#DB4B91", mouth: "M29 41 Q40 55 51 41" },
@@ -40,7 +40,7 @@ function MoodAvatar({ mood, className = "" }: { mood: Mood; className?: string }
     <svg viewBox="0 0 80 80" className={"h-[82%] w-[82%] mood-avatar-svg mood-face mood-" + mood} role="img" aria-label={moods.find((m) => m.id === mood)?.label || "AI Ustoz"}>
       {mood === "angry" && <path className="mood-brows mood-angry-brows" d="M18 25 L34 31 M62 25 L46 31" stroke={c.stroke} strokeWidth="5" strokeLinecap="round" />}
       {mood === "sleepy" ? <path className="mood-sleep-eyes" d="M19 34 Q27 40 35 34 M45 34 Q53 40 61 34" stroke="#25243A" strokeWidth="5" fill="none" strokeLinecap="round" /> : mood === "kind" ? <g className="mood-hearts mood-kind"><path d="M22 29 C16 22 7 32 22 43 C37 32 28 22 22 29Z M58 29 C52 22 43 32 58 43 C73 32 64 22 58 29Z" fill={c.stroke} /></g> : <g className="mood-eyes mood-neutral"><circle cx="26" cy="34" r="5" fill="#25243A" /><circle cx="54" cy="34" r="5" fill="#25243A" /></g>}
-      <path className="mood-mouth" d={c.mouth} stroke="#25243A" strokeWidth="4.5" fill="none" strokeLinecap="round" />
+      {speakingLevel > 0.08 ? <ellipse className="mood-speaking-mouth" cx="40" cy="47" rx={3.5 + speakingLevel * 5.5} ry={2 + speakingLevel * 7} fill="#25243A" /> : <path className="mood-mouth" d={c.mouth} stroke="#25243A" strokeWidth="4.5" fill="none" strokeLinecap="round" />}
       {mood === "happy" && <g className="mood-sparkles mood-happy"><path d="M12 12 L16 6 L20 12 L26 16 L20 20 L16 26 L12 20 L6 16Z M60 12 L64 6 L68 12 L74 16 L68 20 L64 26 L60 20 L54 16Z" fill="#E8B43C" /></g>}
       {mood === "angry" && <g className="mood-angry-sparks"><path d="M8 10 L13 18 L21 20 L13 24 L8 32 L4 24 L0 20 L4 18Z M72 10 L76 18 L80 20 L76 24 L72 32 L68 24 L60 20 L68 18Z" fill="#F87171" opacity=".8" /></g>}
     </svg>
@@ -63,6 +63,9 @@ export default function LanguageTutorPage() {
   const realtimePcRef = useRef<RTCPeerConnection | null>(null);
   const realtimeStreamRef = useRef<MediaStream | null>(null);
   const realtimeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const realtimeAudioContextRef = useRef<AudioContext | null>(null);
+  const realtimeAnalyserFrameRef = useRef<number | null>(null);
+  const [mouthLevel, setMouthLevel] = useState(0);
   const [realtimeActive, setRealtimeActive] = useState(false);
   const [realtimeBusy, setRealtimeBusy] = useState(false);
   const [realtimeStatus, setRealtimeStatus] = useState("");
@@ -83,6 +86,11 @@ export default function LanguageTutorPage() {
   const activeMood = moods.find((item) => item.id === mood) ?? moods[0];
 
   async function stopRealtime() {
+    if (realtimeAnalyserFrameRef.current !== null) cancelAnimationFrame(realtimeAnalyserFrameRef.current);
+    realtimeAnalyserFrameRef.current = null;
+    void realtimeAudioContextRef.current?.close().catch(() => {});
+    realtimeAudioContextRef.current = null;
+    setMouthLevel(0);
     realtimePcRef.current?.close();
     realtimePcRef.current = null;
     realtimeStreamRef.current?.getTracks().forEach((track) => track.stop());
@@ -125,8 +133,37 @@ export default function LanguageTutorPage() {
       audio.autoplay = true;
       realtimeAudioRef.current = audio;
       pc.ontrack = (event) => {
-        audio.srcObject = event.streams[0];
+        const remoteStream = event.streams[0];
+        audio.srcObject = remoteStream;
         void audio.play().catch(() => setRealtimeStatus("Ovoz chiqishi uchun sahifaga bir marta bosing."));
+        // Measure the incoming AI voice itself so the avatar mouth follows real speech volume.
+        try {
+          const AudioContextCtor = window.AudioContext;
+          const audioContext = new AudioContextCtor();
+          const analyser = audioContext.createAnalyser();
+          analyser.fftSize = 256;
+          analyser.smoothingTimeConstant = 0.72;
+          const source = audioContext.createMediaStreamSource(remoteStream);
+          source.connect(analyser);
+          realtimeAudioContextRef.current = audioContext;
+          const samples = new Uint8Array(analyser.fftSize);
+          let frameCount = 0;
+          const measureVoice = () => {
+            analyser.getByteTimeDomainData(samples);
+            let sum = 0;
+            for (let i = 0; i < samples.length; i++) {
+              const normalized = (samples[i] - 128) / 128;
+              sum += normalized * normalized;
+            }
+            const rms = Math.sqrt(sum / samples.length);
+            const level = Math.max(0, Math.min(1, (rms - 0.012) * 13));
+            if (frameCount++ % 4 === 0) setMouthLevel(level);
+            realtimeAnalyserFrameRef.current = requestAnimationFrame(measureVoice);
+          };
+          void audioContext.resume().then(measureVoice).catch(() => setRealtimeStatus("Ovoz animatsiyasi uchun brauzer audio ruxsati kerak."));
+        } catch {
+          setRealtimeStatus("Ovoz ishlayapti, lekin avatar animatsiyasini boshlash imkoni bo‘lmadi.");
+        }
       };
       stream.getTracks().forEach((track) => pc?.addTrack(track, stream!));
       const channel = pc.createDataChannel("oai-events");
@@ -139,10 +176,12 @@ export default function LanguageTutorPage() {
           if (payload.type === "session.created" || payload.type === "session.updated") {
             setRealtimeStatus("Jonli suhbat ulandi. Bemalol gapiring.");
           } else if (payload.type === "input_audio_buffer.speech_started") {
+            setMouthLevel(0);
             setRealtimeStatus("Siz gapiryapsiz…");
           } else if (payload.type === "response.created") {
             setRealtimeStatus("AI Ustoz javob bermoqda…");
           } else if (payload.type === "response.done") {
+            setMouthLevel(0);
             setRealtimeStatus("Tinglayapman. Gapirishda davom eting.");
           } else if (payload.type === "error") {
             setRealtimeStatus(payload.error?.message || "Ovozli suhbatda xatolik.");
@@ -436,7 +475,7 @@ export default function LanguageTutorPage() {
     <div className="mx-auto grid max-w-6xl gap-5 px-4 py-6 sm:px-6 lg:grid-cols-[320px_1fr]">
       <aside className="space-y-4">
         <section className="rounded-3xl border border-violet-100 bg-white p-5 shadow-sm">
-          <MoodAvatar mood={mood} className="mx-auto h-28 w-28" />
+          <MoodAvatar mood={mood} speakingLevel={realtimeActive ? mouthLevel : 0} className="mx-auto h-28 w-28" />
           <h1 className="mt-4 text-center text-xl font-black">AI Ustoz</h1>
           <p className="mt-1 text-center text-xs text-gray-500">Kayfiyat: {activeMood.label} · {activeMood.note}</p>
           <div className="mt-5 grid grid-cols-3 gap-2">
@@ -480,13 +519,13 @@ export default function LanguageTutorPage() {
       </aside>
       <section className="flex min-h-[680px] flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm">
         <div className="flex items-center gap-3 border-b border-gray-100 p-4 sm:p-5">
-          <MoodAvatar mood={mood} className="h-12 w-12" />
+          <MoodAvatar mood={mood} speakingLevel={realtimeActive ? mouthLevel : 0} className="h-12 w-12" />
           <div className="min-w-0 flex-1"><h2 className="font-bold">{language === "English" ? "Chat with AI Tutor" : "Разговор с AI-учителем"}</h2><p className="text-xs text-gray-500">{language} · {level} · {personalities.find((p) => p.id === personality)?.label}</p></div>
           <button onClick={completeCurrentLesson} className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50">{currentLessonId ? "Darsni yakunlash" : "Yangi dars"}</button>
         </div>
         <div className="flex-1 space-y-4 overflow-y-auto bg-[#fcfbff] p-4 sm:p-6">
           {messages.length === 0 && <div className="mx-auto mt-12 max-w-md text-center">
-            <MoodAvatar mood={mood} className="mx-auto h-20 w-20" />
+            <MoodAvatar mood={mood} speakingLevel={realtimeActive ? mouthLevel : 0} className="mx-auto h-20 w-20" />
             <h3 className="mt-5 text-xl font-black">Salom! Men sizning AI Ustozingizman.</h3>
             <p className="mt-2 text-sm leading-6 text-gray-500">{language === "English" ? "Today we will practise English. Choose a topic or write your own message." : "Сегодня мы будем практиковать русский язык. Выберите тему или напишите своё сообщение."}</p>
             <div className="mt-5 flex flex-wrap justify-center gap-2">{(language === "English" ? ["Introduce yourself","My daily routine","At a restaurant"] : ["Расскажите о себе","Мой распорядок дня","В ресторане"]).map((v) => <button key={v} onClick={() => setInput(v)} className="rounded-full border border-violet-200 bg-white px-3 py-2 text-xs font-semibold text-violet-700 hover:bg-violet-50">{v}</button>)}</div>
