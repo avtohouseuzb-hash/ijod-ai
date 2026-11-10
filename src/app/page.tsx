@@ -260,14 +260,21 @@ export default function Home() {
                 <h3 className="text-sm font-bold">AI suhbatchi kayfiyatlari</h3>
                 <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-6">
                   {[
-                    ["neutral","•‿•","Neytral","bg-violet-50 text-violet-700 border-violet-100"],
-                    ["kind","♥‿♥","Mehribon","bg-pink-50 text-pink-600 border-pink-100"],
-                    ["happy","✧ᴗ✧","Xursand","bg-amber-50 text-amber-600 border-amber-100"],
-                    ["angry","","Jahli chiqqan","bg-red-50 text-red-600 border-red-100"],
-                    ["thinking","•﹏•","O‘ylayapti","bg-sky-50 text-sky-700 border-sky-100"],
-                    ["resting","－ᴗ－","Dam olyapti","bg-indigo-50 text-indigo-600 border-indigo-100"],
-                  ].map(([mood,face,label,style]) => <div key={label} className="text-center"><div className={"mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border text-sm font-black shadow-sm " + style}>
-                    {mood === "angry" ? <svg viewBox="0 0 48 48" className="mood-face mood-angry h-8 w-8" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><g className="mood-angry-brows"><path d="M10 15l10 6M38 15l-10 6"/></g><circle cx="17" cy="23" r="2" fill="currentColor" stroke="none"/><circle cx="31" cy="23" r="2" fill="currentColor" stroke="none"/><path d="M14 37q10-15 20 0"/></svg> : <span className={"mood-face mood-" + mood}>{face}</span>}
+                    ["neutral","Neytral","bg-violet-50 text-violet-700 border-violet-100"],
+                    ["kind","Mehribon","bg-pink-50 text-pink-600 border-pink-100"],
+                    ["happy","Xursand","bg-amber-50 text-amber-600 border-amber-100"],
+                    ["angry","Jahli chiqqan","bg-red-50 text-red-600 border-red-100"],
+                    ["thinking","O‘ylayapti","bg-sky-50 text-sky-700 border-sky-100"],
+                    ["sleepy","Dam olyapti","bg-indigo-50 text-indigo-600 border-indigo-100"],
+                  ].map(([mood,label,style]) => <div key={label} className="text-center"><div className={"mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border shadow-sm " + style}>
+                    <svg viewBox="0 0 80 80" className={"h-9 w-9 mood-face mood-" + mood} aria-hidden="true" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                      {mood === "angry" && <path d="M18 25 L34 31 M62 25 L46 31" stroke="currentColor" strokeWidth="5"/>}
+                      {mood === "sleepy" ? <path d="M19 34 Q27 40 35 34 M45 34 Q53 40 61 34" stroke="#25243A" strokeWidth="5" /> : mood === "kind" ? <path d="M22 29 C16 22 7 32 22 43 C37 32 28 22 22 29Z M58 29 C52 22 43 32 58 43 C73 32 64 22 58 29Z" fill="currentColor"/> : <g fill="#25243A"><circle cx="26" cy="34" r="5"/><circle cx="54" cy="34" r="5"/></g>}
+                      <path d={mood === "neutral" ? "M32 44 Q40 50 48 44" : mood === "kind" ? "M29 41 Q40 55 51 41" : mood === "happy" ? "M27 39 Q40 58 53 39" : mood === "angry" ? "M30 50 Q40 40 50 50" : mood === "thinking" ? "M34 46 Q40 42 47 45" : "M34 46 Q40 49 46 46"} stroke="#25243A" strokeWidth="4.5"/>
+                      {mood === "happy" && <path d="M12 12 L16 6 L20 12 L26 16 L20 20 L16 26 L12 20 L6 16Z M60 12 L64 6 L68 12 L74 16 L68 20 L64 26 L60 20 L54 16Z" fill="#E8B43C"/>}
+                      {mood === "angry" && <path d="M8 10 L13 18 L21 20 L13 24 L8 32 L4 24 L0 20 L4 18Z M72 10 L76 18 L80 20 L76 24 L72 32 L68 24 L60 20 L68 18Z" fill="#F87171" opacity=".8"/>}
+                      {mood === "thinking" && <g fill="currentColor" stroke="none"><circle cx="20" cy="15" r="2"/><circle cx="40" cy="10" r="2"/><circle cx="60" cy="15" r="2"/></g>}
+                    </svg>
                   </div><p className="mt-2 text-[10px] font-semibold text-gray-700">{label}</p></div>)}
                 </div>
                 <p className="mt-4 text-center text-xs text-gray-500">Suhbat ohangiga qarab AI belgisi ham o‘zgaradi.</p>
