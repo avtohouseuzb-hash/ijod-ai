@@ -23,8 +23,15 @@ function stripHtml(value: string) {
     .replace(/[ \t]+/g, " ").replace(/\n\s+/g, "\n").trim();
 }
 
+function removeChannelPromotion(text: string) {
+  return text
+    .replace(/катталар канали\\s*[👉»:-]?.{0,100}(?:обуна бўлинг|обуна булинг|канали)/giu, " ")
+    .replace(/👉\\s*@shopirlar\\b.{0,100}/giu, " ")
+    .trim();
+}
+
 function isAdvertisement(text: string, html: string) {
-  const normalized = text.toLocaleLowerCase("uz");
+  const normalized = removeChannelPromotion(text).toLocaleLowerCase("uz");
   const patterns = [
     /\b(reklama|hamkorlik|reklama huquqida|реклама|на правах рекламы)\b/i,
     /\b(chegirma|aksiya|promo.?kod|promokod|kupon|bonus|sovg[‘'’]?a|bepul yetkazib berish)\b/i,
@@ -58,8 +65,9 @@ function extractPosts(html: string) {
     const views = block.match(/<span class="tgme_widget_message_views">([^<]+)</i)?.[1] || null;
     const url = postPath ? (postPath.startsWith("http") ? postPath : `https://t.me/${postPath.replace(/^\//, "")}`) : null;
     const ad = isAdvertisement(text, block);
-    const news = isLikelyNews(text);
-    return { text, url, date, image, views: views ? stripHtml(views) : null, ad, news,
+    const cleanedText = removeChannelPromotion(text);
+    const news = isLikelyNews(cleanedText);
+    return { text: cleanedText, url, date, image, views: views ? stripHtml(views) : null, ad, news,
       decision: ad ? "blocked_ad" : news ? "candidate_news" : "not_news" };
   }).filter((post) => post.text);
 }
