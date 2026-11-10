@@ -22,6 +22,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Audio fayl yuborilmadi." }, { status: 400 });
   }
   const audio = form.get("audio");
+  const requestId = String(form.get("requestId") || "");
   if (!(audio instanceof File) || audio.size === 0) {
     return NextResponse.json({ error: "Yuklab olish uchun audio fayl topilmadi." }, { status: 400 });
   }
@@ -32,7 +33,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Faqat audio fayl qabul qilinadi." }, { status: 400 });
   }
 
-  const requestId = String((await request.clone().formData().catch(() => new FormData())).get("requestId") || "");
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) {
     return NextResponse.json({ error: "Audio operatsiyasi identifikatori noto‘g‘ri. Qayta ajrating." }, { status: 400 });
   }
