@@ -4,6 +4,8 @@ import { isNewsCronOrAdminAuthorized } from "@/lib/news-cron-auth";
 
 export const maxDuration = 60;
 
+type NewsSourcesDb = any;
+
 type Source = {
   id: string;
   name: string;
@@ -36,7 +38,7 @@ function inspectFeed(xml: string) {
   };
 }
 
-async function checkOne(source: Source, db: ReturnType<typeof createClient>) {
+async function checkOne(source: Source, db: ReturnType<typeof createClient<NewsSourcesDb>>) {
   const checkedAt = new Date().toISOString();
   let status = "network_error";
   let detail = "Manbaga ulanish amalga oshmadi.";
@@ -103,7 +105,7 @@ export async function GET(request: Request) {
   const offset = Math.max(0, Number(params.get("offset") || 0));
   const limit = Math.min(25, Math.max(1, Number(params.get("limit") || 10)));
   const group = params.get("group") || "all";
-  const db = createClient(url, key, { auth: { persistSession: false } });
+  const db = createClient<NewsSourcesDb>(url, key, { auth: { persistSession: false } });
   let query = db.from("news_sources")
     .select("id,name,feed_url,category,enabled")
     .order("category", { ascending: true })
