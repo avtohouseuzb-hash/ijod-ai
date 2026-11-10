@@ -72,3 +72,15 @@ body {
    Only the mouth changes size while the live assistant audio is playing. */
 .mood-avatar-kind .mood-heart-eyes { animation: none !important; transform: none !important; }
 .mood-avatar-kind .mood-speaking-mouth { transform-origin: 40px 47px; }
+
+
+/* Live voice: keep the original avatar art and animate only its mouth. */
+.mood-speaking-mouth {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ijod-live-mouth 150ms ease-in-out infinite alternate;
+}
+@keyframes ijod-live-mouth {
+  from { transform: scaleY(.58); }
+  to { transform: scaleY(1.38); }
+}
