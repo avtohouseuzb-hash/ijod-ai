@@ -70,6 +70,8 @@ export default function LanguageTutorPage() {
   const [realtimeActive, setRealtimeActive] = useState(false);
   const [realtimeBusy, setRealtimeBusy] = useState(false);
   const [realtimeStatus, setRealtimeStatus] = useState("");
+  const [userSubtitle, setUserSubtitle] = useState("");
+  const [assistantSubtitle, setAssistantSubtitle] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [voiceGender, setVoiceGender] = useState<VoiceGender>("female");
@@ -123,7 +125,7 @@ export default function LanguageTutorPage() {
       const tokenResponse = await fetch("/api/language-tutor/realtime", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
-        body: JSON.stringify({ language, level, personality, topic, mood, voice: voiceGender === "male" ? "ash" : voiceGender === "auto" ? "marin" : "coral" }),
+        body: JSON.stringify({ language, level, personality, topic, mood, voice: voiceGender }),
       });
       const tokenData = await tokenResponse.json();
       if (!tokenResponse.ok) throw new Error(tokenData.error || "Jonli ovoz sessiyasini ochib bo‘lmadi.");
@@ -169,7 +171,7 @@ export default function LanguageTutorPage() {
       stream.getTracks().forEach((track) => pc?.addTrack(track, stream!));
       const channel = pc.createDataChannel("oai-events");
       channel.onopen = () => {
-        channel.send(JSON.stringify({ type: "response.create" }));
+        channel.send(JSON.stringify({ type: "response.create", response: { audio: { output: { voice: voiceGender === "male" ? "ash" : voiceGender === "auto" ? "marin" : "coral" } } } }));
       };
       channel.onmessage = (event) => {
         try {
@@ -178,9 +180,19 @@ export default function LanguageTutorPage() {
             setRealtimeStatus("Jonli suhbat ulandi. Bemalol gapiring.");
           } else if (payload.type === "input_audio_buffer.speech_started") {
             setMouthLevel(0);
+            setUserSubtitle("");
             setRealtimeStatus("Siz gapiryapsiz…");
+          } else if (payload.type === "conversation.item.input_audio_transcription.delta") {
+            setUserSubtitle((current) => current + (payload.delta || ""));
+          } else if (payload.type === "conversation.item.input_audio_transcription.completed") {
+            if (payload.transcript) setUserSubtitle(payload.transcript);
           } else if (payload.type === "response.created") {
+            setAssistantSubtitle("");
             setRealtimeStatus("AI Ustoz javob bermoqda…");
+          } else if (payload.type === "response.output_audio_transcript.delta") {
+            setAssistantSubtitle((current) => current + (payload.delta || ""));
+          } else if (payload.type === "response.output_audio_transcript.done") {
+            if (payload.transcript) setAssistantSubtitle(payload.transcript);
           } else if (payload.type === "response.done") {
             setMouthLevel(0);
             setRealtimeStatus("Tinglayapman. Gapirishda davom eting.");
@@ -542,7 +554,7 @@ export default function LanguageTutorPage() {
         </div>
         <div className="border-t border-violet-100 bg-violet-50/60 px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0 flex-1"><p className="text-sm font-bold text-violet-900">Jonli ovozli suhbat</p><p className="mt-1 text-xs text-violet-700">{realtimeStatus || "AI Ustoz bilan yozmasdan, bevosita gaplashing."}</p></div>
+            <div className="min-w-0 flex-1"><p className="text-sm font-bold text-violet-900">Jonli ovozli suhbat</p><p className="mt-1 text-xs text-violet-700">{realtimeStatus || "AI Ustoz bilan yozmasdan, bevosita gaplashing."}</p>{(userSubtitle || assistantSubtitle) && <div className="mt-3 space-y-2 rounded-xl border border-violet-200 bg-white p-3 text-sm leading-5"><p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Jonli subtitrlar</p>{userSubtitle && <p><span className="font-semibold text-gray-500">Siz:</span> {userSubtitle}</p>}{assistantSubtitle && <p><span className="font-semibold text-violet-700">AI Ustoz:</span> {assistantSubtitle}</p>}</div>}</div>
             {realtimeActive ? <button onClick={() => void stopRealtime()} className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white">Suhbatni tugatish ■</button> : <button disabled={realtimeBusy} onClick={() => void startRealtime()} className="rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{realtimeBusy ? "Ulanmoqda…" : "🎙 Jonli suhbatni boshlash"}</button>}
           </div>
           <p className="mt-2 text-[10px] text-violet-600">OpenAI Realtime API ishlatiladi. Mikrofon ruxsati va internet kerak; audio foydalanishi API hisobingizda alohida narxlanadi.</p>
