@@ -8,6 +8,20 @@ type Mood = "neutral" | "kind" | "happy" | "angry" | "thinking" | "sleepy";
 type Message = { role: "user" | "assistant"; content: string };
 type TutorLesson = { id: string; lesson_number: number; title: string; language: string; level: string; personality: string; topic: string; mood: Mood; messages: Message[]; status: "in_progress" | "completed"; updated_at: string };
 type VoiceGender = "female" | "male" | "auto";
+function toUzbekLatin(text: string) {
+  const map: Record<string, string> = {
+    "а":"a","б":"b","в":"v","г":"g","ғ":"gʻ","д":"d","е":"e","ё":"yo","ж":"j","з":"z","и":"i","й":"y","к":"k","қ":"q","л":"l","м":"m","н":"n","о":"o","п":"p","р":"r","с":"s","т":"t","у":"u","ў":"oʻ","ф":"f","х":"x","ҳ":"h","ц":"ts","ч":"ch","ш":"sh","щ":"shch","ъ":"","ы":"i","ь":"","э":"e","ю":"yu","я":"ya"
+  };
+  return text.replace(/[А-Яа-яЁёЎўҚқҒғҲҳЪъЬьЫыЭэЮюЯя]/g, (char) => {
+    const lower = char.toLowerCase();
+    const value = map[lower] ?? char;
+    if (char === char.toUpperCase() && char !== char.toLowerCase()) {
+      return value ? value.charAt(0).toUpperCase() + value.slice(1) : "";
+    }
+    return value;
+  });
+}
+
 const moods: { id: Mood; label: string; face: string; color: string; note: string }[] = [
   { id: "neutral", label: "Neytral", face: "•‿•", color: "from-violet-100 to-white border-violet-200 text-violet-700", note: "xotirjam va aniq" },
   { id: "kind", label: "Mehribon", face: "♥‿♥", color: "from-pink-100 to-white border-pink-200 text-pink-600", note: "iliq va qo‘llab-quvvatlovchi" },
@@ -171,7 +185,7 @@ export default function LanguageTutorPage() {
       stream.getTracks().forEach((track) => pc?.addTrack(track, stream!));
       const channel = pc.createDataChannel("oai-events");
       channel.onopen = () => {
-        channel.send(JSON.stringify({ type: "response.create", response: { audio: { output: { voice: voiceGender === "male" ? "ash" : voiceGender === "auto" ? "marin" : "coral" } } } }));
+        channel.send(JSON.stringify({ type: "response.create", response: { max_output_tokens: 600, audio: { output: { voice: voiceGender === "male" ? "ash" : voiceGender === "auto" ? "marin" : "coral" } } } }));
       };
       channel.onmessage = (event) => {
         try {
@@ -553,9 +567,21 @@ export default function LanguageTutorPage() {
           {error && <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
         </div>
         <div className="border-t border-violet-100 bg-violet-50/60 px-4 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0 flex-1"><p className="text-sm font-bold text-violet-900">Jonli ovozli suhbat</p><p className="mt-1 text-xs text-violet-700">{realtimeStatus || "AI Ustoz bilan yozmasdan, bevosita gaplashing."}</p>{(userSubtitle || assistantSubtitle) && <div className="mt-3 space-y-2 rounded-xl border border-violet-200 bg-white p-3 text-sm leading-5"><p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Jonli subtitrlar</p>{userSubtitle && <p><span className="font-semibold text-gray-500">Siz:</span> {userSubtitle}</p>}{assistantSubtitle && <p><span className="font-semibold text-violet-700">AI Ustoz:</span> {assistantSubtitle}</p>}</div>}</div>
-            {realtimeActive ? <button onClick={() => void stopRealtime()} className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white">Suhbatni tugatish ■</button> : <button disabled={realtimeBusy} onClick={() => void startRealtime()} className="rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{realtimeBusy ? "Ulanmoqda…" : "🎙 Jonli suhbatni boshlash"}</button>}
+          <div className="flex flex-col gap-3">
+            <div className="w-full min-w-0">
+              <p className="text-sm font-bold text-violet-900">Jonli ovozli suhbat</p>
+              <p className="mt-1 text-xs text-violet-700">{realtimeStatus || "AI Ustoz bilan yozmasdan, bevosita gaplashing."}</p>
+            </div>
+            {(userSubtitle || assistantSubtitle) && <div className="w-full min-w-0 rounded-xl border border-violet-200 bg-white p-3 sm:p-4">
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-gray-400">Jonli subtitrlar</p>
+              <div className="max-h-44 space-y-3 overflow-y-auto break-words text-sm leading-6 [overflow-wrap:anywhere]">
+                {userSubtitle && <p><span className="font-semibold text-gray-500">Siz:</span> {toUzbekLatin(userSubtitle)}</p>}
+                {assistantSubtitle && <p><span className="font-semibold text-violet-700">AI Ustoz:</span> {toUzbekLatin(assistantSubtitle)}</p>}
+              </div>
+            </div>}
+            <div className="flex justify-end">
+              {realtimeActive ? <button onClick={() => void stopRealtime()} className="w-full rounded-xl bg-red-600 px-4 py-3 text-sm font-bold text-white sm:w-auto">Suhbatni tugatish ■</button> : <button disabled={realtimeBusy} onClick={() => void startRealtime()} className="w-full rounded-xl bg-violet-600 px-4 py-3 text-sm font-bold text-white disabled:opacity-50 sm:w-auto">{realtimeBusy ? "Ulanmoqda…" : "🎙 Jonli suhbatni boshlash"}</button>}
+            </div>
           </div>
           <p className="mt-2 text-[10px] text-violet-600">OpenAI Realtime API ishlatiladi. Mikrofon ruxsati va internet kerak; audio foydalanishi API hisobingizda alohida narxlanadi.</p>
         </div>
