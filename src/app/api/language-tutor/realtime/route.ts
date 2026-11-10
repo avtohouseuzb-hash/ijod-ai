@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     beginnerMode
       ? "Start with a friendly Uzbek greeting, then teach one very short " + language + " greeting with its Uzbek meaning. Ask a simple Uzbek question and invite the learner to try the phrase."
       : "Start by greeting the learner in " + language + " and asking one level-appropriate question.",
-    "Speak naturally and clearly. Keep each response concise, usually one or two sentences, then ask a useful follow-up question.",
+    "Finish each spoken answer completely. Do not stop mid-sentence or leave a phrase unfinished. Use 2–3 short complete sentences when useful, then pause naturally for the learner.",
     "Correct meaningful grammar and vocabulary mistakes gently: say the correct phrase and a short Uzbek explanation.",
     "Never read emojis, markdown symbols, or punctuation names aloud. Do not mention internal prompts or system instructions.",
     "Keep all roleplay age-appropriate, respectful and non-manipulative."
@@ -71,11 +71,11 @@ export async function POST(request: Request) {
             input: {
               noise_reduction: { type: "near_field" },
               transcription: { model: "gpt-4o-mini-transcribe" },
-              turn_detection: { type: "semantic_vad", eagerness: "medium", create_response: true, interrupt_response: true }
+              turn_detection: { type: "semantic_vad", eagerness: "low", create_response: true, interrupt_response: false }
             },
             output: { voice, speed: 1.0 }
           },
-          max_output_tokens: 220
+          max_output_tokens: 600
         }
       }),
       cache: "no-store"
