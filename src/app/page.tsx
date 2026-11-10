@@ -269,9 +269,9 @@ export default function Home() {
                   ].map(([mood,label,style]) => <div key={label} className="text-center"><div className={"mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border shadow-sm " + style}>
                     <svg viewBox="0 0 80 80" className={"h-9 w-9 mood-face mood-" + mood} aria-hidden="true" fill="none" strokeLinecap="round" strokeLinejoin="round">
                       {mood === "angry" && <path d="M18 25 L34 31 M62 25 L46 31" stroke="currentColor" strokeWidth="5"/>}
-                      {mood === "sleepy" ? <path d="M19 34 Q27 40 35 34 M45 34 Q53 40 61 34" stroke="#25243A" strokeWidth="5" /> : mood === "kind" ? <path d="M22 29 C16 22 7 32 22 43 C37 32 28 22 22 29Z M58 29 C52 22 43 32 58 43 C73 32 64 22 58 29Z" fill="currentColor"/> : <g fill="#25243A"><circle cx="26" cy="34" r="5"/><circle cx="54" cy="34" r="5"/></g>}
+                      {mood === "sleepy" ? <path d="M19 34 Q27 40 35 34 M45 34 Q53 40 61 34" stroke="#25243A" strokeWidth="5" /> : mood === "kind" ? <path d="M22 29 C16 22 7 32 22 43 C37 32 28 22 22 29Z M58 29 C52 22 43 32 58 43 C73 32 64 22 58 29Z" fill="currentColor"/> : mood === "happy" ? <g fill="#D69A19"><path d="M17 27l3 6 6 3-6 3-3 6-3-6-6-3 6-3z"/><path d="M63 27l3 6 6 3-6 3-3 6-3-6-6-3 6-3z"/></g> : <g fill="#25243A"><circle cx="26" cy="34" r="5"/><circle cx="54" cy="34" r="5"/></g>}
                       <path d={mood === "neutral" ? "M32 44 Q40 50 48 44" : mood === "kind" ? "M29 41 Q40 55 51 41" : mood === "happy" ? "M27 39 Q40 58 53 39" : mood === "angry" ? "M30 50 Q40 40 50 50" : mood === "thinking" ? "M34 46 Q40 42 47 45" : "M34 46 Q40 49 46 46"} stroke="#25243A" strokeWidth="4.5"/>
-                      {mood === "happy" && <path d="M12 12 L16 6 L20 12 L26 16 L20 20 L16 26 L12 20 L6 16Z M60 12 L64 6 L68 12 L74 16 L68 20 L64 26 L60 20 L54 16Z" fill="#E8B43C"/>}
+                      
                       {mood === "angry" && <path d="M8 10 L13 18 L21 20 L13 24 L8 32 L4 24 L0 20 L4 18Z M72 10 L76 18 L80 20 L76 24 L72 32 L68 24 L60 20 L68 18Z" fill="#F87171" opacity=".8"/>}
                       {mood === "thinking" && <g fill="currentColor" stroke="none"><circle cx="20" cy="15" r="2"/><circle cx="40" cy="10" r="2"/><circle cx="60" cy="15" r="2"/></g>}
                     </svg>
