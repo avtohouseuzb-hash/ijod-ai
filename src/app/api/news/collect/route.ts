@@ -131,7 +131,7 @@ export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const offset = Math.max(0, Number(requestUrl.searchParams.get("offset") || 0));
   const batchSize = Math.min(25, Math.max(1, Number(requestUrl.searchParams.get("limit") || 10)));
-  const allowedCategories = new Set(["Iqtisodiyot","Fan","Jahon","AI va IT","O‘zbekiston","Biznes","Sport"]);
+  const allowedCategories = new Set(["O‘zbekiston","Jahon","Huquq","Fan","AI va IT","Iqtisodiyot","Bank va moliya","Qurilish","Ko‘chmas mulk","Mebel va dizayn","Texnika","Ta’lim","Madaniyat","Ko‘ngilochar","Biznes","Salomatlik","Sport"]);
   const requestedCategories = (requestUrl.searchParams.get("categories") || "")
     .split(",").map(value => value.trim()).filter(value => allowedCategories.has(value));
   let sourceQuery = db.from("news_sources")
