@@ -103,23 +103,13 @@ const topicRules: Record<string,{parents:string[];terms:string[]}> = {
  "Sog‘lom turmush":{parents:["Fan"],terms:["sog‘lom turmush","salomatlik","nutrition","fitness"]}
 };
 const mainCategoryParents: Record<string, string[]> = {
-  "Huquq": ["O‘zbekiston"],
-  "Fan": ["Fan"],
-  "AI va IT": ["AI va IT"],
-  "O‘zbekiston": ["O‘zbekiston"],
-  "Jahon": ["Jahon"],
-  "Iqtisodiyot": ["Iqtisodiyot"],
-  "Bank va moliya": ["Iqtisodiyot"],
-  "Qurilish": ["Iqtisodiyot"],
-  "Ko‘chmas mulk": ["Iqtisodiyot"],
-  "Mebel va dizayn": ["Iqtisodiyot"],
-  "Texnika": ["AI va IT"],
-  "Ta’lim": ["Fan"],
-  "Madaniyat": ["Jahon"],
-  "Ko‘ngilochar": ["Jahon"],
-  "Biznes": ["Biznes"],
-  "Salomatlik": ["Fan"],
-  "Sport": ["Sport"]
+  "O‘zbekiston": ["O‘zbekiston"], "Jahon": ["Jahon"], "Huquq": ["Huquq"],
+  "Fan": ["Fan"], "AI va IT": ["AI va IT"], "Iqtisodiyot": ["Iqtisodiyot"],
+  "Bank va moliya": ["Bank va moliya"], "Qurilish": ["Qurilish"],
+  "Ko‘chmas mulk": ["Ko‘chmas mulk"], "Mebel va dizayn": ["Mebel va dizayn"],
+  "Texnika": ["Texnika"], "Ta’lim": ["Ta’lim"], "Madaniyat": ["Madaniyat"],
+  "Ko‘ngilochar": ["Ko‘ngilochar"], "Biznes": ["Biznes"],
+  "Salomatlik": ["Salomatlik"], "Sport": ["Sport"]
 };
 function parentCategories(selected: string[]) {
   return [...new Set(selected.flatMap(topic =>
