@@ -56,7 +56,7 @@ function MoodAvatar({ mood, className = "", speakingLevel = 0 }: { mood: Mood; c
     <svg viewBox="0 0 80 80" className={"h-[82%] w-[82%] mood-avatar-svg mood-face " + rootMoodClass} role="img" aria-label={moods.find((m) => m.id === mood)?.label || "AI Ustoz"}>
       {mood === "angry" && <path className="mood-brows" d="M18 25 L34 31 M62 25 L46 31" stroke={c.stroke} strokeWidth="5" strokeLinecap="round" />}
       {mood === "sleepy" ? <path className="mood-sleep-eyes" d="M19 34 Q27 40 35 34 M45 34 Q53 40 61 34" stroke="#25243A" strokeWidth="5" fill="none" strokeLinecap="round" /> : mood === "kind" ? <g className="mood-heart-eyes"><path d="M22 29 C16 22 7 32 22 43 C37 32 28 22 22 29Z M58 29 C52 22 43 32 58 43 C73 32 64 22 58 29Z" fill={c.stroke} /></g> : <g className="mood-eyes" fill="#25243A"><circle cx="26" cy="34" r="5"/><circle cx="54" cy="34" r="5"/></g>}
-      {speakingLevel > 0.035 ? <ellipse className="mood-speaking-mouth" cx="40" cy="47" rx={3 + speakingLevel * 4.5} ry={1.8 + speakingLevel * 5.5} fill="#25243A" /> : <path className="mood-mouth" d={c.mouth} stroke="#25243A" strokeWidth="4.5" fill="none" strokeLinecap="round" />}
+      {speakingLevel > 0.035 ? <ellipse className="mood-speaking-mouth" cx="40" cy="47" rx={3.5 + speakingLevel * 3.5} ry={2 + speakingLevel * 5} fill="#25243A" /> : <path className="mood-mouth" d={c.mouth} stroke="#25243A" strokeWidth="4.5" fill="none" strokeLinecap="round" />}
       {mood === "happy" && <g className="mood-sparkles" fill="#E8B43C"><path d="M12 17l2.2 4.8L19 24l-4.8 2.2L12 31l-2.2-4.8L5 24l4.8-2.2z M68 17l2.2 4.8L75 24l-4.8 2.2L68 31l-2.2-4.8L61 24l4.8-2.2z"/></g>}
       {mood === "angry" && <g className="mood-angry-accent" fill="#F87171"><path d="M8 10 L13 18 L21 20 L13 24 L8 32 L4 24 L0 20 L4 18Z M72 10 L76 18 L80 20 L76 24 L72 32 L68 24 L60 20 L68 18Z" opacity=".8"/></g>}
     </svg>
@@ -82,6 +82,7 @@ export default function LanguageTutorPage() {
   const realtimeAudioContextRef = useRef<AudioContext | null>(null);
   const realtimeAnalyserFrameRef = useRef<number | null>(null);
   const [mouthLevel, setMouthLevel] = useState(0);
+  const [aiSpeaking, setAiSpeaking] = useState(false);
   const [realtimeActive, setRealtimeActive] = useState(false);
   const [realtimeBusy, setRealtimeBusy] = useState(false);
   const [realtimeStatus, setRealtimeStatus] = useState("");
@@ -102,6 +103,7 @@ export default function LanguageTutorPage() {
   const [voiceNotice, setVoiceNotice] = useState("");
   const [listening, setListening] = useState(false);
   const activeMood = moods.find((item) => item.id === mood) ?? moods[0];
+  const avatarSpeakingLevel = realtimeActive && aiSpeaking ? Math.max(mouthLevel, 0.32) : 0;
 
   async function stopRealtime() {
     if (realtimeAnalyserFrameRef.current !== null) cancelAnimationFrame(realtimeAnalyserFrameRef.current);
@@ -109,6 +111,7 @@ export default function LanguageTutorPage() {
     void realtimeAudioContextRef.current?.close().catch(() => {});
     realtimeAudioContextRef.current = null;
     setMouthLevel(0);
+    setAiSpeaking(false);
     realtimePcRef.current?.close();
     realtimePcRef.current = null;
     realtimeStreamRef.current?.getTracks().forEach((track) => track.stop());
@@ -174,7 +177,7 @@ export default function LanguageTutorPage() {
               sum += normalized * normalized;
             }
             const rms = Math.sqrt(sum / samples.length);
-            const level = Math.max(0, Math.min(1, (rms - 0.012) * 13));
+            const level = Math.max(0, Math.min(1, (rms - 0.006) * 22));
             if (frameCount++ % 4 === 0) setMouthLevel(level);
             realtimeAnalyserFrameRef.current = requestAnimationFrame(measureVoice);
           };
@@ -203,12 +206,14 @@ export default function LanguageTutorPage() {
             if (payload.transcript) setUserSubtitle(payload.transcript);
           } else if (payload.type === "response.created") {
             setAssistantSubtitle("");
+            setAiSpeaking(true);
             setRealtimeStatus("AI Ustoz javob bermoqda…");
           } else if (payload.type === "response.output_audio_transcript.delta") {
             setAssistantSubtitle((current) => current + (payload.delta || ""));
           } else if (payload.type === "response.output_audio_transcript.done") {
             if (payload.transcript) setAssistantSubtitle(payload.transcript);
           } else if (payload.type === "response.done") {
+            setAiSpeaking(false);
             setMouthLevel(0);
             if (payload.response?.status === "incomplete") {
               const reason = payload.response?.status_details?.reason;
@@ -498,39 +503,30 @@ export default function LanguageTutorPage() {
   }
 
   return (realtimeActive || realtimeBusy) ? <main className="fixed inset-0 z-[100] flex min-h-[100dvh] flex-col overflow-hidden bg-gradient-to-b from-[#fbf9ff] to-[#f1edff] text-gray-900">
-    <header className="flex shrink-0 items-center justify-between border-b border-violet-100 bg-white/90 px-4 py-3">
-      <button onClick={() => void stopRealtime()} aria-label="Ovozli suhbatdan chiqish" className="flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white text-2xl text-gray-700">×</button>
-      <div className="text-center"><p className="text-sm font-bold">IJOD AI · Jonli suhbat</p><p className="text-[11px] text-violet-700">{language} · {level}</p></div>
-      <label className="flex items-center gap-1 rounded-full border border-violet-200 bg-white px-2 py-2 text-xs font-semibold text-violet-800">
+    <header className="flex shrink-0 items-center justify-between px-4 pt-[max(.75rem,env(safe-area-inset-top))] pb-2">
+      <button onClick={() => void stopRealtime()} aria-label="Ovozli suhbatdan chiqish" className="flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-2xl text-gray-700 shadow-sm">×</button>
+      <label className="flex items-center gap-2 rounded-full bg-white/90 px-3 py-2 text-xs font-semibold text-violet-800 shadow-sm">
         <span>Ovoz</span>
         <select aria-label="AI ovozini almashtirish" value={voiceGender} onChange={(e) => setVoiceGender(e.target.value as VoiceGender)} className="max-w-[92px] bg-transparent text-xs outline-none">
           <option value="female">Ayol</option><option value="male">Erkak</option><option value="auto">Avto</option>
         </select>
       </label>
     </header>
-    <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 px-5 py-6">
+    <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 px-5 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <div className="relative flex items-center justify-center">
-        <div className={"absolute inset-[-18px] rounded-full border-2 border-violet-200 transition-all duration-150 " + (mouthLevel > 0.06 ? "scale-110 opacity-100 animate-pulse" : "scale-100 opacity-40")} />
-        <MoodAvatar mood={mood} speakingLevel={realtimeActive ? mouthLevel : 0} className="h-48 w-48 !rounded-full border-4 shadow-xl sm:h-56 sm:w-56" />
+        <div className={"absolute inset-[-22px] rounded-full border-[3px] border-violet-300 transition-all duration-150 " + (aiSpeaking ? "scale-110 opacity-90 animate-pulse" : "scale-100 opacity-35")} />
+        <MoodAvatar mood={mood} speakingLevel={avatarSpeakingLevel} className="h-48 w-48 !rounded-full border-4 shadow-xl sm:h-56 sm:w-56" />
       </div>
-      <div className="text-center">
-        <p className="text-xl font-black">AI Ustoz</p>
-        <p className="mt-1 text-sm text-violet-700">{realtimeStatus || "Ovozli suhbatga ulanmoqda…"}</p>
-      </div>
+      <p className="text-xs font-medium text-violet-700">{realtimeStatus || "Ovozli suhbatga ulanmoqda…"}</p>
       <div className="w-full max-w-xl rounded-3xl border border-violet-200 bg-white/95 p-4 shadow-sm">
         <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">Jonli subtitrlar</p>
-        <div className="max-h-[28vh] space-y-3 overflow-y-auto break-words text-[15px] leading-6 [overflow-wrap:anywhere]">
+        <div className="max-h-[32vh] space-y-3 overflow-y-auto break-words text-[15px] leading-6 [overflow-wrap:anywhere]">
           {userSubtitle && <p><span className="font-bold text-gray-500">Sen:</span> {toUzbekLatin(userSubtitle)}</p>}
           {assistantSubtitle && <p><span className="font-bold text-violet-700">AI Ustoz:</span> {toUzbekLatin(assistantSubtitle)}</p>}
           {!userSubtitle && !assistantSubtitle && <p className="text-gray-400">Suhbat boshlanishini kutyapman…</p>}
         </div>
       </div>
     </div>
-    <footer className="flex shrink-0 items-center justify-center gap-5 border-t border-violet-100 bg-white/90 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-      <button onClick={() => void stopRealtime()} className="flex h-14 w-14 items-center justify-center rounded-full bg-red-100 text-2xl text-red-700" aria-label="Suhbatni tugatish">×</button>
-      <div className="flex h-14 min-w-0 items-center justify-center rounded-full bg-violet-50 px-5 text-sm font-semibold text-violet-800">{mouthLevel > 0.06 ? "AI gapiryapti…" : realtimeStatus.includes("Siz gapiryapsiz") ? "Seni tinglayapman…" : "Jonli suhbat"}</div>
-      <button onClick={() => setVoiceGender((v) => v === "female" ? "male" : v === "male" ? "auto" : "female")} className="flex h-14 w-14 items-center justify-center rounded-full border border-violet-200 bg-white text-xl text-violet-800" aria-label="Ovoz turini almashtirish">♫</button>
-    </footer>
   </main> : <main className="min-h-screen bg-[#f7f7fb] text-gray-900">
     <header className="sticky top-0 z-20 border-b border-gray-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
