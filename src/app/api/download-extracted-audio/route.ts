@@ -32,37 +32,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Faqat audio fayl qabul qilinadi." }, { status: 400 });
   }
 
-  const serviceClient = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
-  const requestId = crypto.randomUUID();
-  const { error: reserveError } = await serviceClient.rpc("reserve_credit_for_user", {
-    p_user_id: user.id, p_request_id: requestId,
-  });
-  if (reserveError) {
-    console.error("Video audio credit reservation failed:", reserveError.code, reserveError.message);
-    if (reserveError.message.includes("Insufficient credits")) {
-      return NextResponse.json({ error: "Kreditingiz yetarli emas. Audio fayl yuklab olinmadi." }, { status: 402 });
-    }
-    return NextResponse.json({ error: "Kreditni tekshirishda xatolik. Qayta urinib ko‘ring." }, { status: 500 });
-  }
-
+  // Downloading an already-extracted file is a file transfer, not an AI generation.
+  // Never charge credits here; repeated requests must remain free and safe.
   try {
     const bytes = Buffer.from(await audio.arrayBuffer());
-    const { data: profile, error: profileError } = await serviceClient.from("profiles").select("credits").eq("user_id", user.id).maybeSingle();
-    if (profileError) throw new Error("Kredit qoldig‘ini o‘qib bo‘lmadi.");
+    if (!bytes.length) return NextResponse.json({ error: "Audio fayl bo‘sh." }, { status: 400 });
     return new Response(bytes, {
       status: 200,
       headers: {
         "Content-Type": audio.type || "audio/webm",
         "Content-Disposition": 'attachment; filename="ijod-ai-video-audio.webm"',
-        "Cache-Control": "no-store",
-        "X-Remaining-Credits": String(profile?.credits ?? ""),
+        "Cache-Control": "private, no-store",
+        "Content-Length": String(bytes.byteLength),
       },
     });
   } catch (err) {
-    const { error: refundError } = await serviceClient.rpc("refund_credit", {
-      p_user_id: user.id, p_request_id: requestId, p_reason: "video_audio_download_failed",
-    });
-    if (refundError) console.error("Video audio credit refund failed:", refundError.message);
-    return NextResponse.json({ error: "Audio yuklab olishda xatolik yuz berdi. Kredit qaytarish holatini tekshiring." }, { status: 500 });
+    console.error("Extracted audio download failed:", err);
+    return NextResponse.json({ error: "Audio yuklab olishda xatolik yuz berdi." }, { status: 500 });
   }
 }
