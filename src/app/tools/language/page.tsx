@@ -32,17 +32,17 @@ function MoodAvatar({ mood, className = "", speakingLevel = 0 }: { mood: Mood; c
     kind: { bg: "#FCE7F3", stroke: "#DB4B91", mouth: "M29 41 Q40 55 51 41" },
     happy: { bg: "#FEF3C7", stroke: "#D69A19", mouth: "M27 39 Q40 58 53 39" },
     angry: { bg: "#FEE2E2", stroke: "#DC3C3C", mouth: "M30 50 Q40 40 50 50" },
-    thinking: { bg: "#E0F2FE", stroke: "#2584C7", mouth: "M34 46 Q40 42 47 45" },
+    thinking: { bg: "#E0F2FE", stroke: "#2584C7", mouth: "M30 45 Q35 40 40 45 T50 45" },
     sleepy: { bg: "#E0E7FF", stroke: "#6663C7", mouth: "M34 46 Q40 49 46 46" },
   };
   const c = colors[mood];
+  const rootMoodClass = mood === "kind" ? "mood-avatar-kind" : "mood-avatar-" + mood;
   return <div className={"mood-avatar flex items-center justify-center rounded-[30%] border-[3px] shadow-sm transition-all duration-300 " + className} style={{ background: c.bg, borderColor: c.stroke }}>
-    <svg viewBox="0 0 80 80" className={"h-[82%] w-[82%] mood-avatar-svg mood-face mood-" + mood} role="img" aria-label={moods.find((m) => m.id === mood)?.label || "AI Ustoz"}>
-      {mood === "angry" && <path className="mood-brows mood-angry-brows" d="M18 25 L34 31 M62 25 L46 31" stroke={c.stroke} strokeWidth="5" strokeLinecap="round" />}
-      {mood === "sleepy" ? <path className="mood-sleep-eyes" d="M19 34 Q27 40 35 34 M45 34 Q53 40 61 34" stroke="#25243A" strokeWidth="5" fill="none" strokeLinecap="round" /> : mood === "kind" ? <g className="mood-hearts mood-kind"><path d="M22 29 C16 22 7 32 22 43 C37 32 28 22 22 29Z M58 29 C52 22 43 32 58 43 C73 32 64 22 58 29Z" fill={c.stroke} /></g> : <g className="mood-eyes mood-neutral"><circle cx="26" cy="34" r="5" fill="#25243A" /><circle cx="54" cy="34" r="5" fill="#25243A" /></g>}
-      {speakingLevel > 0.08 ? <ellipse className="mood-speaking-mouth" cx="40" cy="47" rx={3.5 + speakingLevel * 5.5} ry={2 + speakingLevel * 7} fill="#25243A" /> : <path className="mood-mouth" d={c.mouth} stroke="#25243A" strokeWidth="4.5" fill="none" strokeLinecap="round" />}
-      {mood === "happy" && <g className="mood-sparkles mood-happy"><path d="M12 12 L16 6 L20 12 L26 16 L20 20 L16 26 L12 20 L6 16Z M60 12 L64 6 L68 12 L74 16 L68 20 L64 26 L60 20 L54 16Z" fill="#E8B43C" /></g>}
-      {mood === "angry" && <g className="mood-angry-sparks"><path d="M8 10 L13 18 L21 20 L13 24 L8 32 L4 24 L0 20 L4 18Z M72 10 L76 18 L80 20 L76 24 L72 32 L68 24 L60 20 L68 18Z" fill="#F87171" opacity=".8" /></g>}
+    <svg viewBox="0 0 80 80" className={"h-[82%] w-[82%] mood-avatar-svg mood-face " + rootMoodClass} role="img" aria-label={moods.find((m) => m.id === mood)?.label || "AI Ustoz"}>
+      {mood === "angry" && <path className="mood-brows" d="M18 25 L34 31 M62 25 L46 31" stroke={c.stroke} strokeWidth="5" strokeLinecap="round" />}
+      {mood === "sleepy" ? <path className="mood-sleep-eyes" d="M19 34 Q27 40 35 34 M45 34 Q53 40 61 34" stroke="#25243A" strokeWidth="5" fill="none" strokeLinecap="round" /> : mood === "kind" ? <g className="mood-heart-eyes"><path d="M22 29 C16 22 7 32 22 43 C37 32 28 22 22 29Z M58 29 C52 22 43 32 58 43 C73 32 64 22 58 29Z" fill={c.stroke} /></g> : mood === "happy" ? <g className="mood-star-eyes" fill="#E8B43C"><path d="M18 24l3.5 7.5L29 35l-7.5 3.5L18 46l-3.5-7.5L7 35l7.5-3.5z"/><path d="M62 24l3.5 7.5L73 35l-7.5 3.5L62 46l-3.5-7.5L51 35l7.5-3.5z"/></g> : <g className="mood-eyes" fill="#25243A"><circle cx="26" cy="34" r="5"/><circle cx="54" cy="34" r="5"/></g>}
+      {speakingLevel > 0.035 ? <ellipse className="mood-speaking-mouth" cx="40" cy="47" rx={3 + speakingLevel * 4.5} ry={1.8 + speakingLevel * 5.5} fill="#25243A" /> : <path className="mood-mouth" d={c.mouth} stroke="#25243A" strokeWidth="4.5" fill="none" strokeLinecap="round" />}
+      {mood === "angry" && <g className="mood-angry-accent" fill="#F87171"><path d="M9 12l4 6 7 2-7 3-4 7-3-7-6-3 6-2z" opacity=".75"/></g>}
     </svg>
   </div>;
 }
