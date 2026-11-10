@@ -10,9 +10,10 @@ type TutorLesson = { id: string; lesson_number: number; title: string; language:
 type VoiceGender = "female" | "male" | "auto";
 function toUzbekLatin(text: string) {
   const map: Record<string, string> = {
-    "а":"a","б":"b","в":"v","г":"g","ғ":"gʻ","д":"d","е":"e","ё":"yo","ж":"j","з":"z","и":"i","й":"y","к":"k","қ":"q","л":"l","м":"m","н":"n","о":"o","п":"p","р":"r","с":"s","т":"t","у":"u","ў":"oʻ","ф":"f","х":"x","ҳ":"h","ц":"ts","ч":"ch","ш":"sh","щ":"shch","ъ":"","ы":"i","ь":"","э":"e","ю":"yu","я":"ya"
+    "а":"a","б":"b","в":"v","г":"g","ғ":"gʻ","д":"d","е":"e","ё":"yo","ж":"j","з":"z","и":"i","й":"y","к":"k","қ":"q","л":"l","м":"m","н":"n","о":"o","п":"p","р":"r","с":"s","т":"t","у":"u","ў":"oʻ","ф":"f","х":"x","ҳ":"h","ц":"ts","ч":"ch","ш":"sh","щ":"shch","ъ":"","ы":"i","ь":"","э":"e","ю":"yu","я":"ya",
+    "ә":"a","і":"i","ң":"ng","ү":"ü","ұ":"u","ө":"o","һ":"h"
   };
-  return text.replace(/[А-Яа-яЁёЎўҚқҒғҲҳЪъЬьЫыЭэЮюЯя]/g, (char) => {
+  return text.replace(/[А-Яа-яЁёЎўҚқҒғҲҳЪъЬьЫыЭэЮюЯяӘәІіҢңҮүҰұӨөҺһ]/g, (char) => {
     const lower = char.toLowerCase();
     const value = map[lower] ?? char;
     if (char === char.toUpperCase() && char !== char.toLowerCase()) {
@@ -185,7 +186,7 @@ export default function LanguageTutorPage() {
       stream.getTracks().forEach((track) => pc?.addTrack(track, stream!));
       const channel = pc.createDataChannel("oai-events");
       channel.onopen = () => {
-        channel.send(JSON.stringify({ type: "response.create", response: { max_output_tokens: 600, audio: { output: { voice: voiceGender === "male" ? "ash" : voiceGender === "auto" ? "marin" : "coral" } } } }));
+        channel.send(JSON.stringify({ type: "response.create", response: { max_output_tokens: 1200, audio: { output: { voice: voiceGender === "male" ? "ash" : voiceGender === "auto" ? "marin" : "coral" } } } }));
       };
       channel.onmessage = (event) => {
         try {
@@ -209,7 +210,12 @@ export default function LanguageTutorPage() {
             if (payload.transcript) setAssistantSubtitle(payload.transcript);
           } else if (payload.type === "response.done") {
             setMouthLevel(0);
-            setRealtimeStatus("Tinglayapman. Gapirishda davom eting.");
+            if (payload.response?.status === "incomplete") {
+              const reason = payload.response?.status_details?.reason;
+              setRealtimeStatus(reason === "max_output_tokens" ? "Javob uzunligi chegarasiga yetdi. Qisqaroq javob berishga qayta urinaman." : "Ovozli javob kutilmaganda tugadi. Qayta urinib ko‘ring.");
+            } else {
+              setRealtimeStatus("Javob tugadi. Tinglayapman.");
+            }
           } else if (payload.type === "error") {
             setRealtimeStatus(payload.error?.message || "Ovozli suhbatda xatolik.");
           }
@@ -566,15 +572,15 @@ export default function LanguageTutorPage() {
           {loading && <div className="flex justify-start"><div className="rounded-2xl bg-violet-50 px-4 py-3 text-sm text-violet-700">AI Ustoz o‘ylayapti…</div></div>}
           {error && <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
         </div>
-        <div className="border-t border-violet-100 bg-violet-50/60 px-4 py-3">
+        <div className="w-full min-w-0 border-t border-violet-100 bg-violet-50/60 px-4 py-3">
           <div className="flex flex-col gap-3">
             <div className="w-full min-w-0">
               <p className="text-sm font-bold text-violet-900">Jonli ovozli suhbat</p>
               <p className="mt-1 text-xs text-violet-700">{realtimeStatus || "AI Ustoz bilan yozmasdan, bevosita gaplashing."}</p>
             </div>
-            {(userSubtitle || assistantSubtitle) && <div className="w-full min-w-0 rounded-xl border border-violet-200 bg-white p-3 sm:p-4">
+            {(userSubtitle || assistantSubtitle) && <div className="block w-full max-w-full min-w-0 rounded-xl border border-violet-200 bg-white p-3 sm:p-4">
               <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-gray-400">Jonli subtitrlar</p>
-              <div className="max-h-44 space-y-3 overflow-y-auto break-words text-sm leading-6 [overflow-wrap:anywhere]">
+              <div className="w-full max-h-44 space-y-3 overflow-y-auto break-words text-sm leading-6 [overflow-wrap:anywhere]">
                 {userSubtitle && <p><span className="font-semibold text-gray-500">Siz:</span> {toUzbekLatin(userSubtitle)}</p>}
                 {assistantSubtitle && <p><span className="font-semibold text-violet-700">AI Ustoz:</span> {toUzbekLatin(assistantSubtitle)}</p>}
               </div>
