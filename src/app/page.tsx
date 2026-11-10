@@ -263,10 +263,10 @@ export default function Home() {
                     ["•‿•","Neytral","bg-violet-50 text-violet-700 border-violet-100"],
                     ["♥‿♥","Mehribon","bg-pink-50 text-pink-600 border-pink-100"],
                     ["✧ᴗ✧","Xursand","bg-amber-50 text-amber-600 border-amber-100"],
-                    ["😠","Jahli chiqqan","bg-red-50 text-red-600 border-red-100"],
+                    ["angry-icon","Jahli chiqqan","bg-red-50 text-red-600 border-red-100"],
                     ["•﹏•","O‘ylayapti","bg-sky-50 text-sky-700 border-sky-100"],
                     ["－ᴗ－","Dam olyapti","bg-indigo-50 text-indigo-600 border-indigo-100"],
-                  ].map(([face,label,style]) => <div key={label} className="text-center"><div className={"mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border text-sm font-black shadow-sm " + style}>{face}</div><p className="mt-2 text-[10px] font-semibold text-gray-700">{label}</p></div>)}
+                  ].map(([face,label,style]) => <div key={label} className="text-center"><div className={"mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border text-sm font-black shadow-sm " + style}>{face === "angry-icon" ? <svg viewBox="0 0 48 48" className="h-8 w-8" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 15l10 6M38 15l-10 6"/><circle cx="17" cy="23" r="2" fill="currentColor" stroke="none"/><circle cx="31" cy="23" r="2" fill="currentColor" stroke="none"/><path d="M14 37c2.5-6 6-9 10-9s7.5 3 10 9"/></svg> : face}</div><p className="mt-2 text-[10px] font-semibold text-gray-700">{label}</p></div>)}
                 </div>
                 <p className="mt-4 text-center text-xs text-gray-500">Suhbat ohangiga qarab AI belgisi ham o‘zgaradi.</p>
               </div>
