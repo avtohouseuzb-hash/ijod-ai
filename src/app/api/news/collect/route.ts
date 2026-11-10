@@ -27,16 +27,42 @@ function imageFrom(xml: string, description: string) {
   const embedded = description.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
   return embedded.match(/<img[^>]+(?:src|data-src)=["']([^"']+)["']/i)?.[1] || null;
 }
-function imageFromMarkup(markup: string) {
+function imageFromMarkup(markup: string, articleUrl?: string) {
   const unwrapped = markup.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
     .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
-  const candidates = [
-    unwrapped.match(/<(?:media:)?(?:content|thumbnail)[^>]+url=["']([^"']+)["']/i)?.[1],
-    unwrapped.match(/<enclosure[^>]+url=["']([^"']+)["']/i)?.[1],
-    unwrapped.match(/<img[^>]+(?:src|data-src)=["']([^"']+)["']/i)?.[1],
+  const looksLikeImage = (value?: string | null) => {
+    if (!value || value.startsWith("data:")) return false;
+    try {
+      const candidate = new URL(value, articleUrl || undefined);
+      if (candidate.protocol !== "http:" && candidate.protocol !== "https:") return false;
+      if (articleUrl) {
+        const page = new URL(articleUrl);
+        if (candidate.hostname === page.hostname &&
+            candidate.pathname.replace(/\/$/, "") === page.pathname.replace(/\/$/, "") &&
+            !/\.(?:jpe?g|png|gif|webp|avif)(?:$|\?)/i.test(candidate.pathname)) return false;
+      }
+      return true;
+    } catch { return false; }
+  };
+  const mediaTags = unwrapped.match(/<(?:media:)?(?:content|thumbnail)\b[^>]*>/gi) || [];
+  for (const item of mediaTags) {
+    const url = item.match(/url=["']([^"']+)["']/i)?.[1];
+    const type = item.match(/type=["']([^"']+)["']/i)?.[1]?.toLowerCase() || "";
+    const medium = item.match(/medium=["']([^"']+)["']/i)?.[1]?.toLowerCase() || "";
+    if (url && (type.startsWith("image/") || medium === "image" ||
+        /\.(?:jpe?g|png|gif|webp|avif)(?:[?#]|$)/i.test(url)) && looksLikeImage(url)) return url;
+  }
+  const enclosureTags = unwrapped.match(/<enclosure\b[^>]*>/gi) || [];
+  for (const item of enclosureTags) {
+    const url = item.match(/url=["']([^"']+)["']/i)?.[1];
+    const type = item.match(/type=["']([^"']+)["']/i)?.[1]?.toLowerCase() || "";
+    if (url && (type.startsWith("image/") || /\.(?:jpe?g|png|gif|webp|avif)(?:[?#]|$)/i.test(url)) && looksLikeImage(url)) return url;
+  }
+  const inline = [
+    unwrapped.match(/<img[^>]+(?:src|data-src|data-original)=["']([^"']+)["']/i)?.[1],
     unwrapped.match(/<itunes:image[^>]+href=["']([^"']+)["']/i)?.[1]
   ];
-  return candidates.find(value => value && !value.startsWith("data:")) || null;
+  return inline.find(looksLikeImage) || null;
 }
 function absoluteImage(value: string, baseUrl: string) {
   const cleaned = value.replace(/&amp;/g, "&").replace(/&#x2F;/gi, "/").trim();
@@ -165,7 +191,7 @@ export async function GET(request: Request) {
         const published = tag(block, "pubDate") || tag(block, "published") || tag(block, "updated");
         return [{
           source_id: source.id, title: title.slice(0, 500), summary: raw.slice(0, 1400),
-          source_name: source.name, source_url: link, image_url: imageFrom(block, raw) || imageFromMarkup(raw),
+          source_name: source.name, source_url: link, image_url: imageFrom(block, raw) || imageFromMarkup(block + " " + raw, link),
           video_url: videoFrom(block, raw), media_type: "none", category: source.category,
           language: source.language || "en",
           published_at: published && !Number.isNaN(Date.parse(published)) ? new Date(published).toISOString() : new Date().toISOString(),
