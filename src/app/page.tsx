@@ -263,7 +263,7 @@ export default function Home() {
                     ["•‿•","Neytral","bg-violet-50 text-violet-700 border-violet-100"],
                     ["♥‿♥","Mehribon","bg-pink-50 text-pink-600 border-pink-100"],
                     ["✧ᴗ✧","Xursand","bg-amber-50 text-amber-600 border-amber-100"],
-                    ["ಠ益ಠ","Jahli chiqqan","bg-red-50 text-red-600 border-red-100"],
+                    ["😠","Jahli chiqqan","bg-red-50 text-red-600 border-red-100"],
                     ["•﹏•","O‘ylayapti","bg-sky-50 text-sky-700 border-sky-100"],
                     ["－ᴗ－","Dam olyapti","bg-indigo-50 text-indigo-600 border-indigo-100"],
                   ].map(([face,label,style]) => <div key={label} className="text-center"><div className={"mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border text-sm font-black shadow-sm " + style}>{face}</div><p className="mt-2 text-[10px] font-semibold text-gray-700">{label}</p></div>)}
