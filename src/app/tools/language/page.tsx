@@ -79,10 +79,12 @@ export default function LanguageTutorPage() {
   const realtimePcRef = useRef<RTCPeerConnection | null>(null);
   const realtimeStreamRef = useRef<MediaStream | null>(null);
   const realtimeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const realtimeChannelRef = useRef<RTCDataChannel | null>(null);
   const realtimeAudioContextRef = useRef<AudioContext | null>(null);
   const realtimeAnalyserFrameRef = useRef<number | null>(null);
   const [mouthLevel, setMouthLevel] = useState(0);
   const [aiSpeaking, setAiSpeaking] = useState(false);
+  const [aiHasSpoken, setAiHasSpoken] = useState(false);
   const [realtimeActive, setRealtimeActive] = useState(false);
   const [realtimeBusy, setRealtimeBusy] = useState(false);
   const [realtimeStatus, setRealtimeStatus] = useState("");
@@ -112,6 +114,7 @@ export default function LanguageTutorPage() {
     realtimeAudioContextRef.current = null;
     setMouthLevel(0);
     setAiSpeaking(false);
+    realtimeChannelRef.current = null;
     realtimePcRef.current?.close();
     realtimePcRef.current = null;
     realtimeStreamRef.current?.getTracks().forEach((track) => track.stop());
@@ -188,7 +191,9 @@ export default function LanguageTutorPage() {
       };
       stream.getTracks().forEach((track) => pc?.addTrack(track, stream!));
       const channel = pc.createDataChannel("oai-events");
+      realtimeChannelRef.current = channel;
       channel.onopen = () => {
+        setAiHasSpoken(false);
         channel.send(JSON.stringify({ type: "response.create", response: { max_output_tokens: 1200, audio: { output: { voice: voiceGender === "male" ? "ash" : voiceGender === "auto" ? "marin" : "coral" } } } }));
       };
       channel.onmessage = (event) => {
@@ -208,6 +213,8 @@ export default function LanguageTutorPage() {
             setAssistantSubtitle("");
             setAiSpeaking(true);
             setRealtimeStatus("AI Ustoz javob bermoqda…");
+          } else if (payload.type === "response.output_audio.delta") {
+            setAiHasSpoken(true);
           } else if (payload.type === "response.output_audio_transcript.delta") {
             setAssistantSubtitle((current) => current + (payload.delta || ""));
           } else if (payload.type === "response.output_audio_transcript.done") {
@@ -507,7 +514,7 @@ export default function LanguageTutorPage() {
       <button onClick={() => void stopRealtime()} aria-label="Ovozli suhbatdan chiqish" className="flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-2xl text-gray-700 shadow-sm">×</button>
       <label className="flex items-center gap-2 rounded-full bg-white/90 px-3 py-2 text-xs font-semibold text-violet-800 shadow-sm">
         <span>Ovoz</span>
-        <select aria-label="AI ovozini almashtirish" value={voiceGender} onChange={(e) => setVoiceGender(e.target.value as VoiceGender)} className="max-w-[92px] bg-transparent text-xs outline-none">
+        <select aria-label="AI ovozini almashtirish" value={voiceGender} onChange={(e) => { const next = e.target.value as VoiceGender; setVoiceGender(next); if (aiHasSpoken && realtimeActive) { void stopRealtime().then(() => setRealtimeStatus("Ovoz tanlandi. Yangi ovozda davom etish uchun suhbatni qayta boshlang.")); } else if (realtimeChannelRef.current?.readyState === "open") { realtimeChannelRef.current.send(JSON.stringify({ type: "session.update", session: { type: "realtime", audio: { output: { voice: next === "male" ? "ash" : next === "auto" ? "marin" : "coral" } } } })); } }} className="max-w-[92px] bg-transparent text-xs outline-none">
           <option value="female">Ayol</option><option value="male">Erkak</option><option value="auto">Avto</option>
         </select>
       </label>
@@ -521,7 +528,7 @@ export default function LanguageTutorPage() {
       <div className="w-full max-w-xl rounded-3xl border border-violet-200 bg-white/95 p-4 shadow-sm">
         <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">Jonli subtitrlar</p>
         <div className="max-h-[32vh] space-y-3 overflow-y-auto break-words text-[15px] leading-6 [overflow-wrap:anywhere]">
-          {userSubtitle && <p><span className="font-bold text-gray-500">Sen:</span> {toUzbekLatin(userSubtitle)}</p>}
+          {userSubtitle && <p><span className="font-bold text-gray-500">{mood === "angry" || personality === "strict" ? "Sen:" : "Siz:"}</span> {toUzbekLatin(userSubtitle)}</p>}
           {assistantSubtitle && <p><span className="font-bold text-violet-700">AI Ustoz:</span> {toUzbekLatin(assistantSubtitle)}</p>}
           {!userSubtitle && !assistantSubtitle && <p className="text-gray-400">Suhbat boshlanishini kutyapman…</p>}
         </div>
