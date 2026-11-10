@@ -67,3 +67,8 @@ body {
 @keyframes face-think { 0%,100% { transform: translateX(0) rotate(0); } 35% { transform: translateX(2px) rotate(5deg); } 70% { transform: translateX(-1px) rotate(-3deg); } }
 @keyframes face-breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(.9); } }
 @media (prefers-reduced-motion: reduce) { .mood-face, .mood-face * { animation: none !important; } }
+
+/* The heart-shaped eyes are part of the original artwork; keep them still.
+   Only the mouth changes size while the live assistant audio is playing. */
+.mood-avatar-kind .mood-heart-eyes { animation: none !important; transform: none !important; }
+.mood-avatar-kind .mood-speaking-mouth { transform-origin: 40px 47px; }
