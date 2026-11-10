@@ -30,7 +30,7 @@ function MoodAvatar({ mood, className = "", speakingLevel = 0 }: { mood: Mood; c
   const colors: Record<Mood, { bg: string; stroke: string; mouth: string }> = {
     neutral: { bg: "#F2EAFE", stroke: "#7837D8", mouth: "M32 44 Q40 50 48 44" },
     kind: { bg: "#FCE7F3", stroke: "#DB4B91", mouth: "M29 41 Q40 55 51 41" },
-    happy: { bg: "#FEF3C7", stroke: "#D69A19", mouth: "M27 39 Q40 58 53 39" },
+    happy: { bg: "#FEF3C7", stroke: "#D69A19", mouth: "M29 44 Q40 55 51 44" },
     angry: { bg: "#FEE2E2", stroke: "#DC3C3C", mouth: "M30 50 Q40 40 50 50" },
     thinking: { bg: "#E0F2FE", stroke: "#2584C7", mouth: "M30 45 Q35 40 40 45 T50 45" },
     sleepy: { bg: "#E0E7FF", stroke: "#6663C7", mouth: "M34 46 Q40 49 46 46" },
@@ -42,7 +42,7 @@ function MoodAvatar({ mood, className = "", speakingLevel = 0 }: { mood: Mood; c
       {mood === "angry" && <path className="mood-brows" d="M18 25 L34 31 M62 25 L46 31" stroke={c.stroke} strokeWidth="5" strokeLinecap="round" />}
       {mood === "sleepy" ? <path className="mood-sleep-eyes" d="M19 34 Q27 40 35 34 M45 34 Q53 40 61 34" stroke="#25243A" strokeWidth="5" fill="none" strokeLinecap="round" /> : mood === "kind" ? <g className="mood-heart-eyes"><path d="M22 29 C16 22 7 32 22 43 C37 32 28 22 22 29Z M58 29 C52 22 43 32 58 43 C73 32 64 22 58 29Z" fill={c.stroke} /></g> : <g className="mood-eyes" fill="#25243A"><circle cx="26" cy="34" r="5"/><circle cx="54" cy="34" r="5"/></g>}
       {speakingLevel > 0.035 ? <ellipse className="mood-speaking-mouth" cx="40" cy="47" rx={3 + speakingLevel * 4.5} ry={1.8 + speakingLevel * 5.5} fill="#25243A" /> : <path className="mood-mouth" d={c.mouth} stroke="#25243A" strokeWidth="4.5" fill="none" strokeLinecap="round" />}
-      {mood === "happy" && <g className="mood-sparkles" fill="#E8B43C"><path d="M12 12 L16 6 L20 12 L26 16 L20 20 L16 26 L12 20 L6 16Z M60 12 L64 6 L68 12 L74 16 L68 20 L64 26 L60 20 L54 16Z"/></g>}
+      {mood === "happy" && <g className="mood-sparkles" fill="#E8B43C"><path d="M12 17l2.2 4.8L19 24l-4.8 2.2L12 31l-2.2-4.8L5 24l4.8-2.2z M68 17l2.2 4.8L75 24l-4.8 2.2L68 31l-2.2-4.8L61 24l4.8-2.2z"/></g>}
       {mood === "angry" && <g className="mood-angry-accent" fill="#F87171"><path d="M8 10 L13 18 L21 20 L13 24 L8 32 L4 24 L0 20 L4 18Z M72 10 L76 18 L80 20 L76 24 L72 32 L68 24 L60 20 L68 18Z" opacity=".8"/></g>}
     </svg>
   </div>;
