@@ -260,21 +260,14 @@ export default function Home() {
                 <h3 className="text-sm font-bold">AI suhbatchi kayfiyatlari</h3>
                 <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-6">
                   {[
-                    ["neutral","Neytral","bg-violet-50 text-violet-700 border-violet-100"],
-                    ["kind","Mehribon","bg-pink-50 text-pink-600 border-pink-100"],
-                    ["happy","Xursand","bg-amber-50 text-amber-600 border-amber-100"],
-                    ["angry","Jahli chiqqan","bg-red-50 text-red-600 border-red-100"],
-                    ["thinking","O‘ylayapti","bg-sky-50 text-sky-700 border-sky-100"],
-                    ["resting","Dam olyapti","bg-indigo-50 text-indigo-600 border-indigo-100"],
-                  ].map(([mood,label,style]) => <div key={label} className="text-center"><div className={"mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border shadow-sm " + style}>
-                    <svg viewBox="0 0 48 48" className={"h-9 w-9 mood-face mood-" + mood} aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      {mood === "neutral" && <><g className="mood-eyes"><circle cx="15" cy="19" r="2.5" fill="currentColor" stroke="none"/><circle cx="33" cy="19" r="2.5" fill="currentColor" stroke="none"/></g><path d="M16 30q8 7 16 0"/></>}
-                      {mood === "kind" && <><g className="mood-heart-left"><path d="M15 25C4 18 12 9 18 17c6-8 14 1 3 8l-3 3z" fill="currentColor" stroke="none"/></g><g className="mood-heart-right"><path d="M30 25c-11-7-3-16 3-8 6-8 14 1 3 8l-3 3z" fill="currentColor" stroke="none"/></g><path d="M18 32q6 5 12 0"/></>}
-                      {mood === "happy" && <><g className="mood-sparkle"><path d="M11 10l2.5 6.5L20 19l-6.5 2.5L11 28l-2.5-6.5L2 19l6.5-2.5z" transform="translate(3 0)"/></g><g className="mood-sparkle mood-sparkle-two"><path d="M35 9l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/></g><path d="M18 29q6 8 12 0"/></>}
-                      {mood === "angry" && <><g className="mood-brows"><path d="M9 14l11 6M39 14l-11 6"/></g><circle cx="16" cy="24" r="2" fill="currentColor" stroke="none"/><circle cx="32" cy="24" r="2" fill="currentColor" stroke="none"/><path d="M14 37q10-15 20 0"/></>}
-                      {mood === "thinking" && <><g className="mood-thinking-eyes"><circle cx="15" cy="20" r="2.5" fill="currentColor" stroke="none"/><circle cx="33" cy="20" r="2.5" fill="currentColor" stroke="none"/></g><path d="M17 31q3-4 6 0t6 0t6 0"/><g className="mood-dots" fill="currentColor" stroke="none"><circle cx="18" cy="9" r="1.8"/><circle cx="24" cy="7" r="1.8"/><circle cx="30" cy="9" r="1.8"/></g></>}
-                      {mood === "resting" && <><path d="M10 19h9M29 19h9" strokeWidth="3.5"/><path d="M17 30q7 6 14 0"/><path d="M34 8l5-4M37 14l6-1" className="mood-zzz"/></>}
-                    </svg>
+                    ["neutral","•‿•","Neytral","bg-violet-50 text-violet-700 border-violet-100"],
+                    ["kind","♥‿♥","Mehribon","bg-pink-50 text-pink-600 border-pink-100"],
+                    ["happy","✧ᴗ✧","Xursand","bg-amber-50 text-amber-600 border-amber-100"],
+                    ["angry","","Jahli chiqqan","bg-red-50 text-red-600 border-red-100"],
+                    ["thinking","•﹏•","O‘ylayapti","bg-sky-50 text-sky-700 border-sky-100"],
+                    ["resting","－ᴗ－","Dam olyapti","bg-indigo-50 text-indigo-600 border-indigo-100"],
+                  ].map(([mood,face,label,style]) => <div key={label} className="text-center"><div className={"mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border text-sm font-black shadow-sm " + style}>
+                    {mood === "angry" ? <svg viewBox="0 0 48 48" className="mood-face mood-angry h-8 w-8" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><g className="mood-angry-brows"><path d="M10 15l10 6M38 15l-10 6"/></g><circle cx="17" cy="23" r="2" fill="currentColor" stroke="none"/><circle cx="31" cy="23" r="2" fill="currentColor" stroke="none"/><path d="M14 37q10-15 20 0"/></svg> : <span className={"mood-face mood-" + mood}>{face}</span>}
                   </div><p className="mt-2 text-[10px] font-semibold text-gray-700">{label}</p></div>)}
                 </div>
                 <p className="mt-4 text-center text-xs text-gray-500">Suhbat ohangiga qarab AI belgisi ham o‘zgaradi.</p>
