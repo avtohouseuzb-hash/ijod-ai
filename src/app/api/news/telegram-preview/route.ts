@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { isNewsCronOrAdminAuthorized } from "@/lib/news-cron-auth";
 
-export const runtime = "nodejs";
 export const maxDuration = 30;
 
 const CHANNEL = "shopirlar";
