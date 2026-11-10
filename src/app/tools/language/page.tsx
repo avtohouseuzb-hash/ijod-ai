@@ -37,11 +37,11 @@ function MoodAvatar({ mood, className = "" }: { mood: Mood; className?: string }
   };
   const c = colors[mood];
   return <div className={"mood-avatar flex items-center justify-center rounded-[30%] border-[3px] shadow-sm transition-all duration-300 " + className} style={{ background: c.bg, borderColor: c.stroke }}>
-    <svg viewBox="0 0 80 80" className={"h-[82%] w-[82%] mood-avatar-svg mood-avatar-" + mood} role="img" aria-label={moods.find((m) => m.id === mood)?.label || "AI Ustoz"}>
-      {mood === "angry" && <path className="mood-brows" d="M18 25 L34 31 M62 25 L46 31" stroke={c.stroke} strokeWidth="5" strokeLinecap="round" />}
-      {mood === "sleepy" ? <path className="mood-sleep-eyes" d="M19 34 Q27 40 35 34 M45 34 Q53 40 61 34" stroke="#25243A" strokeWidth="5" fill="none" strokeLinecap="round" /> : mood === "kind" ? <g className="mood-hearts"><path d="M22 29 C16 22 7 32 22 43 C37 32 28 22 22 29Z M58 29 C52 22 43 32 58 43 C73 32 64 22 58 29Z" fill={c.stroke} /></g> : <g className="mood-eyes"><circle cx="26" cy="34" r="5" fill="#25243A" /><circle cx="54" cy="34" r="5" fill="#25243A" /></g>}
+    <svg viewBox="0 0 80 80" className={"h-[82%] w-[82%] mood-avatar-svg mood-face mood-" + mood} role="img" aria-label={moods.find((m) => m.id === mood)?.label || "AI Ustoz"}>
+      {mood === "angry" && <path className="mood-brows mood-angry-brows" d="M18 25 L34 31 M62 25 L46 31" stroke={c.stroke} strokeWidth="5" strokeLinecap="round" />}
+      {mood === "sleepy" ? <path className="mood-sleep-eyes" d="M19 34 Q27 40 35 34 M45 34 Q53 40 61 34" stroke="#25243A" strokeWidth="5" fill="none" strokeLinecap="round" /> : mood === "kind" ? <g className="mood-hearts mood-kind"><path d="M22 29 C16 22 7 32 22 43 C37 32 28 22 22 29Z M58 29 C52 22 43 32 58 43 C73 32 64 22 58 29Z" fill={c.stroke} /></g> : <g className="mood-eyes mood-neutral"><circle cx="26" cy="34" r="5" fill="#25243A" /><circle cx="54" cy="34" r="5" fill="#25243A" /></g>}
       <path className="mood-mouth" d={c.mouth} stroke="#25243A" strokeWidth="4.5" fill="none" strokeLinecap="round" />
-      {mood === "happy" && <g className="mood-sparkles"><path d="M12 12 L16 6 L20 12 L26 16 L20 20 L16 26 L12 20 L6 16Z M60 12 L64 6 L68 12 L74 16 L68 20 L64 26 L60 20 L54 16Z" fill="#E8B43C" /></g>}
+      {mood === "happy" && <g className="mood-sparkles mood-happy"><path d="M12 12 L16 6 L20 12 L26 16 L20 20 L16 26 L12 20 L6 16Z M60 12 L64 6 L68 12 L74 16 L68 20 L64 26 L60 20 L54 16Z" fill="#E8B43C" /></g>}
       {mood === "angry" && <g className="mood-angry-sparks"><path d="M8 10 L13 18 L21 20 L13 24 L8 32 L4 24 L0 20 L4 18Z M72 10 L76 18 L80 20 L76 24 L72 32 L68 24 L60 20 L68 18Z" fill="#F87171" opacity=".8" /></g>}
     </svg>
   </div>;
