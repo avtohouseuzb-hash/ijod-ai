@@ -22,6 +22,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Audio fayl yuborilmadi." }, { status: 400 });
   }
   const audio = form.get("audio");
+  const requestId = String(form.get("requestId") || "");
   if (!(audio instanceof File) || audio.size === 0) {
     return NextResponse.json({ error: "Yuklab olish uchun audio fayl topilmadi." }, { status: 400 });
   }
@@ -32,11 +33,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Faqat audio fayl qabul qilinadi." }, { status: 400 });
   }
 
-  // Downloading an already-extracted file is a file transfer, not an AI generation.
-  // Never charge credits here; repeated requests must remain free and safe.
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) {
+    return NextResponse.json({ error: "Audio operatsiyasi identifikatori noto‘g‘ri. Qayta ajrating." }, { status: 400 });
+  }
+
   try {
     const bytes = Buffer.from(await audio.arrayBuffer());
     if (!bytes.length) return NextResponse.json({ error: "Audio fayl bo‘sh." }, { status: 400 });
+
+    const serviceClient = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { data: remainingCredits, error: reserveError } = await serviceClient.rpc("reserve_credit_for_user", {
+      p_user_id: user.id,
+      p_request_id: requestId,
+    });
+    if (reserveError) {
+      console.error("Extracted audio credit reservation failed:", reserveError.code, reserveError.message);
+      if (reserveError.message.includes("Insufficient credits")) {
+        return NextResponse.json({ error: "Kreditingiz yetarli emas. Audio yuklab olinmadi." }, { status: 402 });
+      }
+      return NextResponse.json({ error: "Kreditni tekshirishda xatolik. Qayta urinib ko‘ring." }, { status: 500 });
+    }
+
     return new Response(bytes, {
       status: 200,
       headers: {
@@ -44,6 +61,7 @@ export async function POST(request: Request) {
         "Content-Disposition": 'attachment; filename="ijod-ai-video-audio.webm"',
         "Cache-Control": "private, no-store",
         "Content-Length": String(bytes.byteLength),
+        "X-Remaining-Credits": String(remainingCredits),
       },
     });
   } catch (err) {

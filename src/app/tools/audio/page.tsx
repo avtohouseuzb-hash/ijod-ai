@@ -38,6 +38,7 @@ export default function AudioToolPage() {
   const [videoError, setVideoError] = useState("");
   const [extractedUrl, setExtractedUrl] = useState("");
   const [extractedBlob, setExtractedBlob] = useState<Blob | null>(null);
+  const [extractionRequestId, setExtractionRequestId] = useState("");
   const [downloadLoading, setDownloadLoading] = useState(false);
   const [credits, setCredits] = useState<number | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
@@ -100,6 +101,7 @@ export default function AudioToolPage() {
     if (extractedUrl) URL.revokeObjectURL(extractedUrl);
     setExtractedUrl("");
     setExtractedBlob(null);
+    setExtractionRequestId("");
     if (!file) return;
     if (!file.type.startsWith("video/")) { setVideoError("Iltimos, video fayl tanlang."); return; }
     if (file.size > 200 * 1024 * 1024) { setVideoError("Video hajmi 200 MB dan oshmasin."); return; }
@@ -140,6 +142,7 @@ export default function AudioToolPage() {
       if (!audioBlob.size) throw new Error("Videodan audio olinmadi.");
       setExtractedBlob(audioBlob);
       setExtractedUrl(URL.createObjectURL(audioBlob));
+      setExtractionRequestId(crypto.randomUUID());
     } catch (err) {
       if (recorder && recorder.state !== "inactive") recorder.stop();
       setVideoError(err instanceof Error ? err.message : "Ovoz ajratishda xatolik yuz berdi.");
@@ -152,13 +155,27 @@ export default function AudioToolPage() {
   }
 
   async function downloadExtractedAudio() {
-    if (!extractedBlob || downloadLoading) return;
+    if (!extractedBlob || !extractionRequestId || downloadLoading) return;
     setDownloadLoading(true);
     setVideoError("");
     try {
-      // The extracted audio already exists in the browser. Download it locally:
-      // no API request, no credit reservation, and no expiring remote URL.
-      const url = extractedUrl || URL.createObjectURL(extractedBlob);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Yuklab olish uchun avval hisobingizga kiring.");
+      const form = new FormData();
+      form.append("audio", extractedBlob, "ijod-ai-video-audio.webm");
+      form.append("requestId", extractionRequestId);
+      const response = await fetch("/api/download-extracted-audio", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + session.access_token },
+        body: form,
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Audio yuklab olinmadi.");
+      }
+      const resultBlob = await response.blob();
+      if (!resultBlob.size) throw new Error("Yuklab olinadigan audio bo‘sh qaytdi.");
+      const url = URL.createObjectURL(resultBlob);
       const a = document.createElement("a");
       a.href = url;
       a.download = "ijod-ai-video-audio.webm";
@@ -166,7 +183,9 @@ export default function AudioToolPage() {
       document.body.appendChild(a);
       a.click();
       a.remove();
-      setVideoError("");
+      window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+      const remaining = response.headers.get("X-Remaining-Credits");
+      if (remaining && Number.isFinite(Number(remaining))) setCredits(Number(remaining));
     } catch (err) {
       setVideoError(err instanceof Error ? err.message : "Audio yuklab olishda xatolik yuz berdi.");
     } finally {
@@ -275,7 +294,7 @@ export default function AudioToolPage() {
         </section>
         <section className="mt-6 rounded-3xl border border-gray-200 bg-white p-6">
           <h2 className="text-xl font-black">Videodan ovoz ajratish</h2>
-          <p className="mt-2 text-sm leading-6 text-gray-500">Video faylni tanlang — faqat ovoz yo‘li ajratiladi. Yuklab olish bepul, kredit yechilmaydi.</p>
+          <p className="mt-2 text-sm leading-6 text-gray-500">Video faylni tanlang — ovoz ajratiladi. Tayyor audioni yuklab olish 1 kredit turadi.</p>
           <label className="mt-4 block text-sm font-semibold">Video fayl (200 MB gacha)
             <input type="file" accept="video/*,.mp4,.mov,.webm,.mkv" disabled={videoLoading} onChange={(e) => void extractVideoAudio(e.target.files?.[0])} className="mt-2 block w-full rounded-xl border border-gray-200 p-3 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-violet-100 file:px-3 file:py-2 file:font-semibold file:text-violet-800" />
           </label>
@@ -284,7 +303,7 @@ export default function AudioToolPage() {
           {extractedUrl && <div className="mt-5 rounded-2xl border border-violet-100 bg-violet-50/50 p-4">
             <h3 className="font-bold">Ajratilgan ovoz</h3>
             <audio controls src={extractedUrl} className="mt-3 w-full">Brauzeringiz audio ijrosini qo‘llab-quvvatlamaydi.</audio>
-            <button type="button" disabled={downloadLoading || !extractedBlob} onClick={downloadExtractedAudio} className="mt-3 inline-flex rounded-xl bg-violet-600 px-4 py-3 text-sm font-bold text-white hover:bg-violet-700 disabled:opacity-50">{downloadLoading ? "Kredit tekshirilmoqda..." : "⬇ Audio faylni bepul yuklab olish"}</button>
+            <button type="button" disabled={downloadLoading || !extractedBlob} onClick={downloadExtractedAudio} className="mt-3 inline-flex rounded-xl bg-violet-600 px-4 py-3 text-sm font-bold text-white hover:bg-violet-700 disabled:opacity-50">{downloadLoading ? "Kredit tekshirilmoqda..." : "⬇ Audio faylni yuklab olish (1 kredit)"}</button>
           </div>}
         </section>
       </div>
