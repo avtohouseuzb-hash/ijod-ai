@@ -75,7 +75,7 @@ export async function POST(request: Request) {
             },
             output: { voice, speed: 1.0 }
           },
-          max_output_tokens: 600
+          max_output_tokens: 1200
         }
       }),
       cache: "no-store"
