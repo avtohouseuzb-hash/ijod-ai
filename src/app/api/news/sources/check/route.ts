@@ -4,6 +4,8 @@ import { isNewsCronOrAdminAuthorized } from "@/lib/news-cron-auth";
 
 export const maxDuration = 60;
 
+type NewsSourcesDb = any;
+
 type Source = {
   id: string;
   name: string;
@@ -39,7 +41,7 @@ function parseFeed(xml: string, contentType: string) {
   };
 }
 
-async function checkOne(source: Source, db: ReturnType<typeof createClient>) {
+async function checkOne(source: Source, db: ReturnType<typeof createClient<NewsSourcesDb>>) {
   const checkedAt = new Date().toISOString();
   try {
     const parsed = new URL(source.feed_url);
@@ -92,7 +94,7 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const offset = Math.max(0, Number(params.get("offset") || 0));
   const limit = Math.min(10, Math.max(1, Number(params.get("limit") || 10)));
-  const db = createClient(url, key, { auth: { persistSession: false } });
+  const db = createClient<NewsSourcesDb>(url, key, { auth: { persistSession: false } });
   const { data: sources, error } = await db.from("news_sources")
     .select("id,name,feed_url,category")
     .eq("source_group", "Excel 2026-11-10 - pending verification")
