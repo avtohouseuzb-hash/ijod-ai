@@ -37,6 +37,11 @@ export async function POST(request: Request) {
     : [];
 
   const service = createClient(url, secret, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data: textbookSettings } = await service.from("edu_textbook_settings").select("openai_vector_store_id").eq("id", true).maybeSingle();
+  const vectorStoreId = textbookSettings?.openai_vector_store_id as string | null;
+  const { count: textbookCount } = await service.from("edu_textbooks").select("id", { count: "exact", head: true }).eq("grade", Number(grade.split("-")[0])).eq("subject", subject).eq("status", "ready");
+  if (!vectorStoreId || !textbookCount) return NextResponse.json({ error: grade + " uchun " + subject + " darsliklari hali yuklanmagan." }, { status: 409 });
+
   const requestId = crypto.randomUUID();
   const { error: reserveError } = await service.rpc("reserve_credit_for_user", { p_user_id: user.id, p_request_id: requestId });
   if (reserveError) {
