@@ -47,7 +47,7 @@ export async function POST(request: Request) {
         role: "user",
         content: [
           { type: "input_text", text: "Quyidagi rasmda " + input.taskTitle + " uy vazifasini tekshir. Vazifa sharti va barcha javoblarni ko‘rib chiq." },
-          { type: "input_image", image_url: input.imageDataUrl },
+          { type: "input_image", image_url: input.imageDataUrl, detail: "auto" },
         ],
       }],
       max_output_tokens: 350,
