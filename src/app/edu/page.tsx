@@ -18,11 +18,10 @@ const subjects = [
   { name: "Geografiya", short: "GEO", detail: "Materiklar, xaritalar va iqlim", color: "teal", icon: "globe" },
 ];
 
-const tasks = [
-  { id: 1, subject: "Matematika", title: "Kvadrat tenglamalar", meta: "5 ta misol · 20 daqiqa", done: true },
-  { id: 2, subject: "Ingliz tili", title: "Present Perfect", meta: "Mashq 4 · 15 daqiqa", done: false },
-  { id: 3, subject: "Biologiya", title: "Hujayra tuzilishi", meta: "Mavzuni takrorlash · 10 daqiqa", done: false },
-];
+type EduTask = { id: number; subject: string; title: string; meta: string; done: boolean };
+
+// Tasks are empty until real assignments are loaded for the signed-in student.
+const tasks: EduTask[] = [];
 
 const navItems: { id: Section; label: string; icon: string }[] = [
   { id: "home", label: "Umumiy ko‘rinish", icon: "home" },
