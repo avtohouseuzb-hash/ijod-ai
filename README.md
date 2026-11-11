@@ -34,3 +34,12 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+
+## IJOD EDU textbook library
+
+- Run the Supabase migration `supabase/migrations/202611110001_edu_textbook_knowledge_base.sql` (already applied to the connected IJOD AI Supabase project).
+- Configure `EDU_ADMIN_EMAILS` in Vercel as a comma-separated allowlist of administrator account email addresses. Only these accounts can upload and index textbooks at `/edu/admin/textbooks`.
+- Keep `OPENAI_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `SUPABASE_SECRET_KEY` configured on the server as existing IJOD AI services require.
+- Upload official school textbook PDFs (up to 50 MB) through the admin page. The original PDF is stored in the private `edu-textbooks` Supabase Storage bucket and indexed in the IJOD EDU OpenAI vector store.
+- Only indexed (`ready`) textbooks appear in the student library and can be retrieved by the school tutor. The tutor filters retrieval by the selected grade and subject; if no matching textbook is indexed, it asks the user to wait for the book instead of inventing a textbook-grounded answer.

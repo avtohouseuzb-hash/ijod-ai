@@ -37,6 +37,11 @@ export async function POST(request: Request) {
     : [];
 
   const service = createClient(url, secret, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data: textbookSettings } = await service.from("edu_textbook_settings").select("openai_vector_store_id").eq("id", true).maybeSingle();
+  const vectorStoreId = textbookSettings?.openai_vector_store_id as string | null;
+  const { count: textbookCount } = await service.from("edu_textbooks").select("id", { count: "exact", head: true }).eq("grade", Number(grade.split("-")[0])).eq("subject", subject).eq("status", "ready");
+  if (!vectorStoreId || !textbookCount) return NextResponse.json({ error: grade + " uchun " + subject + " darsliklari hali yuklanmagan." }, { status: 409 });
+
   const requestId = crypto.randomUUID();
   const { error: reserveError } = await service.rpc("reserve_credit_for_user", { p_user_id: user.id, p_request_id: requestId });
   if (reserveError) {
@@ -49,11 +54,13 @@ export async function POST(request: Request) {
   try {
     const response = await openai.responses.create({
       model: "gpt-6-luna",
-      instructions: `Sen IJOD EDU maktab platformasining shaxsiy AI ustozisan. O‘quvchi: ${grade}. Fan: ${subject}. Faqat tabiiy, sodda o‘zbek tilida tushuntir (ingliz tili fanida inglizcha misollar va o‘zbekcha izoh ber). Yoshga mos, mehribon, sabrli va qiziqarli bo‘l. O‘quvchini tayyor javob bilan cheklama: avval tushuntir, keyin kichik savol berib tushunganini tekshir. Sinf darajasidan murakkab termin ishlatma; yangi terminni darhol izohla. Matematik/fizik masalalarda yechimni bosqichma-bosqich, formulani va birliklarni ko‘rsat. Kimyo fanida reaksiyalar va elementlarni to‘g‘ri yoz. Tarix/geografiya/biologiyada sabab-oqibat va hayotiy misol keltir. Agar savol boshqa fanga tegishli bo‘lsa, muloyimlik bilan tegishli fanni tanlashni tavsiya qil. Bilmagan faktni to‘qima. Javobni doskada yozilayotgandek qisqa satrlarga ajrat: birinchi qatorda MAVZU: ..., keyin har bir qadamni yangi qatorda 1-qadam:, 2-qadam: ko‘rinishida yoz; kerak bo‘lsa formulani alohida satrga qo‘y; oxirida XULOSA: va ENDI SEN: bilan o‘quvchiga bitta kichik mashq yoki savol ber. Markdown sarlavhalari va ro‘yxat belgilarini haddan tashqari ishlatma. Odatda 100–180 so‘zdan oshirma; murakkab masalada zarur qadamlarni qoldirma. Faqat foydali, o‘rgatuvchi javob ber.`,
+      instructions: "Sen IJOD EDU maktab platformasining shaxsiy AI ustozisan. O‘quvchi sinfi: " + grade + ". Fan: " + subject + ". Javobni avvalo File Search orqali topilgan aynan shu sinf va fan uchun yuklangan darsliklarga tayangan holda ber. Boshqa sinf yoki fan darsligini ishlatma. Darslikda topilmagan ma’lumotni darslikdan olingandek ko‘rsatma. Tegishli manba topilmasa, buni ochiq ayt. Manba nomi, bob va sahifani faqat qidiruv natijasida mavjud bo‘lsa ko‘rsat; sahifa raqamini taxmin qilma. Sodda o‘zbek tilida, yoshga mos tushuntir. O‘quvchini tayyor javob bilan cheklama: bosqichma-bosqich o‘rgat, oxirida kichik savol ber. Doskaga yozayotgandek MAVZU, 1-qadam, 2-qadam, XULOSA va ENDI SEN satrlaridan foydalan.",
       input: [
         ...history.map(item => ({ role: item.role, content: item.content })),
-        { role: "user", content: input.message.trim() },
+        { role: "user", content: "Sinf: " + grade + ". Fan: " + subject + ". Savol: " + input.message.trim() + ". Faqat shu sinf va fan darsligidan qidir." },
       ],
+      tools: [{ type: "file_search", vector_store_ids: [vectorStoreId], max_num_results: 5 }],
+      include: ["file_search_call.results"],
       max_output_tokens: 850,
     });
     const text = response.output_text?.trim();
