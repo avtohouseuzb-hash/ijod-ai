@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { LanguageSelect, ThemeToggle } from "@/components/site-preferences";
 
 type Section = "home" | "tutor" | "homework" | "library" | "progress" | "planner";
 
@@ -253,6 +254,8 @@ export default function EduPage() {
             <div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-slate-400">IJOD EDU <span className="mx-1 text-slate-300">/</span> MAKTAB</p><p className="text-sm font-bold text-slate-800">{title}</p></div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
+            <LanguageSelect className="w-[76px] sm:w-[142px]" />
             <button type="button" onClick={() => setSection("planner")} className={"inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition " + (section === "planner" ? "border-violet-200 bg-violet-50 text-violet-700" : "border-slate-200 bg-white text-slate-500 hover:border-violet-200 hover:text-violet-700")}><Icon name="calendar" className="h-4 w-4" /> <span className="hidden sm:inline">O‘quv rejasi</span><span className="sm:hidden">Reja</span></button>
             <select aria-label="Sinfni tanlash" value={grade} onChange={(e) => changeGrade(e.target.value)} className="rounded-xl border border-violet-100 bg-violet-50 px-3 py-2.5 text-xs font-bold text-violet-700 outline-none focus:ring-2 focus:ring-violet-200">{Array.from({ length: 11 }, (_, i) => <option key={i + 1} value={i + 1 + "-sinf"}>{i + 1}-sinf</option>)}</select>
             <div className="hidden h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-violet-100 to-cyan-100 text-sm font-black text-violet-700 sm:flex">O‘</div>
@@ -314,7 +317,7 @@ export default function EduPage() {
 
           {section === "progress" && <section className="rounded-3xl border border-[#eceaf5] bg-white p-6 sm:p-8"><p className="text-[10px] font-extrabold uppercase tracking-[.18em] text-violet-600">SHAXSIY O‘SISH</p><h1 className="mt-2 text-2xl font-black">Mening natijalarim</h1><p className="mt-2 text-sm text-slate-500">O‘quv jarayoning va fanlar bo‘yicha o‘zlashtirish holati.</p><div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{subjects.map(s=><div key={s.name} className="rounded-2xl bg-slate-50 p-4"><p className="text-xs font-bold">{s.name}</p><p className="mt-3 text-2xl font-black text-violet-700">0%</p><div className="mt-3 h-1.5 rounded-full bg-slate-200"><div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-cyan-400" style={{width:"0%"}} /></div></div>)}</div><p className="mt-5 rounded-xl bg-slate-50 p-4 text-xs leading-5 text-slate-600">Hozircha saqlangan o‘quv natijalari yo‘q. Darslar va topshiriqlar bajarilgach, shaxsiy natijalaringiz shu yerda ko‘rsatiladi.</p></section>}
 
-          <footer className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 py-6 text-[10px] text-slate-400"><span>© 2026 IJOD EDU · IJOD AI ekotizimi</span><div className="flex flex-wrap items-center gap-4"><span>O‘rganish — bu sayohat.</span><Link href="/" className="inline-flex items-center gap-2 rounded-xl px-2 py-2 text-xs font-semibold text-slate-600 transition hover:bg-violet-50 hover:text-violet-700 lg:hidden"><Icon name="arrowLeft" className="h-4 w-4" /> IJOD AI ga qaytish</Link></div></footer>
+          <footer className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 py-6 text-[10px] text-slate-400"><span>© 2026 IJOD EDU · IJOD AI ekotizimi</span><div className="flex flex-wrap items-center gap-4"><span>O‘rganish — bu sayohat.</span><LanguageSelect className="sm:hidden" /><Link href="/" className="inline-flex items-center gap-2 rounded-xl px-2 py-2 text-xs font-semibold text-slate-600 transition hover:bg-violet-50 hover:text-violet-700 lg:hidden"><Icon name="arrowLeft" className="h-4 w-4" /> IJOD AI ga qaytish</Link></div></footer>
         </div>
       </main>
     </div>

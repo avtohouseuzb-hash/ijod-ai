@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   --background: #ffffff;
@@ -12,12 +13,6 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
 
 body {
   background: var(--background);
@@ -84,3 +79,64 @@ body {
   from { transform: scaleY(.58); }
   to { transform: scaleY(1.38); }
 }
+
+
+/* Intentional light/dark themes: dark mode is controlled only by the in-app toggle. */
+:root { color-scheme: light; --background: #f7f7fb; --foreground: #191923; }
+html.dark { color-scheme: dark; --background: #0b1020; --foreground: #e8edf7; }
+html.dark body { background: #0b1020 !important; color: #e8edf7 !important; }
+html.dark .min-h-screen { background-color: #0b1020 !important; color: #e8edf7 !important; }
+html.dark aside, html.dark header { background-color: #111a2b !important; border-color: #273449 !important; color: #e8edf7 !important; }
+html.dark main { color: #e8edf7; }
+html.dark main section:not(.ijod-tutor-promo):not([class*="bg-[#171326"]) { border-color: #273449; }
+html.dark main section.bg-white,
+html.dark main article.bg-white,
+html.dark main .bg-white:not(.ijod-keep-light) { background-color: #151f32 !important; color: #e8edf7 !important; border-color: #2b3a52 !important; }
+html.dark main [class*="text-gray-900"], html.dark main [class*="text-gray-800"],
+html.dark main [class*="text-slate-900"], html.dark main [class*="text-slate-800"],
+html.dark main [class*="text-[#191923]"] { color: #f1f5fb !important; }
+html.dark main [class*="text-gray-700"], html.dark main [class*="text-gray-600"],
+html.dark main [class*="text-gray-500"], html.dark main [class*="text-slate-700"],
+html.dark main [class*="text-slate-600"], html.dark main [class*="text-slate-500"] { color: #b8c5d8 !important; }
+html.dark main [class*="border-gray-"], html.dark main [class*="border-slate-"] { border-color: #2b3a52 !important; }
+html.dark input, html.dark textarea, html.dark select { background-color: #111a2b; color: #edf2fb; border-color: #34445e; }
+html.dark option { background: #111a2b; color: #edf2fb; }
+
+/* Tutor keeps its original light design in light mode and becomes a soft ink/violet panel in dark mode. */
+.ijod-tutor-promo { background: linear-gradient(135deg,#ffffff 0%,#f7f3ff 58%,#fbf4ff 100%); color: #191923; }
+.ijod-mood-panel { background: rgba(255,255,255,.82); color: #191923; }
+html.dark .ijod-tutor-promo { color: #e8edf7 !important; border-color: #33435e !important; background: linear-gradient(135deg,#172238 0%,#18243a 58%,#211c3a 100%) !important; }
+html.dark .ijod-tutor-promo h2, html.dark .ijod-tutor-promo h3 { color: #f8faff !important; }
+html.dark .ijod-tutor-promo p, html.dark .ijod-tutor-promo li { color: #c4d0e2 !important; }
+html.dark .ijod-mood-panel { background: #0f192b !important; border-color: #34435d !important; color: #f8faff !important; }
+html.dark .ijod-mood-panel .mood-face + p { color: #cbd5e1 !important; }
+
+/* Main CTA remains bright and clearly actionable in dark mode. */
+html.dark .ijod-primary-cta { background: #ffffff !important; color: #26183e !important; box-shadow: 0 8px 24px rgba(139,92,246,.22); }
+html.dark .ijod-primary-cta:hover { background: #eee7ff !important; }
+html.dark .ijod-secondary-cta { border-color: #53617a !important; color: #f4f0ff !important; background: rgba(255,255,255,.045) !important; }
+
+/* Telegram-like animated sun/moon preference control. */
+.ijod-theme-toggle { position: relative; overflow: hidden; }
+.ijod-theme-toggle svg { transition: transform 420ms cubic-bezier(.2,.8,.2,1), opacity 220ms ease; }
+.ijod-theme-toggle:active svg { transform: rotate(35deg) scale(.82); }
+.ijod-theme-toggle .ijod-sun-icon { animation: ijod-sun-enter 420ms cubic-bezier(.2,.8,.2,1) both; }
+.ijod-theme-toggle .ijod-moon-icon { animation: ijod-moon-enter 420ms cubic-bezier(.2,.8,.2,1) both; }
+@keyframes ijod-sun-enter { from { transform: rotate(-75deg) scale(.45); opacity: .25; } to { transform: rotate(0) scale(1); opacity: 1; } }
+@keyframes ijod-moon-enter { from { transform: rotate(75deg) scale(.45); opacity: .25; } to { transform: rotate(0) scale(1); opacity: 1; } }
+
+
+/* Dark-mode contrast fixes for homepage promotional sections and controls. */
+html.dark .ijod-tutor-promo { color: #e5e7eb !important; border-color: #334155 !important; background: linear-gradient(135deg,#111827 0%,#151a2b 55%,#1e1b35 100%) !important; }
+html.dark .ijod-tutor-promo h2,
+html.dark .ijod-tutor-promo h3 { color: #f8fafc !important; }
+html.dark .ijod-tutor-promo p,
+html.dark .ijod-tutor-promo li { color: #cbd5e1 !important; }
+html.dark .ijod-mood-panel { background: #111827 !important; border-color: #334155 !important; color: #f8fafc !important; }
+html.dark .ijod-mood-panel .mood-face { color: #6d28d9 !important; }
+html.dark .ijod-mood-panel .mood-face path,
+html.dark .ijod-mood-panel .mood-face circle { stroke: currentColor; }
+html.dark .ijod-mood-panel .mood-face [fill="#D69A19"],
+html.dark .ijod-mood-panel .mood-face [fill="#25243A"],
+html.dark .ijod-mood-panel .mood-face [fill="#F87171"] { fill: currentColor !important; }
+html.dark .ijod-mood-panel .mood-face + p { color: #cbd5e1 !important; }
