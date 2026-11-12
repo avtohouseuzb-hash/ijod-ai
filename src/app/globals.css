@@ -84,3 +84,38 @@ body {
   from { transform: scaleY(.58); }
   to { transform: scaleY(1.38); }
 }
+
+
+/* Shared dark theme for IJOD AI and IJOD EDU. */
+html.dark body { background: #0b1020 !important; color: #e5e7eb !important; }
+html.dark .min-h-screen { background-color: #0b1020 !important; color: #e5e7eb !important; }
+html.dark header,
+html.dark aside,
+html.dark [class*="bg-white"],
+html.dark [class*="bg-[#f7"],
+html.dark [class*="bg-slate-50"],
+html.dark [class*="bg-gray-50"] {
+  background-color: #111827 !important;
+  color: #e5e7eb !important;
+  border-color: #263244 !important;
+}
+html.dark [class*="text-gray-900"],
+html.dark [class*="text-gray-800"],
+html.dark [class*="text-slate-800"],
+html.dark [class*="text-slate-700"],
+html.dark [class*="text-[#191923]"],
+html.dark [class*="text-[#202033]"] { color: #e5e7eb !important; }
+html.dark [class*="text-gray-600"],
+html.dark [class*="text-gray-500"],
+html.dark [class*="text-slate-600"],
+html.dark [class*="text-slate-500"],
+html.dark [class*="text-slate-400"] { color: #aab6c8 !important; }
+html.dark [class*="border-gray-"],
+html.dark [class*="border-slate-"],
+html.dark [class*="border-[#eceaf5]"] { border-color: #263244 !important; }
+html.dark input,
+html.dark textarea,
+html.dark select { background-color: #0f172a; color: #e5e7eb; border-color: #334155; }
+html.dark option { background: #111827; color: #e5e7eb; }
+html.dark .bg-gradient-to-br,
+html.dark .bg-gradient-to-r { color: inherit; }
