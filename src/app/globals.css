@@ -133,12 +133,6 @@ html.dark .ijod-tutor-promo h3 { color: #f8fafc !important; }
 html.dark .ijod-tutor-promo p,
 html.dark .ijod-tutor-promo li { color: #cbd5e1 !important; }
 html.dark .ijod-mood-panel { background: #111827 !important; border-color: #334155 !important; color: #f8fafc !important; }
-html.dark .ijod-mood-panel .mood-face { color: #6d28d9 !important; }
-html.dark .ijod-mood-panel .mood-face path,
-html.dark .ijod-mood-panel .mood-face circle { stroke: currentColor; }
-html.dark .ijod-mood-panel .mood-face [fill="#D69A19"],
-html.dark .ijod-mood-panel .mood-face [fill="#25243A"],
-html.dark .ijod-mood-panel .mood-face [fill="#F87171"] { fill: currentColor !important; }
 html.dark .ijod-mood-panel .mood-face + p { color: #cbd5e1 !important; }
 
 
@@ -279,3 +273,73 @@ html.dark body [class~="bg-white/90"],
 html.dark body [class~="bg-white/95"] {
   background-color: rgb(17 26 43 / 94%) !important;
 }
+
+
+/* Route-wide polish: preserve each feature's identity while fixing legacy light surfaces. */
+html.dark body [class*="bg-[#fff"],
+html.dark body [class*="bg-[#faf"],
+html.dark body [class*="bg-[#f7"],
+html.dark body [class*="bg-[#f8"],
+html.dark body [class*="bg-[#f9"],
+html.dark body [class*="bg-white/"] {
+  background-color: #151f32 !important;
+}
+html.dark body [class*="text-[#1"],
+html.dark body [class*="text-[#2"],
+html.dark body [class*="text-black"] { color: #edf2fb !important; }
+html.dark body [class*="border-[#e"],
+html.dark body [class*="border-[#f"] { border-color: #2b3a52 !important; }
+html.dark body [class*="bg-violet-50"] { background-color: #241b3b !important; }
+html.dark body [class*="text-violet-700"],
+html.dark body [class*="text-violet-800"] { color: #c4a5ff !important; }
+html.dark body [class*="border-violet-"] { border-color: #6843a5 !important; }
+html.dark body [class*="bg-amber-50"] { background-color: #302714 !important; }
+html.dark body [class*="text-amber-800"],
+html.dark body [class*="text-amber-900"],
+html.dark body [class*="text-amber-950"] { color: #ffe3a3 !important; }
+html.dark body [class*="border-amber-"] { border-color: #80632c !important; }
+/* Mood artwork keeps its original individual pastel backgrounds and face colors. */
+html.dark .ijod-mood-panel .mood-face { color: inherit !important; }
+html.dark .ijod-mood-panel .mood-face path,
+html.dark .ijod-mood-panel .mood-face circle { stroke: revert; }
+html.dark .ijod-mood-panel .mood-face [fill] { fill: revert; }
+/* Keep premium pricing recognizably warm, not washed out or unreadable. */
+html.dark .ijod-plan-business {
+  background: linear-gradient(145deg,#2c2517 0%,#211d16 55%,#302713 100%) !important;
+  color: #fff1cc !important;
+  border-color: #80632c !important;
+}
+html.dark .ijod-plan-business h2 { color: #ffedbd !important; }
+html.dark .ijod-plan-business .ijod-plan-muted { color: #d6c7a7 !important; }
+html.dark .ijod-plan-business .ijod-plan-credit {
+  background: #3a2d16 !important;
+  border-color: #80632c !important;
+}
+html.dark .ijod-plan-business .ijod-plan-credit span { color: #ffdc8b !important; }
+html.dark .ijod-plan-business .ijod-plan-buy {
+  background: linear-gradient(90deg,#f3b83e,#f8d56b) !important;
+  color: #38250a !important;
+  border-color: #e6b84c !important;
+}
+/* Shared controls on routes that do not have the main navigation drawer. */
+.ijod-route-preferences {
+  position: fixed;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 94%);
+  box-shadow: 0 8px 28px rgb(15 23 42 / 14%);
+  backdrop-filter: blur(14px);
+}
+html.dark .ijod-route-preferences {
+  border-color: #34445e;
+  background: rgb(17 26 43 / 94%);
+}
+.ijod-route-preferences .ijod-theme-toggle { background: transparent; border: 0; box-shadow: none; }
+.ijod-route-preferences .ijod-language-select > button { border: 0; background: transparent; box-shadow: none; }
