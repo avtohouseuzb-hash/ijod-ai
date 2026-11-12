@@ -139,7 +139,7 @@ export default function Home() {
           <span className="pl-1 text-[9px] tracking-[.18em] text-gray-400">CREATIVE SUPERAPP</span>
         </a>
 
-        <div className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.18em] text-gray-400">MENYU</div>
+        <div className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.18em] text-gray-400 dark:text-slate-400">MENYU</div>
         <nav className="space-y-1">
           {menu.map((item) => (
             <button
@@ -180,12 +180,24 @@ export default function Home() {
 
       {mobileMenuOpen && <div className="fixed inset-0 z-40 lg:hidden">
         <button aria-label="Menyuni yopish" onClick={() => setMobileMenuOpen(false)} className="absolute inset-0 bg-black/30" />
-        <aside className="absolute inset-y-0 left-0 flex w-[min(84vw,300px)] flex-col overflow-y-auto overscroll-contain touch-pan-y bg-white px-5 py-6 shadow-2xl">
-          <div className="mb-8 flex items-center justify-between"><div className="flex items-center gap-2"><img src="/ijod-logo-v2.svg" alt="IJOD AI" className="h-11 w-[105px] object-contain" /></div><button onClick={() => setMobileMenuOpen(false)} aria-label="Yopish" className="rounded-lg px-3 py-1 text-2xl text-gray-500">×</button></div>
+        <aside className="absolute inset-y-0 left-0 flex w-[min(84vw,340px)] flex-col overflow-y-auto overscroll-contain touch-pan-y border-r border-slate-200 bg-white px-5 py-6 text-slate-900 shadow-2xl dark:border-slate-800 dark:bg-slate-950 dark:text-white">
+          <div className="mb-8 flex items-center justify-between"><div className="flex items-center gap-2"><img src="/ijod-logo-v2.svg" alt="IJOD AI" className="h-11 w-[105px] object-contain dark:brightness-0 dark:invert" /></div><button onClick={() => setMobileMenuOpen(false)} aria-label="Yopish" className="rounded-lg px-3 py-1 text-2xl text-gray-500 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800">×</button></div>
           <div className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.18em] text-gray-400">MENYU</div>
-          <nav className="space-y-1">{menu.map((item) => <button key={item.name} onClick={() => { if (item.name === "AI News") { window.location.href = "/news"; return; } if (item.name === "IJOD EDU") { window.location.href = "/edu"; return; } setActive(item.name); setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); }} className={"flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium " + (active === item.name ? "bg-violet-50 text-violet-700" : "text-gray-600 hover:bg-gray-50")}><span className="w-5 text-center text-lg">{item.icon}</span>{item.name}{item.name === "AI vositalar" && <span className="ml-auto text-xs text-gray-400">{tools.length}</span>}</button>)}</nav>
-          <div className="mt-8 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-700 p-4 text-white"><div className="mb-2 text-xl">✦</div><div className="text-sm font-bold">Tasavvuringizni yarating</div><p className="mt-1 text-xs leading-5 text-violet-100">AI yordamida g‘oyalaringizni hayotga olib keling.</p><button onClick={() => { setActive("AI vositalar"); setMobileMenuOpen(false); document.getElementById("tools")?.scrollIntoView({ behavior: "smooth" }); }} className="mt-4 rounded-lg bg-white px-3 py-2 text-xs font-bold text-violet-700">Boshlash →</button></div>
-          <div className="mt-auto border-t border-gray-100 pt-4"><div className="mb-2 px-2 text-sm font-semibold">{userEmail || "Mehmon"}</div>{userEmail ? <button onClick={handleSignOut} className="w-full rounded-xl px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-50">Hisobdan chiqish</button> : <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-50">Kirish / Ro‘yxatdan o‘tish ↗</Link>}</div>
+          <nav className="space-y-1">{menu.map((item) => <button key={item.name} onClick={() => { if (item.name === "AI News") { window.location.href = "/news"; return; } if (item.name === "IJOD EDU") { window.location.href = "/edu"; return; } setActive(item.name); setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); }} className={"flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium " + (active === item.name ? "bg-violet-50 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300" : "text-gray-600 hover:bg-gray-50 dark:text-slate-200 dark:hover:bg-slate-900")}><span className="w-5 text-center text-lg">{item.icon}</span>{item.name}{item.name === "AI vositalar" && <span className="ml-auto text-xs text-gray-400">{tools.length}</span>}</button>)}</nav>
+          <div className="mt-8 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-700 p-4 text-white shadow-lg shadow-violet-900/15"><div className="mb-2 text-xl">✦</div><div className="text-sm font-bold">Tasavvuringizni yarating</div><p className="mt-1 text-xs leading-5 text-violet-100">AI yordamida g‘oyalaringizni hayotga olib keling.</p><button onClick={() => { setActive("AI vositalar"); setMobileMenuOpen(false); document.getElementById("tools")?.scrollIntoView({ behavior: "smooth" }); }} className="mt-4 rounded-lg bg-white px-3 py-2 text-xs font-bold text-violet-700">Boshlash →</button></div>
+          <div className="mt-auto pt-8">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900">
+              <div className="mb-3 px-1 text-[10px] font-bold uppercase tracking-[.16em] text-slate-500 dark:text-slate-400">KO‘RINISH VA TIL</div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="min-w-0"><div className="mb-1.5 px-1 text-[11px] font-medium text-slate-600 dark:text-slate-300">Rejim</div><ThemeToggle className="h-11 w-full rounded-xl dark:border-slate-700 dark:bg-slate-800" /></div>
+                <div className="min-w-0"><div className="mb-1.5 px-1 text-[11px] font-medium text-slate-600 dark:text-slate-300">Til</div><LanguageSelect className="w-full" /></div>
+              </div>
+            </div>
+            <div className="mt-3 border-t border-gray-100 pt-3 dark:border-slate-800">
+              <div className="mb-2 px-2 text-sm font-semibold text-slate-800 dark:text-white">{userEmail || "Mehmon"}</div>
+              {userEmail ? <button onClick={handleSignOut} className="w-full rounded-xl px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-50 dark:text-slate-200 dark:hover:bg-slate-900">Hisobdan chiqish</button> : <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-50 dark:text-violet-300 dark:hover:bg-violet-500/10">Kirish / Ro‘yxatdan o‘tish ↗</Link>}
+            </div>
+          </div>
         </aside>
       </div>}
       <main className="min-h-screen lg:ml-[250px]">
@@ -195,16 +207,16 @@ export default function Home() {
             <img src="/ijod-logo-v2.svg?v=3" alt="IJOD AI" className="h-11 w-[112px] object-contain object-left" />
           </div>
           <div className="hidden text-sm text-gray-400 lg:block">Ijod qiling <span className="mx-2">/</span> <span className="font-semibold text-gray-800">{active}</span></div>
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="hidden items-center gap-2 sm:gap-3 lg:flex">
             <ThemeToggle />
-            <LanguageSelect className="w-[76px] sm:w-[142px]" />
-            <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-gray-200 px-2 py-2 text-[11px] text-gray-600 sm:gap-2 sm:px-3 sm:text-xs">
+            <LanguageSelect className="w-[142px]" />
+            <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-gray-200 px-3 py-2 text-xs text-gray-600 dark:border-slate-700 dark:text-slate-200">
               <span className="text-amber-500">✦</span> {credits === null ? "— kredit" : `${credits} kredit`}
             </div>
             {userEmail ? (
               <div className="flex items-center gap-2">
                 <span className="hidden max-w-[180px] truncate text-xs text-gray-500 sm:block">{userEmail}</span>
-                <button onClick={handleSignOut} className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-semibold text-gray-700 transition hover:border-violet-300 hover:text-violet-700">Chiqish</button>
+                <button onClick={handleSignOut} className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-semibold text-gray-700 transition hover:border-violet-300 hover:text-violet-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">Chiqish</button>
               </div>
             ) : (
               <Link href="/login" className="rounded-xl bg-[#191923] px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-violet-700">{authLoading ? "Tekshirilmoqda..." : "Kirish ↗"}</Link>
