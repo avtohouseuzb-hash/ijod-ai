@@ -201,10 +201,10 @@ export default function Home() {
         </aside>
       </div>}
       <main className="min-h-screen lg:ml-[250px]">
-        <header className="sticky top-0 z-10 flex h-[72px] items-center justify-between border-b border-gray-200/80 bg-white/90 px-5 backdrop-blur-xl sm:px-8">
+        <header className="sticky top-0 z-10 flex h-[72px] items-center justify-between border-b border-gray-200/80 bg-white/90 px-5 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/95 sm:px-8">
           <div className="flex items-center gap-3 lg:hidden">
-            <button type="button" aria-label="Menyuni ochish" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen((v) => !v)} className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-xl text-gray-800 shadow-sm">{mobileMenuOpen ? "×" : "☰"}</button>
-            <img src="/ijod-logo-v2.svg?v=3" alt="IJOD AI" className="h-11 w-[112px] object-contain object-left" />
+            <button type="button" aria-label="Menyuni ochish" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen((v) => !v)} className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-xl text-gray-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white">{mobileMenuOpen ? "×" : "☰"}</button>
+            <img src="/ijod-logo-v2.svg?v=3" alt="IJOD AI" className="h-11 w-[112px] object-contain object-left dark:brightness-0 dark:invert" />
           </div>
           <div className="hidden text-sm text-gray-400 lg:block">Ijod qiling <span className="mx-2">/</span> <span className="font-semibold text-gray-800">{active}</span></div>
           <div className="hidden items-center gap-2 sm:gap-3 lg:flex">
