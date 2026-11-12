@@ -417,7 +417,7 @@ export default function Home() {
                 { name: "Pro", price: "29 000", credits: 60, unit: "483 so‘m / kredit", desc: "Ko‘proq ijod, yaxshiroq qiymat", featured: true, style: "pro" },
                 { name: "Business", price: "59 000", credits: 130, unit: "454 so‘m / kredit", desc: "Faol ijodkorlar va biznes uchun", featured: false, style: "business" },
               ].map((plan) => (
-                <article key={plan.name} className={"group relative flex flex-col rounded-3xl border bg-white p-6 transition-all duration-300 ease-out hover:-translate-y-2 hover:scale-[1.025] hover:shadow-2xl motion-reduce:transform-none " +
+                <article key={plan.name} className={"group relative flex flex-col rounded-3xl border bg-white p-6 transition-all duration-300 ease-out hover:-translate-y-2 hover:scale-[1.025] hover:shadow-2xl motion-reduce:transform-none " + (plan.style === "business" ? "ijod-plan-business " : "") +
                   (plan.style === "mini" ? "border-gray-200 shadow-sm" :
                    plan.style === "start" ? "border-sky-200 shadow-md shadow-sky-100/70 hover:border-sky-400 hover:shadow-sky-200/70" :
                    plan.style === "pro" ? "border-violet-500 shadow-xl shadow-violet-100 ring-1 ring-violet-500 hover:border-violet-600 hover:shadow-violet-300/70" :
@@ -430,7 +430,7 @@ export default function Home() {
                     <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-300 via-yellow-500 to-amber-300" />
                   </>}
                   <h2 className={"relative text-lg font-bold " + (plan.style === "business" ? "text-amber-950" : "")}>{plan.name}</h2>
-                  <p className="relative mt-2 text-sm text-gray-500">{plan.desc}</p>
+                  <p className={"relative mt-2 text-sm " + (plan.style === "business" ? "ijod-plan-muted text-gray-500" : "text-gray-500")}>{plan.desc}</p>
                   <div className="relative mt-6 flex items-baseline gap-1"><span className={"text-3xl font-black tracking-tight " + (plan.style === "business" ? "bg-gradient-to-r from-amber-700 to-yellow-600 bg-clip-text text-transparent" : "")}>{plan.price}</span><span className="text-sm text-gray-500">so‘m</span></div>
                   <div className={"relative mt-4 rounded-xl px-4 py-3 " + (plan.style === "business" ? "border border-amber-200 bg-gradient-to-r from-amber-100 to-yellow-50" : plan.style === "start" ? "bg-sky-50" : "bg-violet-50")}><span className={"text-2xl font-black " + (plan.style === "business" ? "text-amber-700" : plan.style === "start" ? "text-sky-700" : "text-violet-700")}>{plan.credits}</span><span className={"ml-2 text-sm font-semibold " + (plan.style === "business" ? "text-amber-800" : plan.style === "start" ? "text-sky-700" : "text-violet-700")}>kredit</span></div>
                   <p className="relative mt-3 text-xs text-gray-500">{plan.unit}</p>
