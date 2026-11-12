@@ -119,3 +119,13 @@ html.dark select { background-color: #0f172a; color: #e5e7eb; border-color: #334
 html.dark option { background: #111827; color: #e5e7eb; }
 html.dark .bg-gradient-to-br,
 html.dark .bg-gradient-to-r { color: inherit; }
+
+
+/* Telegram-like animated sun/moon preference control. */
+.ijod-theme-toggle { position: relative; overflow: hidden; }
+.ijod-theme-toggle svg { transition: transform 420ms cubic-bezier(.2,.8,.2,1), opacity 220ms ease; }
+.ijod-theme-toggle:active svg { transform: rotate(35deg) scale(.82); }
+.ijod-theme-toggle .ijod-sun-icon { animation: ijod-sun-enter 420ms cubic-bezier(.2,.8,.2,1) both; }
+.ijod-theme-toggle .ijod-moon-icon { animation: ijod-moon-enter 420ms cubic-bezier(.2,.8,.2,1) both; }
+@keyframes ijod-sun-enter { from { transform: rotate(-75deg) scale(.45); opacity: .25; } to { transform: rotate(0) scale(1); opacity: 1; } }
+@keyframes ijod-moon-enter { from { transform: rotate(75deg) scale(.45); opacity: .25; } to { transform: rotate(0) scale(1); opacity: 1; } }
