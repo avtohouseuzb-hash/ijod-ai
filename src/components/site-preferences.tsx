@@ -74,8 +74,8 @@ export function LanguageSelect({ className = "" }: { className?: string }) {
       </button>
       {open && (
         <>
-          <button aria-label="Til menyusini yopish" className="fixed inset-0 z-40 cursor-default" onClick={() => setOpen(false)} />
-          <div className="absolute top-full left-0 z-50 mt-2 w-full min-w-[160px] overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl shadow-slate-900/10 dark:border-slate-700 dark:bg-slate-900">
+          <button aria-label="Til menyusini yopish" className="fixed inset-0 z-[90] cursor-default" onClick={() => setOpen(false)} />
+          <div className="absolute top-full right-0 z-[100] mt-2 w-max min-w-[176px] overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl shadow-slate-900/10 dark:border-slate-700 dark:bg-slate-900">
             {(["uz", "ru", "en"] as Language[]).map(option => (
               <button key={option} type="button" onClick={() => changeLanguage(option)} className={"flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-xs font-semibold transition " + (language === option ? "bg-violet-50 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300" : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800")}>
                 {languageNames[option]}
