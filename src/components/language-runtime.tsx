@@ -334,6 +334,7 @@ const translations: Record<"ru" | "en", Record<string, string>> = {
 };
 
 const originalText = new WeakMap<Text, string>();
+const originalAttributes = new WeakMap<Element, Record<string, string>>();
 
 export function LanguageRuntime() {
   useEffect(() => {
@@ -354,8 +355,23 @@ export function LanguageRuntime() {
       }
     };
 
+    const translateAttributes = (element: Element) => {
+      const names = ["placeholder", "title", "aria-label"];
+      const saved = originalAttributes.get(element) ?? {};
+      for (const name of names) {
+        const current = element.getAttribute(name);
+        if (current === null) continue;
+        if (saved[name] === undefined) saved[name] = current;
+        const source = saved[name].trim();
+        const next = language === "uz" ? saved[name] : translations[language][source];
+        if (next !== undefined && current !== next) element.setAttribute(name, next);
+      }
+      originalAttributes.set(element, saved);
+    };
+
     const scan = (root: Node) => {
       if (root.nodeType === Node.TEXT_NODE) { translate(root as Text); return; }
+      if (root.nodeType === Node.ELEMENT_NODE) translateAttributes(root as Element);
       root.childNodes.forEach(scan);
     };
 
@@ -363,10 +379,11 @@ export function LanguageRuntime() {
     const observer = new MutationObserver(records => {
       for (const record of records) {
         if (record.type === "characterData" && record.target.nodeType === Node.TEXT_NODE) translate(record.target as Text);
+        if (record.type === "attributes" && record.target.nodeType === Node.ELEMENT_NODE) translateAttributes(record.target as Element);
         record.addedNodes.forEach(scan);
       }
     });
-    observer.observe(document.body, { childList: true, characterData: true, subtree: true });
+    observer.observe(document.body, { childList: true, characterData: true, attributes: true, attributeFilter: ["placeholder", "title", "aria-label"], subtree: true });
 
     const onLanguageChange = (event: Event) => {
       const next = (event as CustomEvent<"uz" | "ru" | "en">).detail;
