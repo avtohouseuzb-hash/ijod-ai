@@ -75,7 +75,7 @@ export default function EduPage() {
   const [planError, setPlanError] = useState("");
   const [planTitle, setPlanTitle] = useState("");
   const [planSubject, setPlanSubject] = useState("Matematika");
-  const [planDate, setPlanDate] = useState(() => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0,16); });
+  const [planDate, setPlanDate] = useState("");
   const [planDuration, setPlanDuration] = useState("30");
   const [planNotes, setPlanNotes] = useState("");
   const [planSaving, setPlanSaving] = useState(false);
@@ -102,6 +102,11 @@ export default function EduPage() {
   }, [activeBoardText]);
   useEffect(() => {
     if (section !== "planner") return;
+    if (!planDate) {
+      const now = new Date();
+      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+      setPlanDate(now.toISOString().slice(0, 16));
+    }
     let cancelled = false;
     async function loadPlans() {
       setPlanLoading(true); setPlanError("");
