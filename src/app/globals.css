@@ -140,3 +140,142 @@ html.dark .ijod-mood-panel .mood-face [fill="#D69A19"],
 html.dark .ijod-mood-panel .mood-face [fill="#25243A"],
 html.dark .ijod-mood-panel .mood-face [fill="#F87171"] { fill: currentColor !important; }
 html.dark .ijod-mood-panel .mood-face + p { color: #cbd5e1 !important; }
+
+
+/* --------------------------------------------------------------------------
+   IJOD AI: shared dark theme for every route and category.
+   Keep brand gradients / colored status surfaces intact; only neutral UI
+   surfaces, typography, borders, fields and overlays are remapped.
+   -------------------------------------------------------------------------- */
+html.dark body {
+  background: #0b1020 !important;
+  color: #e8edf7 !important;
+}
+html.dark body [class~="bg-white"],
+html.dark body [class~="bg-gray-50"],
+html.dark body [class~="bg-gray-100"],
+html.dark body [class~="bg-slate-50"],
+html.dark body [class~="bg-slate-100"],
+html.dark body [class~="bg-neutral-50"],
+html.dark body [class~="bg-neutral-100"],
+html.dark body [class~="bg-zinc-50"],
+html.dark body [class~="bg-zinc-100"] {
+  background-color: #151f32 !important;
+  color: #e8edf7 !important;
+}
+html.dark body [class~="bg-gray-200"],
+html.dark body [class~="bg-slate-200"],
+html.dark body [class~="bg-neutral-200"],
+html.dark body [class~="bg-zinc-200"] {
+  background-color: #26344a !important;
+  color: #e8edf7 !important;
+}
+html.dark body [class~="text-black"],
+html.dark body [class~="text-gray-950"],
+html.dark body [class~="text-gray-900"],
+html.dark body [class~="text-gray-800"],
+html.dark body [class~="text-gray-700"],
+html.dark body [class~="text-slate-950"],
+html.dark body [class~="text-slate-900"],
+html.dark body [class~="text-slate-800"],
+html.dark body [class~="text-slate-700"],
+html.dark body [class~="text-neutral-950"],
+html.dark body [class~="text-neutral-900"],
+html.dark body [class~="text-neutral-800"],
+html.dark body [class~="text-zinc-950"],
+html.dark body [class~="text-zinc-900"],
+html.dark body [class~="text-zinc-800"] {
+  color: #f1f5fb !important;
+}
+html.dark body [class~="text-gray-600"],
+html.dark body [class~="text-gray-500"],
+html.dark body [class~="text-gray-400"],
+html.dark body [class~="text-slate-600"],
+html.dark body [class~="text-slate-500"],
+html.dark body [class~="text-slate-400"],
+html.dark body [class~="text-neutral-700"],
+html.dark body [class~="text-neutral-600"],
+html.dark body [class~="text-neutral-500"],
+html.dark body [class~="text-zinc-700"],
+html.dark body [class~="text-zinc-600"],
+html.dark body [class~="text-zinc-500"] {
+  color: #b8c5d8 !important;
+}
+html.dark body [class~="border-gray-100"],
+html.dark body [class~="border-gray-200"],
+html.dark body [class~="border-gray-300"],
+html.dark body [class~="border-slate-100"],
+html.dark body [class~="border-slate-200"],
+html.dark body [class~="border-slate-300"],
+html.dark body [class~="border-neutral-100"],
+html.dark body [class~="border-neutral-200"],
+html.dark body [class~="border-zinc-100"],
+html.dark body [class~="border-zinc-200"] {
+  border-color: #2b3a52 !important;
+}
+html.dark body [class~="divide-gray-100"] > :not([hidden]) ~ :not([hidden]),
+html.dark body [class~="divide-gray-200"] > :not([hidden]) ~ :not([hidden]),
+html.dark body [class~="divide-slate-100"] > :not([hidden]) ~ :not([hidden]),
+html.dark body [class~="divide-slate-200"] > :not([hidden]) ~ :not([hidden]) {
+  border-color: #2b3a52 !important;
+}
+html.dark body input:not([type="checkbox"]):not([type="radio"]),
+html.dark body textarea,
+html.dark body select {
+  background-color: #111a2b;
+  color: #edf2fb;
+  border-color: #34445e;
+}
+html.dark body input::placeholder,
+html.dark body textarea::placeholder {
+  color: #8291a8;
+  opacity: 1;
+}
+html.dark body option {
+  background: #111a2b;
+  color: #edf2fb;
+}
+html.dark body table thead,
+html.dark body [class*="bg-gray-50/"],
+html.dark body [class*="bg-slate-50/"] {
+  background-color: #111a2b !important;
+}
+html.dark body [class~="hover:bg-gray-50"]:hover,
+html.dark body [class~="hover:bg-gray-100"]:hover,
+html.dark body [class~="hover:bg-slate-50"]:hover,
+html.dark body [class~="hover:bg-slate-100"]:hover {
+  background-color: #202c40 !important;
+}
+html.dark body [class~="placeholder-gray-400"]::placeholder,
+html.dark body [class~="placeholder-slate-400"]::placeholder {
+  color: #8291a8 !important;
+}
+html.dark body [class~="shadow-sm"],
+html.dark body [class~="shadow-md"],
+html.dark body [class~="shadow-lg"] {
+  --tw-shadow-color: rgb(0 0 0 / 28%);
+}
+html.dark body [class~="ring-gray-100"],
+html.dark body [class~="ring-gray-200"],
+html.dark body [class~="ring-slate-100"],
+html.dark body [class~="ring-slate-200"] {
+  --tw-ring-color: #34445e !important;
+}
+/* Neutral arbitrary-color backgrounds used by legacy route wrappers. */
+html.dark body [class~="bg-[#f7f7fb]"],
+html.dark body [class~="bg-[#f8fafc]"],
+html.dark body [class~="bg-[#fafafa]"],
+html.dark body [class~="bg-[#ffffff]"],
+html.dark body [class~="bg-[#fff]"] {
+  background-color: #0b1020 !important;
+}
+html.dark body [class~="text-[#191923]"],
+html.dark body [class~="text-[#111827]"],
+html.dark body [class~="text-[#1f2937]"] {
+  color: #e8edf7 !important;
+}
+html.dark body [class~="bg-white/80"],
+html.dark body [class~="bg-white/90"],
+html.dark body [class~="bg-white/95"] {
+  background-color: rgb(17 26 43 / 94%) !important;
+}
