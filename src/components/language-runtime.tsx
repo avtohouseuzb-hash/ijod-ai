@@ -261,6 +261,8 @@ const translations: Record<"ru" | "en", Record<string, string>> = {
     "Har bir muvaffaqiyatli rasm yaratish 1 kredit ishlatadi. Xatolik bo‘lsa, kredit qaytarishga harakat qilinadi.": "Каждое успешное создание изображения расходует 1 кредит. При ошибке мы постараемся вернуть кредит.",
     "Kredit tekshirilmoqda...": "Проверяем кредиты...",
     "Kirish →": "Войти →",
+    "✨ Rasm yaratish": "✨ Создать изображение",
+    "Masalan: O‘zbekistondagi zamonaviy qahvaxona uchun reklama rasmi, iliq quyosh nuri, realistik fotografiya...": "Например: рекламное изображение современной кофейни в Узбекистане, тёплый солнечный свет, реалистичная фотография...",
   },
   "en": {
     "Bosh sahifa": "Home",
@@ -582,6 +584,8 @@ export function LanguageRuntime() {
     "Har bir muvaffaqiyatli rasm yaratish 1 kredit ishlatadi. Xatolik bo‘lsa, kredit qaytarishga harakat qilinadi.": "Each successful image generation uses 1 credit. If an error occurs, we will try to refund the credit.",
     "Kredit tekshirilmoqda...": "Checking credits...",
     "Kirish →": "Sign in →",
+    "✨ Rasm yaratish": "✨ Generate image",
+    "Masalan: O‘zbekistondagi zamonaviy qahvaxona uchun reklama rasmi, iliq quyosh nuri, realistik fotografiya...": "For example: an ad image for a modern café in Uzbekistan, warm sunlight, realistic photography...",
   }, []);
 
   return null;
