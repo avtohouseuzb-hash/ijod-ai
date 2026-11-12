@@ -286,28 +286,34 @@ export default function Home() {
                     const faceColor = mood === "kind" ? "#DB2777" : mood === "happy" ? "#D69A19" : mood === "angry" ? "#E5484D" : mood === "thinking" ? "#0284C7" : mood === "sleepy" ? "#6366F1" : "#7C3AED";
                     return <div key={label} className="text-center">
                       <div className={"mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border shadow-sm " + style}>
-                        <svg viewBox="0 0 80 80" className={"h-10 w-10 mood-face mood-" + mood} aria-hidden="true" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{color: faceColor}}>
-                          {mood === "kind" ? <>
-                            <path d="M25 31 C16 20 7 34 25 47 C43 34 34 20 25 31Z M55 31 C46 20 37 34 55 47 C73 34 64 20 55 31Z" fill="currentColor" stroke="none"/>
-                            <path d="M27 49 Q40 62 53 49" stroke="currentColor" strokeWidth="5"/>
-                          </> : mood === "happy" ? <>
-                            <path d="M23 25 L27 34 L36 38 L27 42 L23 51 L19 42 L10 38 L19 34Z M57 25 L61 34 L70 38 L61 42 L57 51 L53 42 L44 38 L53 34Z" fill="currentColor" stroke="none"/>
-                            <path d="M25 47 Q40 65 55 47" stroke="currentColor" strokeWidth="5"/>
-                          </> : mood === "angry" ? <>
-                            <path d="M17 27 L34 34 M63 27 L46 34" stroke="currentColor" strokeWidth="6"/>
-                            <circle cx="27" cy="39" r="4" fill="currentColor"/><circle cx="53" cy="39" r="4" fill="currentColor"/>
+                        <svg viewBox="0 0 80 80" className={"h-10 w-10 mood-face mood-" + mood} aria-hidden="true" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{color:faceColor}}>
+                          {mood === "neutral" && <>
+                            <g className="mood-eyes"><circle cx="25" cy="34" r="4.5" fill="currentColor"/><circle cx="55" cy="34" r="4.5" fill="currentColor"/></g>
+                            <path d="M29 48 Q40 55 51 48" stroke="currentColor" strokeWidth="5"/>
+                          </>}
+                          {mood === "kind" && <>
+                            <g className="mood-heart-eyes"><path d="M25 25 C15 16 7 29 25 44 C43 29 35 16 25 25Z M55 25 C45 16 37 29 55 44 C73 29 65 16 55 25Z" fill="currentColor" stroke="none"/></g>
+                            <path d="M27 47 Q40 62 53 47" stroke="currentColor" strokeWidth="5"/>
+                          </>}
+                          {mood === "happy" && <>
+                            <g className="mood-sparkle"><path d="M22 20 L27 31 L38 36 L27 41 L22 52 L17 41 L6 36 L17 31Z M58 20 L63 31 L74 36 L63 41 L58 52 L53 41 L42 36 L53 31Z" fill="currentColor" stroke="none"/></g>
+                            <path d="M25 45 Q40 64 55 45" stroke="currentColor" strokeWidth="5"/>
+                          </>}
+                          {mood === "angry" && <>
+                            <path className="mood-brows" d="M15 25 L34 33 M65 25 L46 33" stroke="currentColor" strokeWidth="6"/>
+                            <circle cx="27" cy="39" r="4.5" fill="currentColor"/><circle cx="53" cy="39" r="4.5" fill="currentColor"/>
                             <path d="M27 57 Q40 43 53 57" stroke="currentColor" strokeWidth="5"/>
-                          </> : mood === "thinking" ? <>
-                            <circle cx="26" cy="35" r="4" fill="currentColor"/><circle cx="54" cy="35" r="4" fill="currentColor"/>
-                            <circle cx="20" cy="17" r="3" fill="currentColor"/><circle cx="40" cy="11" r="3" fill="currentColor"/><circle cx="60" cy="17" r="3" fill="currentColor"/>
-                            <path d="M34 51 Q40 47 47 50" stroke="currentColor" strokeWidth="5"/>
-                          </> : mood === "sleepy" ? <>
-                            <path d="M17 37 Q27 47 37 37 M43 37 Q53 47 63 37" stroke="currentColor" strokeWidth="5"/>
-                            <path d="M34 53 Q40 57 46 53" stroke="currentColor" strokeWidth="4"/>
-                            <path d="M61 14 L69 14 L62 23 L70 23" stroke="currentColor" strokeWidth="3"/>
-                          </> : <>
+                            <path d="M8 10 L13 18 L21 20 L13 24 L8 32 L4 24 L0 20 L4 18Z M72 10 L76 18 L80 20 L76 24 L72 32 L68 24 L60 20 L68 18Z" fill="#F87171" opacity=".8"/>
+                          </>}
+                          {mood === "thinking" && <>
+                            <g className="mood-dots" fill="currentColor"><circle cx="20" cy="15" r="3"/><circle cx="40" cy="10" r="3"/><circle cx="60" cy="15" r="3"/></g>
                             <circle cx="27" cy="36" r="4.5" fill="currentColor"/><circle cx="53" cy="36" r="4.5" fill="currentColor"/>
-                            <path d="M30 51 Q40 58 50 51" stroke="currentColor" strokeWidth="5"/>
+                            <path d="M34 52 Q40 47 47 51" stroke="currentColor" strokeWidth="5"/>
+                          </>}
+                          {mood === "sleepy" && <>
+                            <path d="M17 36 Q27 46 37 36 M43 36 Q53 46 63 36" stroke="currentColor" strokeWidth="5"/>
+                            <path d="M34 53 Q40 57 46 53" stroke="currentColor" strokeWidth="4"/>
+                            <g className="mood-zzz" stroke="currentColor" strokeWidth="3"><path d="M60 12 L70 12 L61 23 L71 23"/></g>
                           </>}
                         </svg>
                       </div>
