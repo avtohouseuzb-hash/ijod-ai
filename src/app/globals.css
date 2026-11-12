@@ -284,9 +284,10 @@ html.dark body [class*="bg-[#f9"],
 html.dark body [class*="bg-white/"] {
   background-color: #151f32 !important;
 }
-html.dark body [class*="text-[#1"],
-html.dark body [class*="text-[#2"],
-html.dark body [class*="text-black"] { color: #edf2fb !important; }
+html.dark body [class~="text-[#191923]"],
+html.dark body [class~="text-[#111827]"],
+html.dark body [class~="text-[#1f2937]"],
+html.dark body [class~="text-black"] { color: #edf2fb !important; }
 html.dark body [class*="border-[#e"],
 html.dark body [class*="border-[#f"] { border-color: #2b3a52 !important; }
 html.dark body [class*="bg-violet-50"] { background-color: #241b3b !important; }
