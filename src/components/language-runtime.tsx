@@ -347,8 +347,8 @@ export function LanguageRuntime() {
       if (!trimmed) return;
       const replacement = language === "uz" ? original : translations[language][trimmed];
       if (replacement !== undefined) {
-        const leading = original.match(/^\\s*/)?.[0] ?? "";
-        const trailing = original.match(/\\s*$/)?.[0] ?? "";
+        const leading = original.match(/^\s*/)?.[0] ?? "";
+        const trailing = original.match(/\s*$/)?.[0] ?? "";
         const nextText = language === "uz" ? original : leading + replacement + trailing;
         if (node.textContent !== nextText) node.textContent = nextText;
       }
