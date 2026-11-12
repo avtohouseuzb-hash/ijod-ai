@@ -23,6 +23,7 @@ const en: Record<string, string> = {
 };
 
 const translations = { ru, en };
+const originalText = new WeakMap<Text, string>();
 
 export function LanguageRuntime() {
   useEffect(() => {
@@ -31,7 +32,7 @@ export function LanguageRuntime() {
     document.documentElement.lang = language;
 
     const translate = (node: Text) => {
-      const original = node.dataset.ijodOriginal ?? (node.dataset.ijodOriginal = node.textContent ?? "");
+      const original = originalText.get(node) ?? (originalText.set(node, node.textContent ?? ""), node.textContent ?? "");
       const trimmed = original.trim();
       if (!trimmed) return;
       const replacement = language === "uz" ? original : translations[language][trimmed];
