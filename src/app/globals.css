@@ -344,3 +344,26 @@ html.dark .ijod-route-preferences {
 }
 .ijod-route-preferences .ijod-theme-toggle { background: transparent; border: 0; box-shadow: none; }
 .ijod-route-preferences .ijod-language-select > button { border: 0; background: transparent; box-shadow: none; }
+
+
+/* Original six AI tutor faces: visible, colorful and animated in both themes. */
+.ijod-mood-panel .mood-face { display:block; overflow:visible; opacity:1 !important; visibility:visible !important; }
+.ijod-mood-panel .mood-neutral { animation: ijod-face-blink 4s ease-in-out infinite; transform-origin:center; }
+.ijod-mood-panel .mood-kind .mood-heart-eyes { transform-box:fill-box; transform-origin:center; animation: ijod-heartbeat 1.35s ease-in-out infinite; }
+.ijod-mood-panel .mood-happy .mood-sparkle { transform-box:fill-box; transform-origin:center; animation: ijod-sparkle 1.8s ease-in-out infinite; }
+.ijod-mood-panel .mood-angry { animation: ijod-angry-shake 2.4s ease-in-out infinite; }
+.ijod-mood-panel .mood-angry .mood-brows { transform-box:fill-box; transform-origin:center; animation: ijod-brow-pulse 2.4s ease-in-out infinite; }
+.ijod-mood-panel .mood-thinking .mood-dots circle { animation: ijod-think-dot 1.1s ease-in-out infinite; }
+.ijod-mood-panel .mood-thinking .mood-dots circle:nth-child(2) { animation-delay:.18s; }
+.ijod-mood-panel .mood-thinking .mood-dots circle:nth-child(3) { animation-delay:.36s; }
+.ijod-mood-panel .mood-sleepy { animation: ijod-sleep-breathe 3.2s ease-in-out infinite; }
+.ijod-mood-panel .mood-sleepy .mood-zzz { animation: ijod-zzz 1.8s ease-in-out infinite; transform-origin:center; }
+@keyframes ijod-face-blink { 0%,44%,50%,100%{transform:scaleY(1)} 47%{transform:scaleY(.12)} }
+@keyframes ijod-heartbeat { 0%,100%{transform:scale(1)} 18%{transform:scale(1.17)} 34%{transform:scale(1)} 48%{transform:scale(1.1)} }
+@keyframes ijod-sparkle { 0%,100%{opacity:.65;transform:rotate(0) scale(.88)} 50%{opacity:1;transform:rotate(12deg) scale(1.08)} }
+@keyframes ijod-angry-shake { 0%,84%,100%{transform:translateX(0)} 88%{transform:translateX(-2px) rotate(-3deg)} 92%{transform:translateX(2px) rotate(3deg)} }
+@keyframes ijod-brow-pulse { 0%,100%{transform:translateY(0)} 50%{transform:translateY(2px)} }
+@keyframes ijod-think-dot { 0%,70%,100%{opacity:.3;transform:translateY(1px)} 35%{opacity:1;transform:translateY(-2px)} }
+@keyframes ijod-sleep-breathe { 0%,100%{transform:scale(1)} 50%{transform:scale(.94)} }
+@keyframes ijod-zzz { 0%,100%{opacity:.55;transform:translateY(1px)} 50%{opacity:1;transform:translateY(-3px)} }
+@media (prefers-reduced-motion:reduce) { .ijod-mood-panel .mood-face,.ijod-mood-panel .mood-face * { animation:none !important; } }
