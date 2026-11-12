@@ -248,7 +248,7 @@ const translations: Record<"ru" | "en", Record<string, string>> = {
     "SHAXSIY O‘SISH": "ЛИЧНЫЙ ПРОГРЕСС",
     "Mening natijalarim": "Мои результаты",
     "O‘quv jarayoning va fanlar bo‘yicha o‘zlashtirish holati.": "Твой учебный процесс и успеваемость по предметам.",
-    "O‘rganish — bu sayohat.": "Обучение — это путешествие."
+    "O‘rganish — bu sayohat.": "Обучение — это путешествие.",
     "Rasm tavsifi": "Описание изображения",
     "Rasm yaratish": "Создать изображение",
     "Rasm yaratilmoqda...": "Создаём изображение...",
@@ -508,6 +508,20 @@ const translations: Record<"ru" | "en", Record<string, string>> = {
     "Mening natijalarim": "My results",
     "O‘quv jarayoning va fanlar bo‘yicha o‘zlashtirish holati.": "Your learning progress and subject performance.",
     "O‘rganish — bu sayohat.": "Learning is a journey."
+    "Rasm tavsifi": "Image description",
+    "Rasm yaratish": "Generate image",
+    "Rasm yaratilmoqda...": "Generating image...",
+    "Rasm yaratishda xatolik yuz berdi.": "An error occurred while generating the image.",
+    "Rasm natijasi bo‘sh qaytdi.": "The image result was empty.",
+    "Hisobingiz tekshirilmoqda...": "Checking your account...",
+    "IJOD AI’ga kiring": "Sign in to IJOD AI",
+    "AI Rasm vositasidan foydalanish uchun hisobingizga kiring.": "Sign in to use the AI image tool.",
+    "Rasmni yuklab olish": "Download image",
+    "Har bir muvaffaqiyatli rasm yaratish 1 kredit ishlatadi. Xatolik bo‘lsa, kredit qaytarishga harakat qilinadi.": "Each successful image generation uses 1 credit. If an error occurs, we will try to refund the credit.",
+    "Kredit tekshirilmoqda...": "Checking credits...",
+    "Kirish →": "Sign in →",
+    "✨ Rasm yaratish": "✨ Generate image",
+    "Masalan: O‘zbekistondagi zamonaviy qahvaxona uchun reklama rasmi, iliq quyosh nuri, realistik fotografiya...": "For example: an ad image for a modern café in Uzbekistan, warm sunlight, realistic photography...",
   }
 };
 
@@ -572,20 +586,6 @@ export function LanguageRuntime() {
     };
     window.addEventListener("ijod-language-change", onLanguageChange);
     return () => { observer.disconnect(); window.removeEventListener("ijod-language-change", onLanguageChange); };
-    "Rasm tavsifi": "Image description",
-    "Rasm yaratish": "Generate image",
-    "Rasm yaratilmoqda...": "Generating image...",
-    "Rasm yaratishda xatolik yuz berdi.": "An error occurred while generating the image.",
-    "Rasm natijasi bo‘sh qaytdi.": "The image result was empty.",
-    "Hisobingiz tekshirilmoqda...": "Checking your account...",
-    "IJOD AI’ga kiring": "Sign in to IJOD AI",
-    "AI Rasm vositasidan foydalanish uchun hisobingizga kiring.": "Sign in to use the AI image tool.",
-    "Rasmni yuklab olish": "Download image",
-    "Har bir muvaffaqiyatli rasm yaratish 1 kredit ishlatadi. Xatolik bo‘lsa, kredit qaytarishga harakat qilinadi.": "Each successful image generation uses 1 credit. If an error occurs, we will try to refund the credit.",
-    "Kredit tekshirilmoqda...": "Checking credits...",
-    "Kirish →": "Sign in →",
-    "✨ Rasm yaratish": "✨ Generate image",
-    "Masalan: O‘zbekistondagi zamonaviy qahvaxona uchun reklama rasmi, iliq quyosh nuri, realistik fotografiya...": "For example: an ad image for a modern café in Uzbekistan, warm sunlight, realistic photography...",
   }, []);
 
   return null;
