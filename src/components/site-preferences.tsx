@@ -68,14 +68,14 @@ export function LanguageSelect({ className = "" }: { className?: string }) {
       >
         <span className="flex min-w-0 items-center gap-2.5">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-50 text-[10px] font-extrabold tracking-wide text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">{language.toUpperCase()}</span>
-          <span>{languageNames[language]}</span>
+          <span className="hidden truncate sm:inline">{languageNames[language]}</span>
         </span>
         <svg viewBox="0 0 20 20" className={"h-4 w-4 shrink-0 text-slate-400 transition-transform " + (open ? "rotate-180" : "")} fill="none" stroke="currentColor" strokeWidth="1.7"><path d="m5 7.5 5 5 5-5" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>
       {open && (
         <>
           <button aria-label="Til menyusini yopish" className="fixed inset-0 z-40 cursor-default" onClick={() => setOpen(false)} />
-          <div className="absolute bottom-full left-0 z-50 mb-2 w-full min-w-[160px] overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl shadow-slate-900/10 dark:border-slate-700 dark:bg-slate-900">
+          <div className="absolute top-full left-0 z-50 mt-2 w-full min-w-[160px] overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl shadow-slate-900/10 dark:border-slate-700 dark:bg-slate-900">
             {(["uz", "ru", "en"] as Language[]).map(option => (
               <button key={option} type="button" onClick={() => changeLanguage(option)} className={"flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-xs font-semibold transition " + (language === option ? "bg-violet-50 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300" : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800")}>
                 {languageNames[option]}
