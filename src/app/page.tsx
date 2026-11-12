@@ -276,22 +276,44 @@ export default function Home() {
                 <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">AI suhbatchi kayfiyatlari</h3>
                 <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-6">
                   {[
-                    ["neutral","Neytral","bg-violet-50 text-violet-700 border-violet-100"],
-                    ["kind","Mehribon","bg-pink-50 text-pink-600 border-pink-100"],
-                    ["happy","Xursand","bg-amber-50 text-amber-600 border-amber-100"],
-                    ["angry","Jahli chiqqan","bg-red-50 text-red-600 border-red-100"],
-                    ["thinking","O‘ylayapti","bg-sky-50 text-sky-700 border-sky-100"],
-                    ["sleepy","Dam olyapti","bg-indigo-50 text-indigo-600 border-indigo-100"],
-                  ].map(([mood,label,style]) => <div key={label} className="text-center"><div className={"mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border shadow-sm " + style}>
-                    <svg viewBox="0 0 80 80" className={"h-9 w-9 mood-face mood-" + mood} aria-hidden="true" fill="none" strokeLinecap="round" strokeLinejoin="round">
-                      {mood === "angry" && <path d="M18 25 L34 31 M62 25 L46 31" stroke="#25243A" strokeWidth="5"/>}
-                      {mood === "sleepy" ? <path d="M19 34 Q27 40 35 34 M45 34 Q53 40 61 34" stroke="currentColor" strokeWidth="5" /> : mood === "kind" ? <path d="M22 29 C16 22 7 32 22 43 C37 32 28 22 22 29Z M58 29 C52 22 43 32 58 43 C73 32 64 22 58 29Z" fill="currentColor"/> : mood === "happy" ? <g fill="#D69A19"><path d="M17 27l3 6 6 3-6 3-3 6-3-6-6-3 6-3z"/><path d="M63 27l3 6 6 3-6 3-3 6-3-6-6-3 6-3z"/></g> : <g fill="#25243A"><circle cx="26" cy="34" r="5"/><circle cx="54" cy="34" r="5"/></g>}
-                      <path d={mood === "neutral" ? "M32 44 Q40 50 48 44" : mood === "kind" ? "M29 41 Q40 55 51 41" : mood === "happy" ? "M27 39 Q40 58 53 39" : mood === "angry" ? "M30 50 Q40 40 50 50" : mood === "thinking" ? "M34 46 Q40 42 47 45" : "M34 46 Q40 49 46 46"} stroke="#25243A" strokeWidth="4.5"/>
-                      
-                      {mood === "angry" && <path d="M8 10 L13 18 L21 20 L13 24 L8 32 L4 24 L0 20 L4 18Z M72 10 L76 18 L80 20 L76 24 L72 32 L68 24 L60 20 L68 18Z" fill="#F87171" opacity=".8"/>}
-                      {mood === "thinking" && <g fill="currentColor" stroke="none"><circle cx="20" cy="15" r="2"/><circle cx="40" cy="10" r="2"/><circle cx="60" cy="15" r="2"/></g>}
-                    </svg>
-                  </div><p className="mt-2 text-[10px] font-semibold text-slate-700 dark:text-slate-300">{label}</p></div>)}
+                    ["neutral","Neytral","bg-violet-50 border-violet-200"],
+                    ["kind","Mehribon","bg-pink-50 border-pink-200"],
+                    ["happy","Xursand","bg-amber-50 border-amber-200"],
+                    ["angry","Jahli chiqqan","bg-red-50 border-red-200"],
+                    ["thinking","O‘ylayapti","bg-sky-50 border-sky-200"],
+                    ["sleepy","Dam olyapti","bg-indigo-50 border-indigo-200"],
+                  ].map(([mood,label,style]) => {
+                    const faceColor = mood === "kind" ? "#DB2777" : mood === "happy" ? "#D69A19" : mood === "angry" ? "#E5484D" : mood === "thinking" ? "#0284C7" : mood === "sleepy" ? "#6366F1" : "#7C3AED";
+                    return <div key={label} className="text-center">
+                      <div className={"mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border shadow-sm " + style}>
+                        <svg viewBox="0 0 80 80" className={"h-10 w-10 mood-face mood-" + mood} aria-hidden="true" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{color: faceColor}}>
+                          {mood === "kind" ? <>
+                            <path d="M25 31 C16 20 7 34 25 47 C43 34 34 20 25 31Z M55 31 C46 20 37 34 55 47 C73 34 64 20 55 31Z" fill="currentColor" stroke="none"/>
+                            <path d="M27 49 Q40 62 53 49" stroke="currentColor" strokeWidth="5"/>
+                          </> : mood === "happy" ? <>
+                            <path d="M23 25 L27 34 L36 38 L27 42 L23 51 L19 42 L10 38 L19 34Z M57 25 L61 34 L70 38 L61 42 L57 51 L53 42 L44 38 L53 34Z" fill="currentColor" stroke="none"/>
+                            <path d="M25 47 Q40 65 55 47" stroke="currentColor" strokeWidth="5"/>
+                          </> : mood === "angry" ? <>
+                            <path d="M17 27 L34 34 M63 27 L46 34" stroke="currentColor" strokeWidth="6"/>
+                            <circle cx="27" cy="39" r="4" fill="currentColor"/><circle cx="53" cy="39" r="4" fill="currentColor"/>
+                            <path d="M27 57 Q40 43 53 57" stroke="currentColor" strokeWidth="5"/>
+                          </> : mood === "thinking" ? <>
+                            <circle cx="26" cy="35" r="4" fill="currentColor"/><circle cx="54" cy="35" r="4" fill="currentColor"/>
+                            <circle cx="20" cy="17" r="3" fill="currentColor"/><circle cx="40" cy="11" r="3" fill="currentColor"/><circle cx="60" cy="17" r="3" fill="currentColor"/>
+                            <path d="M34 51 Q40 47 47 50" stroke="currentColor" strokeWidth="5"/>
+                          </> : mood === "sleepy" ? <>
+                            <path d="M17 37 Q27 47 37 37 M43 37 Q53 47 63 37" stroke="currentColor" strokeWidth="5"/>
+                            <path d="M34 53 Q40 57 46 53" stroke="currentColor" strokeWidth="4"/>
+                            <path d="M61 14 L69 14 L62 23 L70 23" stroke="currentColor" strokeWidth="3"/>
+                          </> : <>
+                            <circle cx="27" cy="36" r="4.5" fill="currentColor"/><circle cx="53" cy="36" r="4.5" fill="currentColor"/>
+                            <path d="M30 51 Q40 58 50 51" stroke="currentColor" strokeWidth="5"/>
+                          </>}
+                        </svg>
+                      </div>
+                      <p className="mt-2 text-[10px] font-semibold text-slate-700 dark:text-slate-300">{label}</p>
+                    </div>;
+                  })}
                 </div>
                 <p className="mt-4 text-center text-xs text-gray-500 dark:text-slate-400">Suhbat ohangiga qarab AI belgisi ham o‘zgaradi.</p>
               </div>
