@@ -129,3 +129,19 @@ html.dark .bg-gradient-to-r { color: inherit; }
 .ijod-theme-toggle .ijod-moon-icon { animation: ijod-moon-enter 420ms cubic-bezier(.2,.8,.2,1) both; }
 @keyframes ijod-sun-enter { from { transform: rotate(-75deg) scale(.45); opacity: .25; } to { transform: rotate(0) scale(1); opacity: 1; } }
 @keyframes ijod-moon-enter { from { transform: rotate(75deg) scale(.45); opacity: .25; } to { transform: rotate(0) scale(1); opacity: 1; } }
+
+
+/* Dark-mode contrast fixes for homepage promotional sections and controls. */
+html.dark .ijod-tutor-promo { color: #e5e7eb !important; border-color: #334155 !important; background: linear-gradient(135deg,#111827 0%,#151a2b 55%,#1e1b35 100%) !important; }
+html.dark .ijod-tutor-promo h2,
+html.dark .ijod-tutor-promo h3 { color: #f8fafc !important; }
+html.dark .ijod-tutor-promo p,
+html.dark .ijod-tutor-promo li { color: #cbd5e1 !important; }
+html.dark .ijod-mood-panel { background: #111827 !important; border-color: #334155 !important; color: #f8fafc !important; }
+html.dark .ijod-mood-panel .mood-face { color: #6d28d9 !important; }
+html.dark .ijod-mood-panel .mood-face path,
+html.dark .ijod-mood-panel .mood-face circle { stroke: currentColor; }
+html.dark .ijod-mood-panel .mood-face [fill="#D69A19"],
+html.dark .ijod-mood-panel .mood-face [fill="#25243A"],
+html.dark .ijod-mood-panel .mood-face [fill="#F87171"] { fill: currentColor !important; }
+html.dark .ijod-mood-panel .mood-face + p { color: #cbd5e1 !important; }
