@@ -4,475 +4,335 @@ import { useEffect } from "react";
 
 type Language = "uz" | "ru" | "en";
 
-const ru: Record<string, string> = {
-  "Bosh sahifa":"Главная","Tariflar":"Тарифы","AI vositalar":"AI-инструменты","AI News":"Новости AI","Mening loyihalarim":"Мои проекты","Sevimlilar":"Избранное","IJOD EDU":"IJOD EDU","Ijod qiling":"Творите","Kirish":"Войти","Mehmon":"Гость","Hisob ulanmagan":"Аккаунт не подключён",
-  "Sun’iy intellekt — yangi ijod davri":"Искусственный интеллект — новая эра творчества","G‘oyangizni":"Превратите вашу","ijodga":"идею","aylantiring.":"в творчество.","Rasm, video, ovoz va matn yaratish uchun barcha AI vositalari — bitta platformada.":"Все AI-инструменты для создания изображений, видео, голоса и текста — на одной платформе.","Ijodni boshlash":"Начать творить","Qanday ishlaydi?":"Как это работает?","Tasvir":"Изображение","Video":"Видео","Ovoz":"Голос",
-  "YANGI · AI LANGUAGE TUTOR":"НОВОЕ · AI-РЕПЕТИТОР ЯЗЫКОВ","AI Ustoz — sizning shaxsiy til o‘qituvchingiz":"AI-Наставник — ваш личный преподаватель языков","Ingliz va rus tilini o‘zingizga mos ohangda o‘rganing: ustoz, do‘st, hazilkash yoki professional mentor bilan suhbatlashing.":"Изучайте английский и русский в удобном для вас формате: общайтесь с наставником, другом или профессиональным ментором.","✓ Qiziqarli suhbat va real mavzular":"✓ Живое общение и реальные темы","✓ Xatolarni tuzatish va o‘zbekcha tushuntirish":"✓ Исправление ошибок и объяснения на узбекском","✓ So‘zlar, grammatika va darajaga mos mashqlar":"✓ Слова, грамматика и упражнения по уровню","✓ A1–C1 darajalar":"✓ Уровни A1–C1","AI Ustozni ochish →":"Открыть AI-Наставника →","AI suhbatchi kayfiyatlari":"Настроение AI-собеседника","Neytral":"Нейтральный","Mehribon":"Дружелюбный","Xursand":"Радостный","Jahli chiqqan":"Сердитый","O‘ylayapti":"Думает","Dam olyapti":"Отдыхает","Suhbat ohangiga qarab AI belgisi ham o‘zgaradi.":"Выражение AI меняется в зависимости от тона беседы",
-  "Tasavvuringizni yarating":"Воплотите своё воображение","AI yordamida g‘oyalaringizni hayotga olib keling.":"Воплощайте свои идеи с помощью AI.","Boshlash →":"Начать →","CREATIVE SUPERAPP":"ТВОРЧЕСКАЯ СУПЕРПЛАТФОРМА","AI Rasm":"AI Изображения","AI Ovoz":"AI Голос","AI Matn":"AI Текст","AI Dizayn":"AI Дизайн","AI Tarjima":"AI Перевод","Mashhur":"Популярное","Yangi":"Новое","Biznes":"Бизнес",
-  "Vositalarni qidiring...":"Поиск инструментов...","Qidirish...":"Поиск...","Natijalar":"Результаты","Barcha":"Все","Barchasi":"Все","Batafsil":"Подробнее","Ko‘proq":"Ещё","Orqaga":"Назад","Saqlash":"Сохранить","Bekor qilish":"Отмена","Yuborish":"Отправить","Yuklash":"Загрузить","Yuklanmoqda...":"Загрузка...","Tayyor":"Готово","Yangi loyiha":"Новый проект","Kredit":"Кредит","kredit":"кредит","Kreditlar":"Кредиты","Kredit sotib olish":"Купить кредиты","Profil":"Профиль","Sozlamalar":"Настройки","Chiqish":"Выйти","Ro‘yxatdan o‘tish":"Регистрация","Hisobga kirish":"Войти в аккаунт","Boshlash":"Начать","Bepul boshlash":"Начать бесплатно","Barcha huquqlar himoyalangan.":"Все права защищены.","O‘zbekistonda yaratilgan":"Создано в Узбекистане","Qanday yordam bera olaman?":"Чем я могу помочь?","Mavjud emas":"Недоступно","Xatolik yuz berdi":"Произошла ошибка",
-  "AI vositalari":"AI-инструменты","O‘zingizga mos tarifni tanlang":"Выберите подходящий тариф","Kreditlarni xarid qiling va ularni AI vositalarida o‘zingizga kerakli natijalarni yaratish uchun ishlating.":"Покупайте кредиты и используйте их для создания нужных результатов с помощью AI-инструментов.","Tarifni tanlash":"Выбрать тариф","Kreditlar qanday sarflanadi?":"Как расходуются кредиты?","SHAXSIY RO‘YXAT":"ЛИЧНЫЙ СПИСОК","Tez-tez ishlatadigan AI vositalaringizni keyinroq tez topish uchun shu yerda saqlash mumkin. Hozircha sevimlilarga qo‘shilgan vosita yo‘q.":"Здесь можно сохранять часто используемые AI-инструменты. Пока избранных инструментов нет."
+const translations: Record<"ru" | "en", Record<string, string>> = {
+  "ru": {
+    "Bosh sahifa": "Главная",
+    "Tariflar": "Тарифы",
+    "AI vositalar": "AI-инструменты",
+    "AI News": "Новости AI",
+    "Mening loyihalarim": "Мои проекты",
+    "Sevimlilar": "Избранное",
+    "IJOD EDU": "IJOD EDU",
+    "Ijod qiling": "Творите",
+    "Kirish": "Войти",
+    "Mehmon": "Гость",
+    "Hisob ulanmagan": "Аккаунт не подключён",
+    "Sun’iy intellekt — yangi ijod davri": "Искусственный интеллект — новая эра творчества",
+    "G‘oyangizni": "Превратите вашу",
+    "ijodga": "идею",
+    "aylantiring.": "в творчество.",
+    "Rasm, video, ovoz va matn yaratish uchun barcha AI vositalari — bitta platformada.": "Все AI-инструменты для создания изображений, видео, голоса и текста — на одной платформе.",
+    "Ijodni boshlash": "Начать творить",
+    "Qanday ishlaydi?": "Как это работает?",
+    "Tasvir": "Изображение",
+    "Video": "Видео",
+    "Ovoz": "Голос",
+    "YANGI · AI LANGUAGE TUTOR": "НОВОЕ · AI-РЕПЕТИТОР ЯЗЫКОВ",
+    "AI Ustoz — sizning shaxsiy til o‘qituvchingiz": "AI-Наставник — ваш личный преподаватель языков",
+    "Ingliz va rus tilini o‘zingizga mos ohangda o‘rganing: ustoz, do‘st, hazilkash yoki professional mentor bilan suhbatlashing.": "Изучайте английский и русский в удобном для вас формате: общайтесь с наставником, другом или профессиональным ментором.",
+    "✓ Qiziqarli suhbat va real mavzular": "✓ Живое общение и реальные темы",
+    "✓ Xatolarni tuzatish va o‘zbekcha tushuntirish": "✓ Исправление ошибок и объяснения на узбекском",
+    "✓ So‘zlar, grammatika va darajaga mos mashqlar": "✓ Слова, грамматика и упражнения по уровню",
+    "✓ A1–C1 darajalar": "✓ Уровни A1–C1",
+    "AI Ustozni ochish →": "Открыть AI-Наставника →",
+    "AI suhbatchi kayfiyatlari": "Настроение AI-собеседника",
+    "Neytral": "Нейтральный",
+    "Mehribon": "Дружелюбный",
+    "Xursand": "Радостный",
+    "Jahli chiqqan": "Сердитый",
+    "O‘ylayapti": "Думает",
+    "Dam olyapti": "Отдыхает",
+    "Suhbat ohangiga qarab AI belgisi ham o‘zgaradi.": "Выражение AI меняется в зависимости от тона беседы.",
+    "Tasavvuringizni yarating": "Воплотите своё воображение",
+    "AI yordamida g‘oyalaringizni hayotga olib keling.": "Воплощайте свои идеи с помощью AI.",
+    "Boshlash →": "Начать →",
+    "CREATIVE SUPERAPP": "ТВОРЧЕСКАЯ СУПЕРПЛАТФОРМА",
+    "AI Rasm": "AI Изображения",
+    "AI Ovoz": "AI Голос",
+    "AI Matn": "AI Текст",
+    "AI Dizayn": "AI Дизайн",
+    "AI Tarjima": "AI Перевод",
+    "Mashhur": "Популярное",
+    "Yangi": "Новое",
+    "Biznes": "Бизнес",
+    "Vositalarni qidiring...": "Поиск инструментов...",
+    "Qidirish...": "Поиск...",
+    "Natijalar": "Результаты",
+    "Barcha": "Все",
+    "Barchasi": "Все",
+    "Batafsil": "Подробнее",
+    "Ko‘proq": "Ещё",
+    "Orqaga": "Назад",
+    "Saqlash": "Сохранить",
+    "Bekor qilish": "Отмена",
+    "Yuborish": "Отправить",
+    "Yuklash": "Загрузить",
+    "Yuklanmoqda...": "Загрузка...",
+    "Tayyor": "Готово",
+    "Yangi loyiha": "Новый проект",
+    "Kredit": "Кредит",
+    "kredit": "кредит",
+    "Kreditlar": "Кредиты",
+    "Kredit sotib olish": "Купить кредиты",
+    "Profil": "Профиль",
+    "Sozlamalar": "Настройки",
+    "Chiqish": "Выйти",
+    "Ro‘yxatdan o‘tish": "Регистрация",
+    "Hisobga kirish": "Войти в аккаунт",
+    "Boshlash": "Начать",
+    "Bepul boshlash": "Начать бесплатно",
+    "Barcha huquqlar himoyalangan.": "Все права защищены.",
+    "O‘zbekistonda yaratilgan": "Создано в Узбекистане",
+    "Qanday yordam bera olaman?": "Чем я могу помочь?",
+    "Mavjud emas": "Недоступно",
+    "Xatolik yuz berdi": "Произошла ошибка",
+    "O‘zingizga mos tarifni tanlang": "Выберите подходящий тариф",
+    "Kreditlarni xarid qiling va ularni AI vositalarida o‘zingizga kerakli natijalarni yaratish uchun ishlating.": "Покупайте кредиты и используйте их для создания нужных результатов с помощью AI-инструментов.",
+    "Tarifni tanlash": "Выбрать тариф",
+    "Kreditlar qanday sarflanadi?": "Как расходуются кредиты?",
+    "SHAXSIY RO‘YXAT": "ЛИЧНЫЙ СПИСОК",
+    "Tez-tez ishlatadigan AI vositalaringizni keyinroq tez topish uchun shu yerda saqlash mumkin. Hozircha sevimlilarga qo‘shilgan vosita yo‘q.": "Здесь можно сохранять часто используемые AI-инструменты. Пока избранных инструментов нет.",
+    "O‘QUV MARKAZI": "УЧЕБНЫЙ ЦЕНТР",
+    "Har kuni oz-ozdan": "Понемногу каждый день",
+    "Kichik qadamlar katta natijaga olib boradi.": "Маленькие шаги ведут к большим результатам.",
+    "Haftalik maqsad · 62%": "Недельная цель · 62%",
+    "IJOD AI ga qaytish": "Вернуться в IJOD AI",
+    "MAKTAB": "ШКОЛА",
+    "O‘quv rejasi": "Учебный план",
+    "Reja": "План",
+    "Sening shaxsiy AI ustozing": "Твой личный AI-наставник",
+    "Bilim sari har bir qadam": "Каждый шаг к знаниям",
+    "muhim.": "важен.",
+    "Mavzularni tushun, savollaringni ber va o‘z tezligingda rivojlan. IJOD EDU doim yoningda.": "Разбирайся в темах, задавай вопросы и развивайся в своём темпе. IJOD EDU всегда рядом.",
+    "AI Ustoz bilan o‘rganish": "Учиться с AI-наставником",
+    "Vazifalarimni ko‘rish": "Мои задания",
+    "BUGUNGI NATIJA": "РЕЗУЛЬТАТ СЕГОДНЯ",
+    "Haftalik faollik": "Активность за неделю",
+    "Faollik hali qayd etilmagan": "Активность пока не зафиксирована",
+    "Bajarilgan vazifalar": "Выполненные задания",
+    "O‘rganilgan fanlar": "Изученные предметы",
+    "Fan tanlab dars boshlang": "Выберите предмет и начните урок",
+    "O‘ZINGGA MOS TANLA": "ВЫБЕРИ СВОЁ",
+    "Qaysi fandan boshlaymiz?": "С какого предмета начнём?",
+    "Fan kartasini tanlab, o‘rganishni boshlashing mumkin.": "Выбери карточку предмета и начни обучение.",
+    "O‘zlashtirish": "Успеваемость",
+    "BUGUNGI REJA": "ПЛАН НА СЕГОДНЯ",
+    "Kichik qadamlar, katta natija": "Маленькие шаги — большой результат",
+    "Barchasi →": "Все →",
+    "Hozircha sizga vazifa biriktirilmagan. Darslik yoki AI Ustoz orqali o‘rganishni boshlang.": "Пока заданий нет. Начните обучение с учебника или AI-наставника.",
+    "AI USTOZ TAVSIYASI": "СОВЕТ AI-НАСТАВНИКА",
+    "Tushunmagan joyingni so‘rashdan qo‘rqma.": "Не бойся спрашивать о том, что непонятно.",
+    "AI Ustoz mavzuni senga mos tezlikda, sodda misollar bilan tushuntirishga yordam beradi.": "AI-наставник объяснит тему в удобном для тебя темпе и на простых примерах.",
+    "Ustoz bilan suhbatlashish": "Поговорить с наставником",
+    "SHAXSIY YORDAMCHI": "ЛИЧНЫЙ ПОМОЩНИК",
+    "Salom! Men sening AI Ustozingman.": "Привет! Я твой AI-наставник.",
+    "Qaysi mavzu qiyin bo‘lyapti? Birgalikda, bosqichma-bosqich o‘rganamiz.": "Какая тема вызывает трудности? Давай разберём её вместе, шаг за шагом.",
+    "FANNI TANLANG": "ВЫБЕРИТЕ ПРЕДМЕТ",
+    "Ustoz bilan suhbat": "Разговор с наставником",
+    "Savolingni yoz yoki tayyor mavzulardan birini tanla.": "Напиши вопрос или выбери одну из предложенных тем.",
+    "Bugun nimani o‘rganamiz?": "Что будем изучать сегодня?",
+    "Savolingni yubor yoki quyidagi takliflardan birini tanla.": "Отправь вопрос или выбери один из вариантов ниже.",
+    "INTERAKTIV DOSKA": "ИНТЕРАКТИВНАЯ ДОСКА",
+    "Ustoz tushuntirishni boshlaganda yozuvlar shu doskada jonli paydo bo‘ladi.": "Когда наставник начнёт объяснять, записи будут появляться здесь.",
+    "Enter — yuborish · Shift + Enter — yangi qator": "Enter — отправить · Shift + Enter — новая строка",
+    "AI Ustoz javoblari tanlangan fan va sinf darajasiga moslashtiriladi.": "Ответы AI-наставника адаптируются к предмету и классу.",
+    "TOPSHIRIQLAR MARKAZI": "ЦЕНТР ЗАДАНИЙ",
+    "Uy vazifalarim": "Мои домашние задания",
+    "Bajargan ishing rasmini yukla. AI tekshiradi va faqat to‘g‘ri bajarilgan vazifani tasdiqlaydi.": "Загрузи фото выполненной работы. AI проверит его и подтвердит только правильно выполненное задание.",
+    "Hozircha uy vazifalari biriktirilmagan.": "Домашние задания пока не назначены.",
+    "Rasm tanlash": "Выбрать изображение",
+    "BILIMLAR KUTUBXONASI": "БИБЛИОТЕКА ЗНАНИЙ",
+    "Darsliklar va mavzular": "Учебники и темы",
+    "SHAXSIY REJALASHTIRISH": "ЛИЧНОЕ ПЛАНИРОВАНИЕ",
+    "Mening o‘quv rejam": "Мой учебный план",
+    "Darslaringni rejalashtir, bajarilganini belgilab bor. Rejalaring faqat o‘z hisobingda saqlanadi.": "Планируй занятия и отмечай выполненное. Планы сохраняются только в твоём аккаунте.",
+    "Yangi dars qo‘shish": "Добавить урок",
+    "Dars nomi": "Название урока",
+    "Fan": "Предмет",
+    "Sana va vaqt": "Дата и время",
+    "Davomiyligi": "Продолжительность",
+    "15 daqiqa": "15 минут",
+    "30 daqiqa": "30 минут",
+    "45 daqiqa": "45 минут",
+    "1 soat": "1 час",
+    "1,5 soat": "1,5 часа",
+    "2 soat": "2 часа",
+    "Izoh (ixtiyoriy)": "Примечание (необязательно)",
+    "Rejalashtirilgan darslar": "Запланированные уроки",
+    "Rejalar yuklanmoqda…": "Загрузка планов…",
+    "Hozircha rejangiz bo‘sh": "Пока ваш план пуст",
+    "Chap tomondagi shakl orqali birinchi darsingizni qo‘shing.": "Добавьте первый урок с помощью формы слева.",
+    "O‘chirish": "Удалить",
+    "SHAXSIY O‘SISH": "ЛИЧНЫЙ ПРОГРЕСС",
+    "Mening natijalarim": "Мои результаты",
+    "O‘quv jarayoning va fanlar bo‘yicha o‘zlashtirish holati.": "Твой учебный процесс и успеваемость по предметам.",
+    "O‘rganish — bu sayohat.": "Обучение — это путешествие."
+  },
+  "en": {
+    "Bosh sahifa": "Home",
+    "Tariflar": "Plans",
+    "AI vositalar": "AI tools",
+    "AI News": "AI News",
+    "Mening loyihalarim": "My projects",
+    "Sevimlilar": "Favorites",
+    "IJOD EDU": "IJOD EDU",
+    "Ijod qiling": "Create",
+    "Kirish": "Sign in",
+    "Mehmon": "Guest",
+    "Hisob ulanmagan": "Account not connected",
+    "Sun’iy intellekt — yangi ijod davri": "Artificial intelligence — a new era of creativity",
+    "G‘oyangizni": "Turn your",
+    "ijodga": "idea",
+    "aylantiring.": "into creative work.",
+    "Rasm, video, ovoz va matn yaratish uchun barcha AI vositalari — bitta platformada.": "All the AI tools for creating images, video, voice and text — in one platform.",
+    "Ijodni boshlash": "Start creating",
+    "Qanday ishlaydi?": "How it works?",
+    "Tasvir": "Image",
+    "Video": "Video",
+    "Ovoz": "Voice",
+    "YANGI · AI LANGUAGE TUTOR": "NEW · AI LANGUAGE TUTOR",
+    "AI Ustoz — sizning shaxsiy til o‘qituvchingiz": "AI Tutor — your personal language teacher",
+    "Ingliz va rus tilini o‘zingizga mos ohangda o‘rganing: ustoz, do‘st, hazilkash yoki professional mentor bilan suhbatlashing.": "Learn English and Russian your way: talk with a tutor, a friend, or a professional mentor.",
+    "✓ Qiziqarli suhbat va real mavzular": "✓ Engaging conversations and real-world topics",
+    "✓ Xatolarni tuzatish va o‘zbekcha tushuntirish": "✓ Error correction and explanations in Uzbek",
+    "✓ So‘zlar, grammatika va darajaga mos mashqlar": "✓ Vocabulary, grammar and level-based exercises",
+    "✓ A1–C1 darajalar": "✓ A1–C1 levels",
+    "AI Ustozni ochish →": "Open AI Tutor →",
+    "AI suhbatchi kayfiyatlari": "AI companion moods",
+    "Neytral": "Neutral",
+    "Mehribon": "Friendly",
+    "Xursand": "Happy",
+    "Jahli chiqqan": "Angry",
+    "O‘ylayapti": "Thinking",
+    "Dam olyapti": "Resting",
+    "Suhbat ohangiga qarab AI belgisi ham o‘zgaradi.": "The AI expression changes with the conversation tone.",
+    "Tasavvuringizni yarating": "Bring your imagination to life",
+    "AI yordamida g‘oyalaringizni hayotga olib keling.": "Bring your ideas to life with AI.",
+    "Boshlash →": "Get started →",
+    "CREATIVE SUPERAPP": "CREATIVE SUPERAPP",
+    "AI Rasm": "AI Images",
+    "AI Ovoz": "AI Voice",
+    "AI Matn": "AI Text",
+    "AI Dizayn": "AI Design",
+    "AI Tarjima": "AI Translation",
+    "Mashhur": "Popular",
+    "Yangi": "New",
+    "Biznes": "Business",
+    "Vositalarni qidiring...": "Search tools...",
+    "Qidirish...": "Search...",
+    "Natijalar": "Results",
+    "Barcha": "All",
+    "Barchasi": "All",
+    "Batafsil": "Learn more",
+    "Ko‘proq": "More",
+    "Orqaga": "Back",
+    "Saqlash": "Save",
+    "Bekor qilish": "Cancel",
+    "Yuborish": "Send",
+    "Yuklash": "Upload",
+    "Yuklanmoqda...": "Loading...",
+    "Tayyor": "Ready",
+    "Yangi loyiha": "New project",
+    "Kredit": "Credit",
+    "kredit": "credits",
+    "Kreditlar": "Credits",
+    "Kredit sotib olish": "Buy credits",
+    "Profil": "Profile",
+    "Sozlamalar": "Settings",
+    "Chiqish": "Sign out",
+    "Ro‘yxatdan o‘tish": "Sign up",
+    "Hisobga kirish": "Sign in",
+    "Boshlash": "Get started",
+    "Bepul boshlash": "Start for free",
+    "Barcha huquqlar himoyalangan.": "All rights reserved.",
+    "O‘zbekistonda yaratilgan": "Made in Uzbekistan",
+    "Qanday yordam bera olaman?": "How can I help?",
+    "Mavjud emas": "Unavailable",
+    "Xatolik yuz berdi": "Something went wrong",
+    "O‘zingizga mos tarifni tanlang": "Choose a plan that fits you",
+    "Kreditlarni xarid qiling va ularni AI vositalarida o‘zingizga kerakli natijalarni yaratish uchun ishlating.": "Buy credits and use them to create what you need with AI tools.",
+    "Tarifni tanlash": "Choose plan",
+    "Kreditlar qanday sarflanadi?": "How are credits used?",
+    "SHAXSIY RO‘YXAT": "PERSONAL LIST",
+    "Tez-tez ishlatadigan AI vositalaringizni keyinroq tez topish uchun shu yerda saqlash mumkin. Hozircha sevimlilarga qo‘shilgan vosita yo‘q.": "Save your frequently used AI tools here for quick access. You have no favorites yet.",
+    "O‘QUV MARKAZI": "LEARNING CENTER",
+    "Har kuni oz-ozdan": "A little every day",
+    "Kichik qadamlar katta natijaga olib boradi.": "Small steps lead to big results.",
+    "Haftalik maqsad · 62%": "Weekly goal · 62%",
+    "IJOD AI ga qaytish": "Back to IJOD AI",
+    "MAKTAB": "SCHOOL",
+    "O‘quv rejasi": "Study plan",
+    "Reja": "Plan",
+    "Sening shaxsiy AI ustozing": "Your personal AI tutor",
+    "Bilim sari har bir qadam": "Every step toward knowledge",
+    "muhim.": "matters.",
+    "Mavzularni tushun, savollaringni ber va o‘z tezligingda rivojlan. IJOD EDU doim yoningda.": "Understand topics, ask questions, and grow at your own pace. IJOD EDU is always with you.",
+    "AI Ustoz bilan o‘rganish": "Learn with AI Tutor",
+    "Vazifalarimni ko‘rish": "View my tasks",
+    "BUGUNGI NATIJA": "TODAY'S RESULT",
+    "Haftalik faollik": "Weekly activity",
+    "Faollik hali qayd etilmagan": "No activity recorded yet",
+    "Bajarilgan vazifalar": "Completed tasks",
+    "O‘rganilgan fanlar": "Subjects studied",
+    "Fan tanlab dars boshlang": "Choose a subject and start learning",
+    "O‘ZINGGA MOS TANLA": "CHOOSE WHAT FITS YOU",
+    "Qaysi fandan boshlaymiz?": "Which subject shall we start with?",
+    "Fan kartasini tanlab, o‘rganishni boshlashing mumkin.": "Choose a subject card to start learning.",
+    "O‘zlashtirish": "Progress",
+    "BUGUNGI REJA": "TODAY'S PLAN",
+    "Kichik qadamlar, katta natija": "Small steps, big results",
+    "Barchasi →": "View all →",
+    "Hozircha sizga vazifa biriktirilmagan. Darslik yoki AI Ustoz orqali o‘rganishni boshlang.": "No tasks assigned yet. Start learning with a textbook or AI Tutor.",
+    "AI USTOZ TAVSIYASI": "AI TUTOR TIP",
+    "Tushunmagan joyingni so‘rashdan qo‘rqma.": "Don't be afraid to ask about what you don't understand.",
+    "AI Ustoz mavzuni senga mos tezlikda, sodda misollar bilan tushuntirishga yordam beradi.": "AI Tutor explains topics at your pace using simple examples.",
+    "Ustoz bilan suhbatlashish": "Talk to the tutor",
+    "SHAXSIY YORDAMCHI": "PERSONAL ASSISTANT",
+    "Salom! Men sening AI Ustozingman.": "Hello! I'm your AI Tutor.",
+    "Qaysi mavzu qiyin bo‘lyapti? Birgalikda, bosqichma-bosqich o‘rganamiz.": "Which topic is difficult? Let's learn it together, step by step.",
+    "FANNI TANLANG": "CHOOSE A SUBJECT",
+    "Ustoz bilan suhbat": "Tutor chat",
+    "Savolingni yoz yoki tayyor mavzulardan birini tanla.": "Type your question or choose a suggested topic.",
+    "Bugun nimani o‘rganamiz?": "What shall we learn today?",
+    "Savolingni yubor yoki quyidagi takliflardan birini tanla.": "Send your question or choose one of the suggestions below.",
+    "INTERAKTIV DOSKA": "INTERACTIVE BOARD",
+    "Ustoz tushuntirishni boshlaganda yozuvlar shu doskada jonli paydo bo‘ladi.": "Notes will appear here as the tutor explains.",
+    "Enter — yuborish · Shift + Enter — yangi qator": "Enter — send · Shift + Enter — new line",
+    "AI Ustoz javoblari tanlangan fan va sinf darajasiga moslashtiriladi.": "AI Tutor answers adapt to the selected subject and grade.",
+    "TOPSHIRIQLAR MARKAZI": "ASSIGNMENTS CENTER",
+    "Uy vazifalarim": "My homework",
+    "Bajargan ishing rasmini yukla. AI tekshiradi va faqat to‘g‘ri bajarilgan vazifani tasdiqlaydi.": "Upload a photo of your work. AI checks it and confirms only correctly completed tasks.",
+    "Hozircha uy vazifalari biriktirilmagan.": "No homework assigned yet.",
+    "Rasm tanlash": "Choose image",
+    "BILIMLAR KUTUBXONASI": "KNOWLEDGE LIBRARY",
+    "Darsliklar va mavzular": "Textbooks and topics",
+    "SHAXSIY REJALASHTIRISH": "PERSONAL PLANNING",
+    "Mening o‘quv rejam": "My study plan",
+    "Darslaringni rejalashtir, bajarilganini belgilab bor. Rejalaring faqat o‘z hisobingda saqlanadi.": "Plan lessons and mark them as complete. Your plans are saved to your account only.",
+    "Yangi dars qo‘shish": "Add a lesson",
+    "Dars nomi": "Lesson title",
+    "Fan": "Subject",
+    "Sana va vaqt": "Date and time",
+    "Davomiyligi": "Duration",
+    "15 daqiqa": "15 minutes",
+    "30 daqiqa": "30 minutes",
+    "45 daqiqa": "45 minutes",
+    "1 soat": "1 hour",
+    "1,5 soat": "1.5 hours",
+    "2 soat": "2 hours",
+    "Izoh (ixtiyoriy)": "Note (optional)",
+    "Rejalashtirilgan darslar": "Planned lessons",
+    "Rejalar yuklanmoqda…": "Loading plans…",
+    "Hozircha rejangiz bo‘sh": "Your plan is empty",
+    "Chap tomondagi shakl orqali birinchi darsingizni qo‘shing.": "Add your first lesson using the form on the left.",
+    "O‘chirish": "Delete",
+    "SHAXSIY O‘SISH": "PERSONAL GROWTH",
+    "Mening natijalarim": "My results",
+    "O‘quv jarayoning va fanlar bo‘yicha o‘zlashtirish holati.": "Your learning progress and subject performance.",
+    "O‘rganish — bu sayohat.": "Learning is a journey."
+  }
 };
 
-"O‘QUV MARKAZI":"УЧЕБНЫЙ ЦЕНТР",
-};
-
-"Har kuni oz-ozdan":"Понемногу каждый день",
-};
-
-"Kichik qadamlar katta natijaga olib boradi.":"Маленькие шаги ведут к большим результатам.",
-};
-
-"Haftalik maqsad · 62%":"Недельная цель · 62%",
-};
-
-"IJOD AI ga qaytish":"Вернуться в IJOD AI",
-};
-
-"MAKTAB":"ШКОЛА",
-};
-
-"O‘quv rejasi":"Учебный план",
-};
-
-"Reja":"План",
-};
-
-"Sening shaxsiy AI ustozing":"Твой личный AI-наставник",
-};
-
-"Bilim sari har bir qadam":"Каждый шаг к знаниям",
-};
-
-"muhim.":"важен.",
-};
-
-"Mavzularni tushun, savollaringni ber va o‘z tezligingda rivojlan. IJOD EDU doim yoningda.":"Разбирайся в темах, задавай вопросы и развивайся в своём темпе. IJOD EDU всегда рядом.",
-};
-
-"AI Ustoz bilan o‘rganish":"Учиться с AI-наставником",
-};
-
-"Vazifalarimni ko‘rish":"Мои задания",
-};
-
-"BUGUNGI NATIJA":"РЕЗУЛЬТАТ СЕГОДНЯ",
-};
-
-"Haftalik faollik":"Активность за неделю",
-};
-
-"Faollik hali qayd etilmagan":"Активность пока не зафиксирована",
-};
-
-"Bajarilgan vazifalar":"Выполненные задания",
-};
-
-"O‘rganilgan fanlar":"Изученные предметы",
-};
-
-"Fan tanlab dars boshlang":"Выберите предмет и начните урок",
-};
-
-"O‘ZINGGA MOS TANLA":"ВЫБЕРИ СВОЁ",
-};
-
-"Qaysi fandan boshlaymiz?":"С какого предмета начнём?",
-};
-
-"Fan kartasini tanlab, o‘rganishni boshlashing mumkin.":"Выбери карточку предмета и начни обучение.",
-};
-
-"O‘zlashtirish":"Успеваемость",
-};
-
-"BUGUNGI REJA":"ПЛАН НА СЕГОДНЯ",
-};
-
-"Kichik qadamlar, katta natija":"Маленькие шаги — большой результат",
-};
-
-"Barchasi →":"Все →",
-};
-
-"Hozircha sizga vazifa biriktirilmagan. Darslik yoki AI Ustoz orqali o‘rganishni boshlang.":"Пока заданий нет. Начните обучение с учебника или AI-наставника.",
-};
-
-"AI USTOZ TAVSIYASI":"СОВЕТ AI-НАСТАВНИКА",
-};
-
-"Tushunmagan joyingni so‘rashdan qo‘rqma.":"Не бойся спрашивать о том, что непонятно.",
-};
-
-"AI Ustoz mavzuni senga mos tezlikda, sodda misollar bilan tushuntirishga yordam beradi.":"AI-наставник объяснит тему в удобном для тебя темпе и на простых примерах.",
-};
-
-"Ustoz bilan suhbatlashish":"Поговорить с наставником",
-};
-
-"SHAXSIY YORDAMCHI":"ЛИЧНЫЙ ПОМОЩНИК",
-};
-
-"Salom! Men sening AI Ustozingman.":"Привет! Я твой AI-наставник.",
-};
-
-"Qaysi mavzu qiyin bo‘lyapti? Birgalikda, bosqichma-bosqich o‘rganamiz.":"Какая тема вызывает трудности? Давай разберём её вместе, шаг за шагом.",
-};
-
-"FANNI TANLANG":"ВЫБЕРИТЕ ПРЕДМЕТ",
-};
-
-"Ustoz bilan suhbat":"Разговор с наставником",
-};
-
-"Savolingni yoz yoki tayyor mavzulardan birini tanla.":"Напиши вопрос или выбери одну из предложенных тем.",
-};
-
-"Bugun nimani o‘rganamiz?":"Что будем изучать сегодня?",
-};
-
-"Savolingni yubor yoki quyidagi takliflardan birini tanla.":"Отправь вопрос или выбери один из вариантов ниже.",
-};
-
-"INTERAKTIV DOSKA":"ИНТЕРАКТИВНАЯ ДОСКА",
-};
-
-"Ustoz tushuntirishni boshlaganda yozuvlar shu doskada jonli paydo bo‘ladi.":"Когда наставник начнёт объяснять, записи будут появляться здесь.",
-};
-
-"Enter — yuborish · Shift + Enter — yangi qator":"Enter — отправить · Shift + Enter — новая строка",
-};
-
-"AI Ustoz javoblari tanlangan fan va sinf darajasiga moslashtiriladi.":"Ответы AI-наставника адаптируются к предмету и классу.",
-};
-
-"TOPSHIRIQLAR MARKAZI":"ЦЕНТР ЗАДАНИЙ",
-};
-
-"Uy vazifalarim":"Мои домашние задания",
-};
-
-"Bajargan ishing rasmini yukla. AI tekshiradi va faqat to‘g‘ri bajarilgan vazifani tasdiqlaydi.":"Загрузи фото выполненной работы. AI проверит его и подтвердит только правильно выполненное задание.",
-};
-
-"Hozircha uy vazifalari biriktirilmagan.":"Домашние задания пока не назначены.",
-};
-
-"Rasm tanlash":"Выбрать изображение",
-};
-
-"BILIMLAR KUTUBXONASI":"БИБЛИОТЕКА ЗНАНИЙ",
-};
-
-"Darsliklar va mavzular":"Учебники и темы",
-};
-
-"SHAXSIY REJALASHTIRISH":"ЛИЧНОЕ ПЛАНИРОВАНИЕ",
-};
-
-"Mening o‘quv rejam":"Мой учебный план",
-};
-
-"Darslaringni rejalashtir, bajarilganini belgilab bor. Rejalaring faqat o‘z hisobingda saqlanadi.":"Планируй занятия и отмечай выполненное. Планы сохраняются только в твоём аккаунте.",
-};
-
-"Yangi dars qo‘shish":"Добавить урок",
-};
-
-"Dars nomi":"Название урока",
-};
-
-"Fan":"Предмет",
-};
-
-"Sana va vaqt":"Дата и время",
-};
-
-"Davomiyligi":"Продолжительность",
-};
-
-"15 daqiqa":"15 минут",
-};
-
-"30 daqiqa":"30 минут",
-};
-
-"45 daqiqa":"45 минут",
-};
-
-"1 soat":"1 час",
-};
-
-"1,5 soat":"1,5 часа",
-};
-
-"2 soat":"2 часа",
-};
-
-"Izoh (ixtiyoriy)":"Примечание (необязательно)",
-};
-
-"Rejalashtirilgan darslar":"Запланированные уроки",
-};
-
-"Rejalar yuklanmoqda…":"Загрузка планов…",
-};
-
-"Hozircha rejangiz bo‘sh":"Пока ваш план пуст",
-};
-
-"Chap tomondagi shakl orqali birinchi darsingizni qo‘shing.":"Добавьте первый урок с помощью формы слева.",
-};
-
-"O‘chirish":"Удалить",
-};
-
-"SHAXSIY O‘SISH":"ЛИЧНЫЙ ПРОГРЕСС",
-};
-
-"Mening natijalarim":"Мои результаты",
-};
-
-"O‘quv jarayoning va fanlar bo‘yicha o‘zlashtirish holati.":"Твой учебный процесс и успеваемость по предметам.",
-};
-
-"O‘rganish — bu sayohat.":"Обучение — это путешествие.",
-};
-
-const en: Record<string, string> = {
-  "Bosh sahifa":"Home","Tariflar":"Plans","AI vositalar":"AI tools","AI News":"AI News","Mening loyihalarim":"My projects","Sevimlilar":"Favorites","IJOD EDU":"IJOD EDU","Ijod qiling":"Create","Kirish":"Sign in","Mehmon":"Guest","Hisob ulanmagan":"Account not connected",
-  "Sun’iy intellekt — yangi ijod davri":"Artificial intelligence — a new era of creativity","G‘oyangizni":"Turn your","ijodga":"idea","aylantiring.":"into creative work.","Rasm, video, ovoz va matn yaratish uchun barcha AI vositalari — bitta platformada.":"All the AI tools for creating images, video, voice and text — in one platform.","Ijodni boshlash":"Start creating","Qanday ishlaydi?":"How it works?","Tasvir":"Image","Video":"Video","Ovoz":"Voice",
-  "YANGI · AI LANGUAGE TUTOR":"NEW · AI LANGUAGE TUTOR","AI Ustoz — sizning shaxsiy til o‘qituvchingiz":"AI Tutor — your personal language teacher","Ingliz va rus tilini o‘zingizga mos ohangda o‘rganing: ustoz, do‘st, hazilkash yoki professional mentor bilan suhbatlashing.":"Learn English and Russian your way: talk with a tutor, a friend, or a professional mentor.","✓ Qiziqarli suhbat va real mavzular":"✓ Engaging conversations and real-world topics","✓ Xatolarni tuzatish va o‘zbekcha tushuntirish":"✓ Error correction and explanations in Uzbek","✓ So‘zlar, grammatika va darajaga mos mashqlar":"✓ Vocabulary, grammar and level-based exercises","✓ A1–C1 darajalar":"✓ A1–C1 levels","AI Ustozni ochish →":"Open AI Tutor →","AI suhbatchi kayfiyatlari":"AI companion moods","Neytral":"Neutral","Mehribon":"Friendly","Xursand":"Happy","Jahli chiqqan":"Angry","O‘ylayapti":"Thinking","Dam olyapti":"Resting","Suhbat ohangiga qarab AI belgisi ham o‘zgaradi.":"The AI expression changes with the conversation tone.",
-  "Tasavvuringizni yarating":"Bring your imagination to life","AI yordamida g‘oyalaringizni hayotga olib keling.":"Bring your ideas to life with AI.","Boshlash →":"Get started →","CREATIVE SUPERAPP":"CREATIVE SUPERAPP","AI Rasm":"AI Images","AI Ovoz":"AI Voice","AI Matn":"AI Text","AI Dizayn":"AI Design","AI Tarjima":"AI Translation","Mashhur":"Popular","Yangi":"New","Biznes":"Business",
-  "Vositalarni qidiring...":"Search tools...","Qidirish...":"Search...","Natijalar":"Results","Barcha":"All","Barchasi":"All","Batafsil":"Learn more","Ko‘proq":"More","Orqaga":"Back","Saqlash":"Save","Bekor qilish":"Cancel","Yuborish":"Send","Yuklash":"Upload","Yuklanmoqda...":"Loading...","Tayyor":"Ready","Yangi loyiha":"New project","Kredit":"Credit","kredit":"credits","Kreditlar":"Credits","Kredit sotib olish":"Buy credits","Profil":"Profile","Sozlamalar":"Settings","Chiqish":"Sign out","Ro‘yxatdan o‘tish":"Sign up","Hisobga kirish":"Sign in","Boshlash":"Get started","Bepul boshlash":"Start for free","Barcha huquqlar himoyalangan.":"All rights reserved.","O‘zbekistonda yaratilgan":"Made in Uzbekistan","Qanday yordam bera olaman?":"How can I help?","Mavjud emas":"Unavailable","Xatolik yuz berdi":"Something went wrong",
-  "AI vositalari":"AI tools","O‘zingizga mos tarifni tanlang":"Choose a plan that fits you","Kreditlarni xarid qiling va ularni AI vositalarida o‘zingizga kerakli natijalarni yaratish uchun ishlating.":"Buy credits and use them to create what you need with AI tools.","Tarifni tanlash":"Choose plan","Kreditlar qanday sarflanadi?":"How are credits used?","SHAXSIY RO‘YXAT":"PERSONAL LIST","Tez-tez ishlatadigan AI vositalaringizni keyinroq tez topish uchun shu yerda saqlash mumkin. Hozircha sevimlilarga qo‘shilgan vosita yo‘q.":"Save your frequently used AI tools here for quick access. You have no favorites yet."
-};
-
-"O‘QUV MARKAZI":"LEARNING CENTER",
-};
-
-"Har kuni oz-ozdan":"A little every day",
-};
-
-"Kichik qadamlar katta natijaga olib boradi.":"Small steps lead to big results.",
-};
-
-"Haftalik maqsad · 62%":"Weekly goal · 62%",
-};
-
-"IJOD AI ga qaytish":"Back to IJOD AI",
-};
-
-"MAKTAB":"SCHOOL",
-};
-
-"O‘quv rejasi":"Study plan",
-};
-
-"Reja":"Plan",
-};
-
-"Sening shaxsiy AI ustozing":"Your personal AI tutor",
-};
-
-"Bilim sari har bir qadam":"Every step toward knowledge",
-};
-
-"muhim.":"matters.",
-};
-
-"Mavzularni tushun, savollaringni ber va o‘z tezligingda rivojlan. IJOD EDU doim yoningda.":"Understand topics, ask questions, and grow at your own pace. IJOD EDU is always with you.",
-};
-
-"AI Ustoz bilan o‘rganish":"Learn with AI Tutor",
-};
-
-"Vazifalarimni ko‘rish":"View my tasks",
-};
-
-"BUGUNGI NATIJA":"TODAY'S RESULT",
-};
-
-"Haftalik faollik":"Weekly activity",
-};
-
-"Faollik hali qayd etilmagan":"No activity recorded yet",
-};
-
-"Bajarilgan vazifalar":"Completed tasks",
-};
-
-"O‘rganilgan fanlar":"Subjects studied",
-};
-
-"Fan tanlab dars boshlang":"Choose a subject and start learning",
-};
-
-"O‘ZINGGA MOS TANLA":"CHOOSE WHAT FITS YOU",
-};
-
-"Qaysi fandan boshlaymiz?":"Which subject shall we start with?",
-};
-
-"Fan kartasini tanlab, o‘rganishni boshlashing mumkin.":"Choose a subject card to start learning.",
-};
-
-"O‘zlashtirish":"Progress",
-};
-
-"BUGUNGI REJA":"TODAY'S PLAN",
-};
-
-"Kichik qadamlar, katta natija":"Small steps, big results",
-};
-
-"Barchasi →":"View all →",
-};
-
-"Hozircha sizga vazifa biriktirilmagan. Darslik yoki AI Ustoz orqali o‘rganishni boshlang.":"No tasks assigned yet. Start learning with a textbook or AI Tutor.",
-};
-
-"AI USTOZ TAVSIYASI":"AI TUTOR TIP",
-};
-
-"Tushunmagan joyingni so‘rashdan qo‘rqma.":"Don't be afraid to ask about what you don't understand.",
-};
-
-"AI Ustoz mavzuni senga mos tezlikda, sodda misollar bilan tushuntirishga yordam beradi.":"AI Tutor explains topics at your pace using simple examples.",
-};
-
-"Ustoz bilan suhbatlashish":"Talk to the tutor",
-};
-
-"SHAXSIY YORDAMCHI":"PERSONAL ASSISTANT",
-};
-
-"Salom! Men sening AI Ustozingman.":"Hello! I'm your AI Tutor.",
-};
-
-"Qaysi mavzu qiyin bo‘lyapti? Birgalikda, bosqichma-bosqich o‘rganamiz.":"Which topic is difficult? Let's learn it together, step by step.",
-};
-
-"FANNI TANLANG":"CHOOSE A SUBJECT",
-};
-
-"Ustoz bilan suhbat":"Tutor chat",
-};
-
-"Savolingni yoz yoki tayyor mavzulardan birini tanla.":"Type your question or choose a suggested topic.",
-};
-
-"Bugun nimani o‘rganamiz?":"What shall we learn today?",
-};
-
-"Savolingni yubor yoki quyidagi takliflardan birini tanla.":"Send your question or choose one of the suggestions below.",
-};
-
-"INTERAKTIV DOSKA":"INTERACTIVE BOARD",
-};
-
-"Ustoz tushuntirishni boshlaganda yozuvlar shu doskada jonli paydo bo‘ladi.":"Notes will appear here as the tutor explains.",
-};
-
-"Enter — yuborish · Shift + Enter — yangi qator":"Enter — send · Shift + Enter — new line",
-};
-
-"AI Ustoz javoblari tanlangan fan va sinf darajasiga moslashtiriladi.":"AI Tutor answers adapt to the selected subject and grade.",
-};
-
-"TOPSHIRIQLAR MARKAZI":"ASSIGNMENTS CENTER",
-};
-
-"Uy vazifalarim":"My homework",
-};
-
-"Bajargan ishing rasmini yukla. AI tekshiradi va faqat to‘g‘ri bajarilgan vazifani tasdiqlaydi.":"Upload a photo of your work. AI checks it and confirms only correctly completed tasks.",
-};
-
-"Hozircha uy vazifalari biriktirilmagan.":"No homework assigned yet.",
-};
-
-"Rasm tanlash":"Choose image",
-};
-
-"BILIMLAR KUTUBXONASI":"KNOWLEDGE LIBRARY",
-};
-
-"Darsliklar va mavzular":"Textbooks and topics",
-};
-
-"SHAXSIY REJALASHTIRISH":"PERSONAL PLANNING",
-};
-
-"Mening o‘quv rejam":"My study plan",
-};
-
-"Darslaringni rejalashtir, bajarilganini belgilab bor. Rejalaring faqat o‘z hisobingda saqlanadi.":"Plan lessons and mark them as complete. Your plans are saved to your account only.",
-};
-
-"Yangi dars qo‘shish":"Add a lesson",
-};
-
-"Dars nomi":"Lesson title",
-};
-
-"Fan":"Subject",
-};
-
-"Sana va vaqt":"Date and time",
-};
-
-"Davomiyligi":"Duration",
-};
-
-"15 daqiqa":"15 minutes",
-};
-
-"30 daqiqa":"30 minutes",
-};
-
-"45 daqiqa":"45 minutes",
-};
-
-"1 soat":"1 hour",
-};
-
-"1,5 soat":"1.5 hours",
-};
-
-"2 soat":"2 hours",
-};
-
-"Izoh (ixtiyoriy)":"Note (optional)",
-};
-
-"Rejalashtirilgan darslar":"Planned lessons",
-};
-
-"Rejalar yuklanmoqda…":"Loading plans…",
-};
-
-"Hozircha rejangiz bo‘sh":"Your plan is empty",
-};
-
-"Chap tomondagi shakl orqali birinchi darsingizni qo‘shing.":"Add your first lesson using the form on the left.",
-};
-
-"O‘chirish":"Delete",
-};
-
-"SHAXSIY O‘SISH":"PERSONAL GROWTH",
-};
-
-"Mening natijalarim":"My results",
-};
-
-"O‘quv jarayoning va fanlar bo‘yicha o‘zlashtirish holati.":"Your learning progress and subject performance.",
-};
-
-"O‘rganish — bu sayohat.":"Learning is a journey.",
-};
-
-const translations = { ru, en };
 const originalText = new WeakMap<Text, string>();
 
 export function LanguageRuntime() {
@@ -486,7 +346,12 @@ export function LanguageRuntime() {
       const trimmed = original.trim();
       if (!trimmed) return;
       const replacement = language === "uz" ? original : translations[language][trimmed];
-      if (replacement !== undefined) { const leading = original.match(/^\\s*/)?.[0] ?? ""; const trailing = original.match(/\\s*$/)?.[0] ?? ""; const nextText = language === "uz" ? original : leading + replacement + trailing; if (node.textContent !== nextText) node.textContent = nextText; }
+      if (replacement !== undefined) {
+        const leading = original.match(/^\\s*/)?.[0] ?? "";
+        const trailing = original.match(/\\s*$/)?.[0] ?? "";
+        const nextText = language === "uz" ? original : leading + replacement + trailing;
+        if (node.textContent !== nextText) node.textContent = nextText;
+      }
     };
 
     const scan = (root: Node) => {
