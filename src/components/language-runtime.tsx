@@ -249,6 +249,18 @@ const translations: Record<"ru" | "en", Record<string, string>> = {
     "Mening natijalarim": "Мои результаты",
     "O‘quv jarayoning va fanlar bo‘yicha o‘zlashtirish holati.": "Твой учебный процесс и успеваемость по предметам.",
     "O‘rganish — bu sayohat.": "Обучение — это путешествие."
+    "Rasm tavsifi": "Описание изображения",
+    "Rasm yaratish": "Создать изображение",
+    "Rasm yaratilmoqda...": "Создаём изображение...",
+    "Rasm yaratishda xatolik yuz berdi.": "Ошибка при создании изображения.",
+    "Rasm natijasi bo‘sh qaytdi.": "Получен пустой результат изображения.",
+    "Hisobingiz tekshirilmoqda...": "Проверяем ваш аккаунт...",
+    "IJOD AI’ga kiring": "Войдите в IJOD AI",
+    "AI Rasm vositasidan foydalanish uchun hisobingizga kiring.": "Войдите в аккаунт, чтобы пользоваться AI-изображениями.",
+    "Rasmni yuklab olish": "Скачать изображение",
+    "Har bir muvaffaqiyatli rasm yaratish 1 kredit ishlatadi. Xatolik bo‘lsa, kredit qaytarishga harakat qilinadi.": "Каждое успешное создание изображения расходует 1 кредит. При ошибке мы постараемся вернуть кредит.",
+    "Kredit tekshirilmoqda...": "Проверяем кредиты...",
+    "Kirish →": "Войти →",
   },
   "en": {
     "Bosh sahifa": "Home",
@@ -558,6 +570,18 @@ export function LanguageRuntime() {
     };
     window.addEventListener("ijod-language-change", onLanguageChange);
     return () => { observer.disconnect(); window.removeEventListener("ijod-language-change", onLanguageChange); };
+    "Rasm tavsifi": "Image description",
+    "Rasm yaratish": "Generate image",
+    "Rasm yaratilmoqda...": "Generating image...",
+    "Rasm yaratishda xatolik yuz berdi.": "An error occurred while generating the image.",
+    "Rasm natijasi bo‘sh qaytdi.": "The image result was empty.",
+    "Hisobingiz tekshirilmoqda...": "Checking your account...",
+    "IJOD AI’ga kiring": "Sign in to IJOD AI",
+    "AI Rasm vositasidan foydalanish uchun hisobingizga kiring.": "Sign in to use the AI image tool.",
+    "Rasmni yuklab olish": "Download image",
+    "Har bir muvaffaqiyatli rasm yaratish 1 kredit ishlatadi. Xatolik bo‘lsa, kredit qaytarishga harakat qilinadi.": "Each successful image generation uses 1 credit. If an error occurs, we will try to refund the credit.",
+    "Kredit tekshirilmoqda...": "Checking credits...",
+    "Kirish →": "Sign in →",
   }, []);
 
   return null;
