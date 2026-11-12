@@ -20,7 +20,7 @@ const translations: Record<Exclude<Language, "uz">, Record<string, string>> = {
 };
 
 function translateNode(node: Text, language: Language) {
-  const original = node.textContent ?? "";
+  const original = node.dataset.ijodOriginal ?? (node.dataset.ijodOriginal = node.textContent ?? "");
   const trimmed = original.trim();
   if (!trimmed) return;
   const replacement = language === "uz" ? trimmed : translations[language][trimmed];
