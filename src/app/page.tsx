@@ -249,39 +249,39 @@ export default function Home() {
             </div>
           </section>
 
-          <section className="mt-8 overflow-hidden rounded-3xl border border-violet-200 bg-gradient-to-br from-white via-violet-50 to-fuchsia-50 p-5 shadow-sm sm:p-8">
+          <section className="ijod-tutor-promo mt-8 overflow-hidden rounded-3xl border border-violet-200 bg-gradient-to-br from-white via-violet-50 to-fuchsia-50 p-5 shadow-sm sm:p-8 dark:border-slate-700 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
             <div className="grid gap-7 lg:grid-cols-[.9fr_1.1fr] lg:items-center">
               <div>
                 <p className="text-xs font-black uppercase tracking-[.18em] text-violet-600">YANGI · AI LANGUAGE TUTOR</p>
-                <h2 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">AI Ustoz — sizning shaxsiy til o‘qituvchingiz</h2>
-                <p className="mt-3 max-w-xl text-sm leading-6 text-gray-600">Ingliz va rus tilini o‘zingizga mos ohangda o‘rganing: ustoz, do‘st, hazilkash yoki professional mentor bilan suhbatlashing.</p>
-                <ul className="mt-4 space-y-2 text-sm text-gray-700">
+                <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl dark:text-white">AI Ustoz — sizning shaxsiy til o‘qituvchingiz</h2>
+                <p className="mt-3 max-w-xl text-sm leading-6 text-gray-600 dark:text-slate-300">Ingliz va rus tilini o‘zingizga mos ohangda o‘rganing: ustoz, do‘st, hazilkash yoki professional mentor bilan suhbatlashing.</p>
+                <ul className="mt-4 space-y-2 text-sm text-gray-700 dark:text-slate-200">
                   <li>✓ Qiziqarli suhbat va real mavzular</li><li>✓ Xatolarni tuzatish va o‘zbekcha tushuntirish</li><li>✓ So‘zlar, grammatika va darajaga mos mashqlar</li><li>✓ A1–C1 darajalar</li>
                 </ul>
                 <button onClick={() => { window.location.href = "/tools/language"; }} className="mt-6 rounded-xl bg-violet-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-violet-200 transition hover:bg-violet-700">AI Ustozni ochish →</button>
               </div>
-              <div className="rounded-2xl border border-white bg-white/80 p-4 sm:p-5">
-                <h3 className="text-sm font-bold">AI suhbatchi kayfiyatlari</h3>
+              <div className="ijod-mood-panel rounded-2xl border border-white bg-white/80 p-4 sm:p-5 dark:border-slate-700 dark:bg-slate-950/70">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">AI suhbatchi kayfiyatlari</h3>
                 <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-6">
                   {[
                     ["neutral","Neytral","bg-violet-50 text-violet-700 border-violet-100"],
-                    ["kind","Mehribon","bg-pink-50 text-pink-600 border-pink-100"],
-                    ["happy","Xursand","bg-amber-50 text-amber-600 border-amber-100"],
-                    ["angry","Jahli chiqqan","bg-red-50 text-red-600 border-red-100"],
-                    ["thinking","O‘ylayapti","bg-sky-50 text-sky-700 border-sky-100"],
-                    ["sleepy","Dam olyapti","bg-indigo-50 text-indigo-600 border-indigo-100"],
+                    ["kind","Mehribon","bg-violet-50 text-violet-700 border-violet-100"],
+                    ["happy","Xursand","bg-violet-50 text-violet-700 border-violet-100"],
+                    ["angry","Jahli chiqqan","bg-violet-50 text-violet-700 border-violet-100"],
+                    ["thinking","O‘ylayapti","bg-violet-50 text-violet-700 border-violet-100"],
+                    ["sleepy","Dam olyapti","bg-violet-50 text-violet-700 border-violet-100"],
                   ].map(([mood,label,style]) => <div key={label} className="text-center"><div className={"mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border shadow-sm " + style}>
                     <svg viewBox="0 0 80 80" className={"h-9 w-9 mood-face mood-" + mood} aria-hidden="true" fill="none" strokeLinecap="round" strokeLinejoin="round">
                       {mood === "angry" && <path d="M18 25 L34 31 M62 25 L46 31" stroke="currentColor" strokeWidth="5"/>}
-                      {mood === "sleepy" ? <path d="M19 34 Q27 40 35 34 M45 34 Q53 40 61 34" stroke="#25243A" strokeWidth="5" /> : mood === "kind" ? <path d="M22 29 C16 22 7 32 22 43 C37 32 28 22 22 29Z M58 29 C52 22 43 32 58 43 C73 32 64 22 58 29Z" fill="currentColor"/> : mood === "happy" ? <g fill="#D69A19"><path d="M17 27l3 6 6 3-6 3-3 6-3-6-6-3 6-3z"/><path d="M63 27l3 6 6 3-6 3-3 6-3-6-6-3 6-3z"/></g> : <g fill="#25243A"><circle cx="26" cy="34" r="5"/><circle cx="54" cy="34" r="5"/></g>}
+                      {mood === "sleepy" ? <path d="M19 34 Q27 40 35 34 M45 34 Q53 40 61 34" stroke="currentColor" strokeWidth="5" /> : mood === "kind" ? <path d="M22 29 C16 22 7 32 22 43 C37 32 28 22 22 29Z M58 29 C52 22 43 32 58 43 C73 32 64 22 58 29Z" fill="currentColor"/> : mood === "happy" ? <g fill="currentColor"><path d="M17 27l3 6 6 3-6 3-3 6-3-6-6-3 6-3z"/><path d="M63 27l3 6 6 3-6 3-3 6-3-6-6-3 6-3z"/></g> : <g fill="currentColor"><circle cx="26" cy="34" r="5"/><circle cx="54" cy="34" r="5"/></g>}
                       <path d={mood === "neutral" ? "M32 44 Q40 50 48 44" : mood === "kind" ? "M29 41 Q40 55 51 41" : mood === "happy" ? "M27 39 Q40 58 53 39" : mood === "angry" ? "M30 50 Q40 40 50 50" : mood === "thinking" ? "M34 46 Q40 42 47 45" : "M34 46 Q40 49 46 46"} stroke="#25243A" strokeWidth="4.5"/>
                       
-                      {mood === "angry" && <path d="M8 10 L13 18 L21 20 L13 24 L8 32 L4 24 L0 20 L4 18Z M72 10 L76 18 L80 20 L76 24 L72 32 L68 24 L60 20 L68 18Z" fill="#F87171" opacity=".8"/>}
+                      {mood === "angry" && <path d="M8 10 L13 18 L21 20 L13 24 L8 32 L4 24 L0 20 L4 18Z M72 10 L76 18 L80 20 L76 24 L72 32 L68 24 L60 20 L68 18Z" fill="currentColor" opacity=".8"/>}
                       {mood === "thinking" && <g fill="currentColor" stroke="none"><circle cx="20" cy="15" r="2"/><circle cx="40" cy="10" r="2"/><circle cx="60" cy="15" r="2"/></g>}
                     </svg>
-                  </div><p className="mt-2 text-[10px] font-semibold text-gray-700">{label}</p></div>)}
+                  </div><p className="mt-2 text-[10px] font-semibold text-slate-700 dark:text-slate-300">{label}</p></div>)}
                 </div>
-                <p className="mt-4 text-center text-xs text-gray-500">Suhbat ohangiga qarab AI belgisi ham o‘zgaradi.</p>
+                <p className="mt-4 text-center text-xs text-gray-500 dark:text-slate-400">Suhbat ohangiga qarab AI belgisi ham o‘zgaradi.</p>
               </div>
             </div>
           </section>
