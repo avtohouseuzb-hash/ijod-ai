@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { ReactNode } from "react";
 import Link from "next/link";
@@ -77,6 +77,7 @@ export default function EduPage() {
   const [activeBoardText, setActiveBoardText] = useState("");
   const [displayedBoardText, setDisplayedBoardText] = useState("");
   const [boardWriting, setBoardWriting] = useState(false);
+  const tutorRequestVersion = useRef(0);
   useEffect(() => {
     if (!activeBoardText) return;
     setDisplayedBoardText("");
@@ -92,6 +93,26 @@ export default function EduPage() {
   const filteredSubjects = useMemo(() => subjects.filter((s) => (s.name + " " + s.detail).toLowerCase().includes(subjectQuery.toLowerCase())), [subjectQuery]);
 
   const title = navItems.find((item) => item.id === section)?.label ?? "Umumiy ko‘rinish";
+  function resetTutorSession() {
+    tutorRequestVersion.current += 1;
+    setMessages([]);
+    setQuestion("");
+    setTutorError("");
+    setActiveBoardText("");
+    setDisplayedBoardText("");
+    setBoardWriting(false);
+    setIsSending(false);
+  }
+  function changeTutorSubject(nextSubject: string) {
+    if (nextSubject === selectedSubject) return;
+    resetTutorSession();
+    setSelectedSubject(nextSubject);
+  }
+  function changeGrade(nextGrade: string) {
+    if (nextGrade === grade) return;
+    resetTutorSession();
+    setGrade(nextGrade);
+  }
   const toggleTask = (id: number) => setCompleted((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   function handleHomeworkFile(file?: File) {
     setHomeworkError(""); setHomeworkImage(""); setHomeworkFileName("");
@@ -126,6 +147,9 @@ export default function EduPage() {
     setQuestion("");
     setTutorError("");
     setIsSending(true);
+    const requestVersion = ++tutorRequestVersion.current;
+    const requestSubject = selectedSubject;
+    const requestGrade = grade;
     setMessages((current) => [...current, { role: "student", text: value }]);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -134,17 +158,19 @@ export default function EduPage() {
       const response = await fetch("/api/school-tutor", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
-        body: JSON.stringify({ message: value, subject: selectedSubject, grade, history }),
+        body: JSON.stringify({ message: value, subject: requestSubject, grade: requestGrade, history }),
       });
       const data = await response.json();
+      if (requestVersion !== tutorRequestVersion.current) return;
       if (!response.ok || typeof data.text !== "string") throw new Error(data.error || "Javob olishda xatolik yuz berdi.");
       setMessages((current) => [...current, { role: "system", text: data.text }]);
       setActiveBoardText(data.text);
     } catch (error) {
+      if (requestVersion !== tutorRequestVersion.current) return;
       const message = error instanceof Error ? error.message : "Noma’lum xatolik yuz berdi.";
       setTutorError(message);
       setMessages((current) => [...current, { role: "system", text: "Javob olinmadi. Xatolikni pastda ko‘rishingiz mumkin." }]);
-    } finally { setIsSending(false); }
+    } finally { if (requestVersion === tutorRequestVersion.current) setIsSending(false); }
   }
 
   return (
@@ -178,7 +204,7 @@ export default function EduPage() {
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <label className="hidden items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-400 sm:flex"><Icon name="calendar" className="h-4 w-4" /> O‘quv rejasi</label>
-            <select aria-label="Sinfni tanlash" value={grade} onChange={(e) => setGrade(e.target.value)} className="rounded-xl border border-violet-100 bg-violet-50 px-3 py-2.5 text-xs font-bold text-violet-700 outline-none focus:ring-2 focus:ring-violet-200">{Array.from({ length: 11 }, (_, i) => <option key={i + 1} value={i + 1 + "-sinf"}>{i + 1}-sinf</option>)}</select>
+            <select aria-label="Sinfni tanlash" value={grade} onChange={(e) => changeGrade(e.target.value)} className="rounded-xl border border-violet-100 bg-violet-50 px-3 py-2.5 text-xs font-bold text-violet-700 outline-none focus:ring-2 focus:ring-violet-200">{Array.from({ length: 11 }, (_, i) => <option key={i + 1} value={i + 1 + "-sinf"}>{i + 1}-sinf</option>)}</select>
             <div className="hidden h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-violet-100 to-cyan-100 text-sm font-black text-violet-700 sm:flex">O‘</div>
           </div>
         </header>
@@ -210,7 +236,7 @@ export default function EduPage() {
 
             <section className="mt-9">
               <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-[10px] font-extrabold uppercase tracking-[.18em] text-violet-600">O‘ZINGGA MOS TANLA</p><h2 className="mt-1 text-xl font-black tracking-tight">Qaysi fandan boshlaymiz?</h2><p className="mt-1 text-xs text-slate-500">Fan kartasini tanlab, o‘rganishni boshlashing mumkin.</p></div><label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5"><Icon name="search" className="h-4 w-4 text-slate-400" /><input value={subjectQuery} onChange={(e)=>setSubjectQuery(e.target.value)} placeholder="Fanni qidirish..." className="w-36 bg-transparent text-xs outline-none sm:w-48" /></label></div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{filteredSubjects.map((subject)=><button key={subject.name} onClick={()=>{setSelectedSubject(subject.name);setSection("tutor");}} className="group rounded-2xl border border-[#eceaf5] bg-white p-4 text-left transition hover:-translate-y-1 hover:border-violet-200 hover:shadow-xl hover:shadow-violet-100/60"><div className="flex items-start justify-between"><span className={"flex h-11 w-11 items-center justify-center rounded-2xl text-lg font-black " + (subject.color==="violet"?"bg-violet-50 text-violet-700":subject.color==="sky"?"bg-sky-50 text-sky-700":subject.color==="emerald"?"bg-emerald-50 text-emerald-700":subject.color==="lime"?"bg-lime-50 text-lime-700":subject.color==="amber"?"bg-amber-50 text-amber-700":subject.color==="rose"?"bg-rose-50 text-rose-700":subject.color==="fuchsia"?"bg-fuchsia-50 text-fuchsia-700":"bg-teal-50 text-teal-700")}><Icon name={subject.icon} className="h-6 w-6" /></span><Icon name="arrowUpRight" className="h-4 w-4 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-violet-500" /></div><p className="mt-4 text-sm font-extrabold">{subject.name}</p><p className="mt-1 text-[10px] leading-4 text-slate-400">{subject.detail}</p><div className="mt-4 flex items-center justify-between text-[10px]"><span className="text-slate-400">O‘zlashtirish</span><span className="font-bold text-slate-600">0%</span></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-cyan-400" style={{width:"0%"}} /></div></button>)}</div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{filteredSubjects.map((subject)=><button key={subject.name} onClick={()=>{changeTutorSubject(subject.name);setSection("tutor");}} className="group rounded-2xl border border-[#eceaf5] bg-white p-4 text-left transition hover:-translate-y-1 hover:border-violet-200 hover:shadow-xl hover:shadow-violet-100/60"><div className="flex items-start justify-between"><span className={"flex h-11 w-11 items-center justify-center rounded-2xl text-lg font-black " + (subject.color==="violet"?"bg-violet-50 text-violet-700":subject.color==="sky"?"bg-sky-50 text-sky-700":subject.color==="emerald"?"bg-emerald-50 text-emerald-700":subject.color==="lime"?"bg-lime-50 text-lime-700":subject.color==="amber"?"bg-amber-50 text-amber-700":subject.color==="rose"?"bg-rose-50 text-rose-700":subject.color==="fuchsia"?"bg-fuchsia-50 text-fuchsia-700":"bg-teal-50 text-teal-700")}><Icon name={subject.icon} className="h-6 w-6" /></span><Icon name="arrowUpRight" className="h-4 w-4 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-violet-500" /></div><p className="mt-4 text-sm font-extrabold">{subject.name}</p><p className="mt-1 text-[10px] leading-4 text-slate-400">{subject.detail}</p><div className="mt-4 flex items-center justify-between text-[10px]"><span className="text-slate-400">O‘zlashtirish</span><span className="font-bold text-slate-600">0%</span></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-cyan-400" style={{width:"0%"}} /></div></button>)}</div>
             </section>
 
             <section className="mt-9 grid gap-5 xl:grid-cols-[1.15fr_.85fr]">
@@ -219,7 +245,7 @@ export default function EduPage() {
             </section>
           </>}
 
-          {section === "tutor" && <section className="grid gap-5 xl:grid-cols-[.8fr_1.2fr]"><div className="rounded-3xl bg-[#17152c] p-6 text-white"><span className="text-[10px] font-bold uppercase tracking-[.18em] text-violet-200">SHAXSIY YORDAMCHI</span><div className="mt-7 flex h-16 w-16 items-center justify-center rounded-[22px] bg-gradient-to-br from-violet-300 to-cyan-200 text-[#211b3d]"><Icon name="spark" className="h-8 w-8" /></div><h1 className="mt-5 text-2xl font-black">Salom! Men sening AI Ustozingman.</h1><p className="mt-3 text-sm leading-6 text-slate-300">Qaysi mavzu qiyin bo‘lyapti? Birgalikda, bosqichma-bosqich o‘rganamiz.</p><div className="mt-6 rounded-2xl border border-white/10 bg-white/[.06] p-4"><label htmlFor="tutor-subject" className="text-[10px] font-bold uppercase tracking-widest text-violet-200">FANNI TANLANG</label><select id="tutor-subject" value={selectedSubject} onChange={(e) => setSelectedSubject(e.target.value)} className="mt-2 w-full rounded-xl border border-white/15 bg-[#27243d] px-3 py-3 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-violet-300">{subjects.map((subject) => <option key={subject.name} value={subject.name}>{subject.name}</option>)}</select><p className="mt-2 text-xs text-slate-400">{grade} darajasi uchun · {subjects.length} ta fan</p></div></div><div className="flex min-h-[520px] flex-col rounded-3xl border border-[#eceaf5] bg-white p-5"><div className="border-b border-slate-100 pb-4"><h2 className="text-lg font-black">Ustoz bilan suhbat</h2><p className="mt-1 text-xs text-slate-400">Savolingni yoz yoki tayyor mavzulardan birini tanla.</p></div><div className="flex-1 space-y-3 overflow-y-auto py-5">{messages.length===0?<div className="flex h-full min-h-[260px] flex-col items-center justify-center text-center"><div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-50 text-violet-600"><Icon name="spark" className="h-7 w-7" /></div><p className="mt-4 text-sm font-bold">Bugun nimani o‘rganamiz?</p><p className="mt-1 max-w-xs text-xs leading-5 text-slate-400">Savolingni yubor yoki quyidagi takliflardan birini tanla.</p><div className="mt-5 flex flex-wrap justify-center gap-2">{["Mavzuni sodda tushuntir","Misolni bosqichma-bosqich yech","Menga 5 ta test ber"].map((v)=><button key={v} onClick={()=>setQuestion(v)} className="rounded-full border border-violet-100 bg-violet-50/60 px-3 py-2 text-[10px] font-semibold text-violet-700 hover:bg-violet-100">{v}</button>)}</div></div>:messages.map((m,i)=><div key={i} className={"max-w-[90%] rounded-2xl px-4 py-3 text-xs leading-5 "+(m.role==="student"?"ml-auto bg-violet-600 text-white":"bg-slate-50 text-slate-600")}>{m.text}</div>)}</div>
+          {section === "tutor" && <section className="grid gap-5 xl:grid-cols-[.8fr_1.2fr]"><div className="rounded-3xl bg-[#17152c] p-6 text-white"><span className="text-[10px] font-bold uppercase tracking-[.18em] text-violet-200">SHAXSIY YORDAMCHI</span><div className="mt-7 flex h-16 w-16 items-center justify-center rounded-[22px] bg-gradient-to-br from-violet-300 to-cyan-200 text-[#211b3d]"><Icon name="spark" className="h-8 w-8" /></div><h1 className="mt-5 text-2xl font-black">Salom! Men sening AI Ustozingman.</h1><p className="mt-3 text-sm leading-6 text-slate-300">Qaysi mavzu qiyin bo‘lyapti? Birgalikda, bosqichma-bosqich o‘rganamiz.</p><div className="mt-6 rounded-2xl border border-white/10 bg-white/[.06] p-4"><label htmlFor="tutor-subject" className="text-[10px] font-bold uppercase tracking-widest text-violet-200">FANNI TANLANG</label><select id="tutor-subject" value={selectedSubject} onChange={(e) => changeTutorSubject(e.target.value)} className="mt-2 w-full rounded-xl border border-white/15 bg-[#27243d] px-3 py-3 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-violet-300">{subjects.map((subject) => <option key={subject.name} value={subject.name}>{subject.name}</option>)}</select><p className="mt-2 text-xs text-slate-400">{grade} darajasi uchun · {subjects.length} ta fan</p></div></div><div className="flex min-h-[520px] flex-col rounded-3xl border border-[#eceaf5] bg-white p-5"><div className="border-b border-slate-100 pb-4"><h2 className="text-lg font-black">Ustoz bilan suhbat</h2><p className="mt-1 text-xs text-slate-400">Savolingni yoz yoki tayyor mavzulardan birini tanla.</p></div><div className="flex-1 space-y-3 overflow-y-auto py-5">{messages.filter((m)=>m.role==="student").length===0?<div className="flex h-full min-h-[260px] flex-col items-center justify-center text-center"><div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-50 text-violet-600"><Icon name="spark" className="h-7 w-7" /></div><p className="mt-4 text-sm font-bold">Bugun nimani o‘rganamiz?</p><p className="mt-1 max-w-xs text-xs leading-5 text-slate-400">Savolingni yubor yoki quyidagi takliflardan birini tanla.</p><div className="mt-5 flex flex-wrap justify-center gap-2">{["Mavzuni sodda tushuntir","Misolni bosqichma-bosqich yech","Menga 5 ta test ber"].map((v)=><button key={v} onClick={()=>setQuestion(v)} className="rounded-full border border-violet-100 bg-violet-50/60 px-3 py-2 text-[10px] font-semibold text-violet-700 hover:bg-violet-100">{v}</button>)}</div></div>:messages.filter((m)=>m.role==="student").map((m,i)=><div key={i} className="ml-auto max-w-[90%] rounded-2xl bg-violet-600 px-4 py-3 text-xs leading-5 text-white">{m.text}</div>)}</div>
       <section className="mb-4 overflow-hidden rounded-2xl border border-[#e7e2fa] bg-[#fcfbff] shadow-inner">
         <div className="flex items-center justify-between border-b border-violet-100 bg-white px-4 py-3"><div className="flex items-center gap-2 text-xs font-extrabold text-slate-700"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-100 text-violet-700"><Icon name="bookText" className="h-4 w-4" /></span> INTERAKTIV DOSKA</div><span className="text-[9px] font-bold uppercase tracking-wider text-violet-500">{boardWriting ? "YOZILMOQDA…" : activeBoardText ? "TAYYOR" : "USTOZ JAVOBI SHU YERDA"}</span></div>
         <div className="relative min-h-[150px] overflow-hidden bg-[#fffefb] p-4 sm:p-5" style={{backgroundImage:"linear-gradient(rgba(139,120,190,.09) 1px, transparent 1px)",backgroundSize:"100% 32px"}}>
