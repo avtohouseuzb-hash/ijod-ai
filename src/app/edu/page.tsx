@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 import type { ReactNode } from "react";
 import Link from "next/link";
 
-type Section = "home" | "tutor" | "homework" | "library" | "progress";
+type Section = "home" | "tutor" | "homework" | "library" | "progress" | "planner";
 
 const subjects = [
   { name: "Matematika", short: "MAT", detail: "Algebra, geometriya va mantiq", color: "violet", icon: "calculator" },
@@ -19,6 +19,7 @@ const subjects = [
 ];
 
 type EduTask = { id: number; subject: string; title: string; meta: string; done: boolean };
+type StudyPlan = { id: string; title: string; subject: string; grade: number; starts_at: string; duration_minutes: number; notes: string; completed_at: string | null };
 
 // Tasks are empty until real assignments are loaded for the signed-in student.
 const tasks: EduTask[] = [];
@@ -69,6 +70,15 @@ export default function EduPage() {
   const [homeworkError, setHomeworkError] = useState("");
   const [homeworkFeedback, setHomeworkFeedback] = useState<Record<number, { status: string; feedback: string; score: number }>>({});
   const [subjectQuery, setSubjectQuery] = useState("");
+  const [studyPlans, setStudyPlans] = useState<StudyPlan[]>([]);
+  const [planLoading, setPlanLoading] = useState(false);
+  const [planError, setPlanError] = useState("");
+  const [planTitle, setPlanTitle] = useState("");
+  const [planSubject, setPlanSubject] = useState("Matematika");
+  const [planDate, setPlanDate] = useState("");
+  const [planDuration, setPlanDuration] = useState("30");
+  const [planNotes, setPlanNotes] = useState("");
+  const [planSaving, setPlanSaving] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState("Matematika");
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<{ role: "student" | "system"; text: string }[]>([]);
@@ -90,7 +100,47 @@ export default function EduPage() {
     }, 22);
     return () => window.clearInterval(timer);
   }, [activeBoardText]);
+  useEffect(() => {
+    if (section !== "planner") return;
+    if (!planDate) {
+      const now = new Date();
+      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+      setPlanDate(now.toISOString().slice(0, 16));
+    }
+    let cancelled = false;
+    async function loadPlans() {
+      setPlanLoading(true); setPlanError("");
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) { if (!cancelled) { setPlanError("O‘quv rejasini ko‘rish uchun hisobingizga kiring."); setPlanLoading(false); } return; }
+      const { data, error } = await supabase.from("edu_study_plans").select("*").eq("user_id", user.id).order("starts_at", { ascending: true });
+      if (!cancelled) { if (error) setPlanError("Rejalarni yuklashda xatolik: " + error.message); else setStudyPlans((data ?? []) as StudyPlan[]); setPlanLoading(false); }
+    }
+    loadPlans();
+    return () => { cancelled = true; };
+  }, [section]);
   const filteredSubjects = useMemo(() => subjects.filter((s) => (s.name + " " + s.detail).toLowerCase().includes(subjectQuery.toLowerCase())), [subjectQuery]);
+
+  async function addStudyPlan() {
+    if (!planTitle.trim() || !planDate) { setPlanError("Dars nomi va sanasini kiriting."); return; }
+    setPlanSaving(true); setPlanError("");
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setPlanError("Avval hisobingizga kiring."); setPlanSaving(false); return; }
+    const { data, error } = await supabase.from("edu_study_plans").insert({ user_id: user.id, title: planTitle.trim(), subject: planSubject, grade: Number(grade.split("-")[0]), starts_at: new Date(planDate).toISOString(), duration_minutes: Number(planDuration), notes: planNotes.trim() }).select("*").single();
+    if (error) setPlanError("Rejani saqlab bo‘lmadi: " + error.message);
+    else { setStudyPlans((items) => [...items, data as StudyPlan].sort((a,b) => a.starts_at.localeCompare(b.starts_at))); setPlanTitle(""); setPlanNotes(""); }
+    setPlanSaving(false);
+  }
+  async function toggleStudyPlan(plan: StudyPlan) {
+    const completedAt = plan.completed_at ? null : new Date().toISOString();
+    const { data, error } = await supabase.from("edu_study_plans").update({ completed_at: completedAt, updated_at: new Date().toISOString() }).eq("id", plan.id).select("*").single();
+    if (error) setPlanError("Holatni yangilab bo‘lmadi: " + error.message);
+    else setStudyPlans((items) => items.map((item) => item.id === plan.id ? data as StudyPlan : item));
+  }
+  async function deleteStudyPlan(id: string) {
+    const { error } = await supabase.from("edu_study_plans").delete().eq("id", id);
+    if (error) setPlanError("Rejani o‘chirib bo‘lmadi: " + error.message);
+    else setStudyPlans((items) => items.filter((item) => item.id !== id));
+  }
 
   const title = navItems.find((item) => item.id === section)?.label ?? "Umumiy ko‘rinish";
   function resetTutorSession() {
@@ -203,7 +253,7 @@ export default function EduPage() {
             <div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-slate-400">IJOD EDU <span className="mx-1 text-slate-300">/</span> MAKTAB</p><p className="text-sm font-bold text-slate-800">{title}</p></div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
-            <label className="hidden items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-400 sm:flex"><Icon name="calendar" className="h-4 w-4" /> O‘quv rejasi</label>
+            <button type="button" onClick={() => setSection("planner")} className={"inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition " + (section === "planner" ? "border-violet-200 bg-violet-50 text-violet-700" : "border-slate-200 bg-white text-slate-500 hover:border-violet-200 hover:text-violet-700")}><Icon name="calendar" className="h-4 w-4" /> <span className="hidden sm:inline">O‘quv rejasi</span><span className="sm:hidden">Reja</span></button>
             <select aria-label="Sinfni tanlash" value={grade} onChange={(e) => changeGrade(e.target.value)} className="rounded-xl border border-violet-100 bg-violet-50 px-3 py-2.5 text-xs font-bold text-violet-700 outline-none focus:ring-2 focus:ring-violet-200">{Array.from({ length: 11 }, (_, i) => <option key={i + 1} value={i + 1 + "-sinf"}>{i + 1}-sinf</option>)}</select>
             <div className="hidden h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-violet-100 to-cyan-100 text-sm font-black text-violet-700 sm:flex">O‘</div>
           </div>
@@ -255,6 +305,12 @@ export default function EduPage() {
       <div className="rounded-2xl border border-slate-200 p-2"><textarea value={question} onChange={(e)=>setQuestion(e.target.value)} onKeyDown={(e)=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendQuestion();}}} rows={2} placeholder="Savolingni shu yerga yoz..." className="w-full resize-none bg-transparent px-2 py-1 text-xs outline-none placeholder:text-slate-400" /><div className="flex items-center justify-between px-1"><span className="text-[10px] text-slate-400">Enter — yuborish · Shift + Enter — yangi qator</span><button onClick={sendQuestion} disabled={!question.trim() || isSending} className="rounded-xl bg-violet-600 px-4 py-2 text-[10px] font-bold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40">{isSending ? "Kutilmoqda…" : "Yuborish"} <Icon name="arrowUpRight" className="ml-1 inline h-3.5 w-3.5" /></button></div></div>{tutorError && <p role="alert" className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700">{tutorError}</p>}<p className="mt-2 text-center text-[9px] text-slate-400">AI Ustoz javoblari tanlangan fan va sinf darajasiga moslashtiriladi.</p></div></section>}
 
           <>{section === "homework" && <section className="rounded-3xl border border-[#eceaf5] bg-white p-6 sm:p-8"><p className="text-[10px] font-extrabold uppercase tracking-[.18em] text-violet-600">TOPSHIRIQLAR MARKAZI</p><h1 className="mt-2 text-2xl font-black">Uy vazifalarim</h1><p className="mt-2 text-sm text-slate-500">Bajargan ishing rasmini yukla. AI tekshiradi va faqat to‘g‘ri bajarilgan vazifani tasdiqlaydi.</p><div className="mt-6 space-y-3">{tasks.length === 0 ? <p className="rounded-xl bg-slate-50 p-4 text-xs text-slate-500">Hozircha uy vazifalari biriktirilmagan.</p> : tasks.map((task) => <div key={task.id} className="rounded-2xl border border-slate-100 p-4"><div className="flex flex-wrap items-center gap-3"><span className={"flex h-8 w-8 items-center justify-center rounded-full border " + (completed.includes(task.id) ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 text-slate-300")}>{completed.includes(task.id) ? <Icon name="check" className="h-4 w-4" /> : <Icon name="bookText" className="h-4 w-4" />}</span><div className="min-w-0 flex-1"><p className="text-sm font-bold">{task.title}</p><p className="mt-1 text-xs text-slate-400">{task.subject} · {task.meta}</p></div><span className={"rounded-full px-3 py-1 text-[10px] font-bold " + (completed.includes(task.id) ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700")}>{completed.includes(task.id) ? "AI tasdiqladi · Bajarildi" : "Tekshirilmagan"}</span></div>{homeworkFeedback[task.id] && <div className="mt-3 rounded-xl bg-violet-50 p-3 text-xs leading-5 text-violet-900">{homeworkFeedback[task.id].feedback}{homeworkFeedback[task.id].status === "approved" && <p className="mt-1 font-bold">AI bahosi: {homeworkFeedback[task.id].score}/100</p>}</div>}<button onClick={() => { setHomeworkTask(task.id); setHomeworkImage(""); setHomeworkFileName(""); setHomeworkError(""); }} className="mt-3 rounded-xl border border-violet-200 px-3 py-2 text-[11px] font-bold text-violet-700">{completed.includes(task.id) ? "Qayta tekshirtirish" : "Rasm yuklash va AI tekshiruvi"}</button></div>)}</div>{homeworkTask !== null && <div className="mt-6 rounded-2xl border-2 border-dashed border-violet-200 bg-violet-50/50 p-5 text-center"><p className="text-sm font-bold">{tasks.find((task) => task.id === homeworkTask)?.title} — bajarilgan ish rasmi</p><p className="mt-1 text-xs text-slate-500">Topshiriq sharti va yechim to‘liq, tiniq ko‘rinsin. JPG, PNG yoki WEBP · 8 MB gacha.</p><label className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-white px-4 py-3 text-xs font-bold text-violet-700 shadow-sm"><Icon name="upload" className="h-4 w-4" /> Rasm tanlash<input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => handleHomeworkFile(event.target.files?.[0])} /></label>{homeworkImage && <div className="mt-4 flex flex-col items-center gap-2"><img src={homeworkImage} alt="Yuklangan uy vazifasi" className="max-h-56 max-w-full rounded-xl border border-violet-100 object-contain" /><p className="text-xs text-slate-500">{homeworkFileName}</p></div>}{homeworkError && <p role="alert" className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700">{homeworkError}</p>}<div className="mt-4 flex justify-center gap-2"><button onClick={() => { setHomeworkTask(null); setHomeworkImage(""); setHomeworkError(""); }} disabled={homeworkBusy} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600">Bekor qilish</button><button onClick={checkHomework} disabled={!homeworkImage || homeworkBusy} className="rounded-xl bg-violet-600 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-40">{homeworkBusy ? "AI tekshiryapti…" : "AI orqali tekshirish"}</button></div></div>}</section>}</>{section === "library" && <section><div className="rounded-3xl bg-gradient-to-r from-[#eae5ff] to-[#e5f7f7] p-6 sm:p-8"><p className="text-[10px] font-extrabold uppercase tracking-[.18em] text-violet-700">BILIMLAR KUTUBXONASI</p><h1 className="mt-2 text-2xl font-black">Darsliklar va mavzular</h1><p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">Sinf va fan bo‘yicha kerakli materiallarni bir joydan top. Darsliklar kutubxonasi kontent bilan to‘ldirilgach, shu yerda ko‘rinadi.</p></div><div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{subjects.map(s=><button key={s.name} onClick={()=>{setSelectedSubject(s.name);setSection("tutor");}} className="rounded-2xl border border-[#eceaf5] bg-white p-4 text-left hover:border-violet-200 hover:shadow-lg"><span className="text-violet-600"><Icon name={s.icon} className="h-6 w-6" /></span><p className="mt-3 text-sm font-bold">{s.name}</p><p className="mt-1 text-[10px] text-slate-400">{grade} · Darsliklar va mavzular</p></button>)}</div></section>}
+
+          {section === "planner" && <section className="space-y-5">
+            <div className="rounded-3xl bg-gradient-to-r from-[#eae5ff] to-[#e5f7f7] p-6 sm:p-8"><p className="text-[10px] font-extrabold uppercase tracking-[.18em] text-violet-700">SHAXSIY REJALASHTIRISH</p><h1 className="mt-2 text-2xl font-black">Mening o‘quv rejam</h1><p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">Darslaringni rejalashtir, bajarilganini belgilab bor. Rejalaring faqat o‘z hisobingda saqlanadi.</p></div>
+            <div className="grid gap-5 xl:grid-cols-[.85fr_1.15fr]"><form onSubmit={(e)=>{e.preventDefault();addStudyPlan();}} className="rounded-3xl border border-[#eceaf5] bg-white p-5 sm:p-6"><h2 className="text-lg font-black">Yangi dars qo‘shish</h2><label className="mt-4 block text-xs font-bold text-slate-600">Dars nomi<input required value={planTitle} onChange={e=>setPlanTitle(e.target.value)} placeholder="Masalan: Chiziqli funksiya" className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-violet-300"/></label><label className="mt-3 block text-xs font-bold text-slate-600">Fan<select value={planSubject} onChange={e=>setPlanSubject(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm">{subjects.map(s=><option key={s.name}>{s.name}</option>)}</select></label><label className="mt-3 block text-xs font-bold text-slate-600">Sana va vaqt<input type="datetime-local" required value={planDate} onChange={e=>setPlanDate(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm"/></label><label className="mt-3 block text-xs font-bold text-slate-600">Davomiyligi<select value={planDuration} onChange={e=>setPlanDuration(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm"><option value="15">15 daqiqa</option><option value="30">30 daqiqa</option><option value="45">45 daqiqa</option><option value="60">1 soat</option><option value="90">1,5 soat</option><option value="120">2 soat</option></select></label><label className="mt-3 block text-xs font-bold text-slate-600">Izoh (ixtiyoriy)<textarea value={planNotes} onChange={e=>setPlanNotes(e.target.value)} rows={2} placeholder="Nimani o‘rganmoqchisiz?" className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-violet-300"/></label>{planError && <p role="alert" className="mt-3 rounded-xl bg-rose-50 p-3 text-xs text-rose-700">{planError}</p>}<button disabled={planSaving} className="mt-4 w-full rounded-xl bg-violet-600 px-4 py-3 text-xs font-bold text-white disabled:opacity-50">{planSaving?"Saqlanmoqda…":"Rejaga qo‘shish"}</button></form>
+            <div className="rounded-3xl border border-[#eceaf5] bg-white p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><h2 className="text-lg font-black">Rejalashtirilgan darslar</h2><p className="mt-1 text-xs text-slate-400">{studyPlans.length} ta reja</p></div><span className="rounded-xl bg-violet-50 px-3 py-2 text-xs font-bold text-violet-700">{studyPlans.filter(p=>p.completed_at).length} ta bajarildi</span></div>{planLoading?<p className="mt-5 text-sm text-slate-400">Rejalar yuklanmoqda…</p>:studyPlans.length===0?<div className="mt-5 rounded-2xl bg-slate-50 p-6 text-center"><Icon name="calendar" className="mx-auto h-8 w-8 text-violet-400"/><p className="mt-3 text-sm font-bold">Hozircha rejangiz bo‘sh</p><p className="mt-1 text-xs text-slate-500">Chap tomondagi shakl orqali birinchi darsingizni qo‘shing.</p></div>:<div className="mt-5 space-y-3">{studyPlans.map(plan=><article key={plan.id} className="flex flex-wrap items-start gap-3 rounded-2xl border border-slate-100 p-4"><button type="button" onClick={()=>toggleStudyPlan(plan)} aria-label={plan.completed_at?"Bajarilgan deb belgilashni bekor qilish":"Bajarildi deb belgilash"} className={"mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border "+(plan.completed_at?"border-emerald-500 bg-emerald-500 text-white":"border-slate-300 text-slate-300")}>{plan.completed_at?<Icon name="check" className="h-4 w-4"/>:""}</button><div className="min-w-0 flex-1"><p className={"text-sm font-bold "+(plan.completed_at?"text-slate-400 line-through":"text-slate-800")}>{plan.title}</p><p className="mt-1 text-xs text-violet-700">{plan.subject} · {plan.grade}-sinf · {plan.duration_minutes} daqiqa</p><p className="mt-1 text-xs text-slate-500">{new Date(plan.starts_at).toLocaleString("uz-UZ",{dateStyle:"medium",timeStyle:"short"})}</p>{plan.notes&&<p className="mt-2 text-xs text-slate-400">{plan.notes}</p>}</div><button type="button" onClick={()=>deleteStudyPlan(plan.id)} className="rounded-lg px-2 py-1 text-xs font-semibold text-rose-500 hover:bg-rose-50">O‘chirish</button></article>)}</div>}</div></div>
+          </section>}
 
           {section === "progress" && <section className="rounded-3xl border border-[#eceaf5] bg-white p-6 sm:p-8"><p className="text-[10px] font-extrabold uppercase tracking-[.18em] text-violet-600">SHAXSIY O‘SISH</p><h1 className="mt-2 text-2xl font-black">Mening natijalarim</h1><p className="mt-2 text-sm text-slate-500">O‘quv jarayoning va fanlar bo‘yicha o‘zlashtirish holati.</p><div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{subjects.map(s=><div key={s.name} className="rounded-2xl bg-slate-50 p-4"><p className="text-xs font-bold">{s.name}</p><p className="mt-3 text-2xl font-black text-violet-700">0%</p><div className="mt-3 h-1.5 rounded-full bg-slate-200"><div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-cyan-400" style={{width:"0%"}} /></div></div>)}</div><p className="mt-5 rounded-xl bg-slate-50 p-4 text-xs leading-5 text-slate-600">Hozircha saqlangan o‘quv natijalari yo‘q. Darslar va topshiriqlar bajarilgach, shaxsiy natijalaringiz shu yerda ko‘rsatiladi.</p></section>}
 
