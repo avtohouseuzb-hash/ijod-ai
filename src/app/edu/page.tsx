@@ -254,6 +254,8 @@ export default function EduPage() {
             <div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-slate-400">IJOD EDU <span className="mx-1 text-slate-300">/</span> MAKTAB</p><p className="text-sm font-bold text-slate-800">{title}</p></div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
+            <LanguageSelect className="hidden sm:inline-flex" />
             <button type="button" onClick={() => setSection("planner")} className={"inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition " + (section === "planner" ? "border-violet-200 bg-violet-50 text-violet-700" : "border-slate-200 bg-white text-slate-500 hover:border-violet-200 hover:text-violet-700")}><Icon name="calendar" className="h-4 w-4" /> <span className="hidden sm:inline">O‘quv rejasi</span><span className="sm:hidden">Reja</span></button>
             <select aria-label="Sinfni tanlash" value={grade} onChange={(e) => changeGrade(e.target.value)} className="rounded-xl border border-violet-100 bg-violet-50 px-3 py-2.5 text-xs font-bold text-violet-700 outline-none focus:ring-2 focus:ring-violet-200">{Array.from({ length: 11 }, (_, i) => <option key={i + 1} value={i + 1 + "-sinf"}>{i + 1}-sinf</option>)}</select>
             <div className="hidden h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-violet-100 to-cyan-100 text-sm font-black text-violet-700 sm:flex">O‘</div>
