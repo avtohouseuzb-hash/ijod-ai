@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { LanguageSelect, ThemeToggle } from "@/components/site-preferences";
 
 const tools = [
   { icon: "✳", title: "AI Rasm", desc: "G‘oyangizdan ajoyib rasmlar yarating", color: "bg-violet-100 text-violet-700", tag: "Mashhur" },
@@ -166,6 +167,7 @@ export default function Home() {
           </button>
         </div>
 
+        <div className="mb-3"><LanguageSelect className="w-full justify-between" /></div>
         <div className="relative mt-auto border-t border-gray-100 pt-4">
           <button type="button" onClick={() => setProfileMenuOpen((v) => !v)} aria-expanded={profileMenuOpen} className="flex w-full items-center gap-3 rounded-xl p-2 text-left hover:bg-gray-50">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-500">👤</div>
@@ -184,6 +186,7 @@ export default function Home() {
           <div className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.18em] text-gray-400">MENYU</div>
           <nav className="space-y-1">{menu.map((item) => <button key={item.name} onClick={() => { if (item.name === "AI News") { window.location.href = "/news"; return; } if (item.name === "IJOD EDU") { window.location.href = "/edu"; return; } setActive(item.name); setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); }} className={"flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium " + (active === item.name ? "bg-violet-50 text-violet-700" : "text-gray-600 hover:bg-gray-50")}><span className="w-5 text-center text-lg">{item.icon}</span>{item.name}{item.name === "AI vositalar" && <span className="ml-auto text-xs text-gray-400">{tools.length}</span>}</button>)}</nav>
           <div className="mt-8 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-700 p-4 text-white"><div className="mb-2 text-xl">✦</div><div className="text-sm font-bold">Tasavvuringizni yarating</div><p className="mt-1 text-xs leading-5 text-violet-100">AI yordamida g‘oyalaringizni hayotga olib keling.</p><button onClick={() => { setActive("AI vositalar"); setMobileMenuOpen(false); document.getElementById("tools")?.scrollIntoView({ behavior: "smooth" }); }} className="mt-4 rounded-lg bg-white px-3 py-2 text-xs font-bold text-violet-700">Boshlash →</button></div>
+          <div className="mb-3"><LanguageSelect className="w-full justify-between" /></div>
           <div className="mt-auto border-t border-gray-100 pt-4"><div className="mb-2 px-2 text-sm font-semibold">{userEmail || "Mehmon"}</div>{userEmail ? <button onClick={handleSignOut} className="w-full rounded-xl px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-50">Hisobdan chiqish</button> : <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-50">Kirish / Ro‘yxatdan o‘tish ↗</Link>}</div>
         </aside>
       </div>}
