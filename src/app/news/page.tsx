@@ -7,7 +7,7 @@ import { LanguageSelect, ThemeToggle } from "@/components/site-preferences";
 
 type Article = { id:string; title:string; summary:string|null; source_name:string; source_url:string; image_url:string|null; video_url:string|null; media_type?:string|null; category:string; published_at:string|null; ai_analysis:string|null };
 const tabs = ["Yangiliklar","AI tahlil","AI bilan savol-javob","Saqlanganlar","Qiziqishlarim"] as const;
-const categories = ["O‘zbekiston","Jahon","AI va IT","Iqtisodiyot","Biznes","Fan","Sport","Umumiy"];
+const categories = ["O‘zbekiston","Jahon","AI va IT","Iqtisodiyot","Biznes","Ilm-fan","Sport","Umumiy"];
 
 export default function NewsPage() {
  const [tab,setTab]=useState<typeof tabs[number]>("Yangiliklar");
