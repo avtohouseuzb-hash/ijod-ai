@@ -21,7 +21,7 @@ const tools = [
   { icon: "▤", title: "AI Hujjat yordamchisi", desc: "Matn va hujjatlarni qisqartirish, tushuntirish va qayta yozish", color: "bg-blue-100 text-blue-700", tag: "" },
   { icon: "▶", title: "AI Reels ssenariy paketi", desc: "Kadrlar, subtitr matni, voiceover va CTA bilan ssenariy", color: "bg-amber-100 text-amber-700", tag: "" },
   { icon: "👗", title: "AI Virtual Kiyintirish", desc: "Kiyim, oyoq kiyim va aksessuarlarni AI modelga kiydiring", color: "bg-violet-100 text-violet-700", tag: "Yangi" },
-  { icon: "▶", title: "AI Video", desc: "Matn va rasmlardan video yarating", color: "bg-pink-100 text-pink-700", tag: "Yangi" },
+  { icon: "▶", title: "AI Video", desc: "Matn va rasmlardan video yarating", color: "bg-pink-100 text-pink-700", tag: "Tez orada" },
 ];
 
 export default function Home() {
@@ -335,19 +335,18 @@ export default function Home() {
                   const route = routes[tool.title];
                   if (route) window.location.href = route;
                   else alert(`${tool.title} tez orada ishga tushadi!`);
-                }} className={`group relative rounded-2xl border border-gray-200/80 bg-white p-5 text-left transition duration-200 ${tool.title === "AI Video" ? "cursor-not-allowed border-pink-100" : "hover:-translate-y-1 hover:border-violet-200 hover:shadow-xl hover:shadow-violet-100/50"}`}>
-                  <div className={tool.title === "AI Video" ? "pointer-events-none select-none blur-[2px] opacity-60" : ""}>
+                }} className={`group relative rounded-2xl border border-gray-200/80 bg-white p-5 text-left transition duration-200 dark:border-slate-700 dark:bg-slate-900 ${tool.title === "AI Video" ? "cursor-not-allowed border-pink-100 dark:border-pink-900/70" : "hover:-translate-y-1 hover:border-violet-200 hover:shadow-xl hover:shadow-violet-100/50 dark:hover:border-violet-500/60 dark:hover:shadow-violet-950/30"}`}>
+                  <div className="pointer-events-none select-none">
                     <div className="flex items-start justify-between">
                       <div className={`flex h-12 w-12 items-center justify-center rounded-2xl text-xl font-bold ${tool.color}`}>{tool.icon}</div>
-                      {tool.tag && <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${tool.tag === "Yangi" ? "bg-pink-50 text-pink-600" : "bg-violet-50 text-violet-600"}`}>{tool.tag}</span>}
+                      {tool.tag && <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${tool.tag === "Yangi" || tool.tag === "Tez orada" ? "bg-pink-50 text-pink-600 dark:bg-pink-950/50 dark:text-pink-300" : "bg-violet-50 text-violet-600 dark:bg-violet-950/50 dark:text-violet-300"}`}>{tool.tag}</span>}
                     </div>
-                    <h3 className="mt-5 font-bold">{tool.title}</h3>
-                    <p className="mt-2 min-h-10 text-sm leading-5 text-gray-500">{tool.desc}</p>
-                    <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4 text-xs font-semibold text-gray-500">
-                      Ochish <span className="text-base">→</span>
+                    <h3 className="mt-5 font-bold text-slate-900 dark:text-slate-100">{tool.title}</h3>
+                    <p className="mt-2 min-h-10 text-sm leading-5 text-gray-500 dark:text-slate-300">{tool.desc}</p>
+                    <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4 text-xs font-semibold text-gray-500 dark:border-slate-700 dark:text-slate-400">
+                      {tool.title === "AI Video" ? "Tez orada" : "Ochish"} <span className="text-base">→</span>
                     </div>
                   </div>
-                  {tool.title === "AI Video" && <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-2xl bg-white/30"><span className="rounded-full border border-pink-200 bg-pink-50 px-4 py-2 text-sm font-bold text-pink-700 shadow-sm">Tez orada</span></div>}
                 </button>
               ))}
             </div>
