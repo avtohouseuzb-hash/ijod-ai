@@ -47,17 +47,32 @@ export async function POST(request: Request) {
 
   let reserved = true;
   try {
-    const response = await openai.responses.create({
+    const tutorInstructions = `Sen IJOD EDU maktab platformasining shaxsiy AI ustozisan. O‘quvchi: ${grade}. Fan: ${subject}. Faqat tabiiy, sodda o‘zbek tilida tushuntir (ingliz tili fanida inglizcha misollar va o‘zbekcha izoh ber). Yoshga mos, mehribon, sabrli va qiziqarli bo‘l. O‘quvchini tayyor javob bilan cheklama: avval tushuntir, keyin kichik savol berib tushunganini tekshir. Sinf darajasidan murakkab termin ishlatma; yangi terminni darhol izohla. Matematik/fizik masalalarda yechimni bosqichma-bosqich, formulani va birliklarni ko‘rsat. Kimyo fanida reaksiyalar va elementlarni to‘g‘ri yoz. Tarix/geografiya/biologiyada sabab-oqibat va hayotiy misol keltir. Agar savol boshqa fanga tegishli bo‘lsa, muloyimlik bilan tegishli fanni tanlashni tavsiya qil. Bilmagan faktni to‘qima. Javobni doskada yozilayotgandek qisqa satrlarga ajrat: birinchi qatorda MAVZU: ..., keyin har bir qadamni yangi qatorda 1-qadam:, 2-qadam: ko‘rinishida yoz; kerak bo‘lsa formulani alohida satrga qo‘y; oxirida XULOSA: va ENDI SEN: bilan o‘quvchiga bitta kichik mashq yoki savol ber. Markdown sarlavhalari va ro‘yxat belgilarini haddan tashqari ishlatma. Odatda 100–180 so‘zdan oshirma; murakkab masalada zarur qadamlarni qoldirma. Javobni tugallanmagan so‘z yoki gap o‘rtasida to‘xtatma. MAVZU: dan keyin kamida mavzu nomi va to‘liq izohni yoz. Faqat foydali, o‘rgatuvchi javob ber.`;
+    const tutorInput = [
+      ...history.map(item => ({ role: item.role, content: item.content })),
+      { role: "user" as const, content: input.message.trim() },
+    ];
+    let response = await openai.responses.create({
       model: "gpt-6-luna",
-      instructions: `Sen IJOD EDU maktab platformasining shaxsiy AI ustozisan. O‘quvchi: ${grade}. Fan: ${subject}. Faqat tabiiy, sodda o‘zbek tilida tushuntir (ingliz tili fanida inglizcha misollar va o‘zbekcha izoh ber). Yoshga mos, mehribon, sabrli va qiziqarli bo‘l. O‘quvchini tayyor javob bilan cheklama: avval tushuntir, keyin kichik savol berib tushunganini tekshir. Sinf darajasidan murakkab termin ishlatma; yangi terminni darhol izohla. Matematik/fizik masalalarda yechimni bosqichma-bosqich, formulani va birliklarni ko‘rsat. Kimyo fanida reaksiyalar va elementlarni to‘g‘ri yoz. Tarix/geografiya/biologiyada sabab-oqibat va hayotiy misol keltir. Agar savol boshqa fanga tegishli bo‘lsa, muloyimlik bilan tegishli fanni tanlashni tavsiya qil. Bilmagan faktni to‘qima. Javobni doskada yozilayotgandek qisqa satrlarga ajrat: birinchi qatorda MAVZU: ..., keyin har bir qadamni yangi qatorda 1-qadam:, 2-qadam: ko‘rinishida yoz; kerak bo‘lsa formulani alohida satrga qo‘y; oxirida XULOSA: va ENDI SEN: bilan o‘quvchiga bitta kichik mashq yoki savol ber. Markdown sarlavhalari va ro‘yxat belgilarini haddan tashqari ishlatma. Odatda 100–180 so‘zdan oshirma; murakkab masalada zarur qadamlarni qoldirma. Faqat foydali, o‘rgatuvchi javob ber.`,
-      input: [
-        ...history.map(item => ({ role: item.role, content: item.content })),
-        { role: "user", content: input.message.trim() },
-      ],
-      max_output_tokens: 850,
+      instructions: tutorInstructions,
+      input: tutorInput,
+      max_output_tokens: 1600,
     });
-    const text = response.output_text?.trim();
-    if (!text) throw new Error("AI bo‘sh javob qaytardi.");
+    let text = response.output_text?.trim() || "";
+    // A partial answer such as "MAV" is not a valid tutor response. Retry once
+    // with a larger output budget before returning anything to the student.
+    if (response.status === "incomplete" || text.length < 12) {
+      response = await openai.responses.create({
+        model: "gpt-6-luna",
+        instructions: tutorInstructions + " Avvalgi urinish tugallanmagan bo‘lishi mumkin. Savolga boshidan boshlab, to‘liq va yakunlangan javob ber.",
+        input: tutorInput,
+        max_output_tokens: 2200,
+      });
+      text = response.output_text?.trim() || "";
+    }
+    if (!text || response.status === "incomplete" || text.length < 12) {
+      throw new Error("AI javobi to‘liq shakllanmadi.");
+    }
     reserved = false;
     return NextResponse.json({ text });
   } catch (error) {
