@@ -336,7 +336,7 @@ export default function Home() {
                   if (route) window.location.href = route;
                   else alert(`${tool.title} tez orada ishga tushadi!`);
                 }} className={`group relative rounded-2xl border border-gray-200/80 bg-white p-5 text-left transition duration-200 dark:border-slate-700 dark:bg-slate-900 ${tool.title === "AI Video" ? "cursor-not-allowed border-pink-100 dark:border-pink-900/70" : "hover:-translate-y-1 hover:border-violet-200 hover:shadow-xl hover:shadow-violet-100/50 dark:hover:border-violet-500/60 dark:hover:shadow-violet-950/30"}`}>
-                  <div className="pointer-events-none select-none blur-[2px] opacity-60">
+                  <div className={tool.title === "AI Video" ? "pointer-events-none select-none blur-[2px] opacity-60" : "pointer-events-none select-none"}>
                     <div className="flex items-start justify-between">
                       <div className={`flex h-12 w-12 items-center justify-center rounded-2xl text-xl font-bold ${tool.color}`}>{tool.icon}</div>
                       {tool.tag && <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${tool.tag === "Yangi" || tool.tag === "Tez orada" ? "bg-pink-50 text-pink-600 dark:bg-pink-950/50 dark:text-pink-300" : "bg-violet-50 text-violet-600 dark:bg-violet-950/50 dark:text-violet-300"}`}>{tool.tag}</span>}
