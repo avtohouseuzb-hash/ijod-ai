@@ -3,7 +3,6 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const subjects = new Set(["Matematika", "Fizika", "Kimyo", "Biologiya", "Ingliz tili", "Tarix", "Ona tili", "Geografiya"]);
 
 export async function POST(request: Request) {
   if (!process.env.OPENAI_API_KEY) return NextResponse.json({ error: "AI tekshiruv xizmati sozlanmagan." }, { status: 503 });
@@ -21,7 +20,7 @@ export async function POST(request: Request) {
   try { body = await request.json(); } catch { return NextResponse.json({ error: "So‘rov formati noto‘g‘ri." }, { status: 400 }); }
   const input = body && typeof body === "object" ? body as { taskTitle?: unknown; subject?: unknown; grade?: unknown; imageDataUrl?: unknown } : {};
   const grade = typeof input.grade === "string" && /^(?:[1-9]|10|11)-sinf$/.test(input.grade) ? input.grade : "7-sinf";
-  const subject = typeof input.subject === "string" && subjects.has(input.subject) ? input.subject : "";
+  const subject = typeof input.subject === "string" ? input.subject.trim().slice(0, 80) : "";
   const taskTitle = typeof input.taskTitle === "string" ? input.taskTitle.trim().slice(0, 500) : "";
   if (!subject || !taskTitle) return NextResponse.json({ error: "Sinf, fan va topshiriq matnini kiriting." }, { status: 400 });
   if (typeof input.imageDataUrl !== "string") return NextResponse.json({ error: "Bajarilgan ish rasmini yuklang." }, { status: 400 });
@@ -50,7 +49,7 @@ export async function POST(request: Request) {
   try {
     const response = await openai.responses.create({
       model: "gpt-6-luna",
-      instructions: "Sen IJOD EDU maktab o‘qituvchisisan. O‘quvchi sinfi: " + grade + ". Fan: " + subject + ". Vazifa: " + taskTitle + ". Avval File Search orqali aynan shu sinf va fan darsliklaridan topshiriq sharti yoki shu mavzudagi tegishli qoida va yechimni top. Keyin yuborilgan rasmda o‘quvchining yechimini tekshir. Faqat rasmda aniq ko‘ringan dalillarga tayan. Agar darslikdan tegishli topshiriq yoki qoida topilmasa, yoki rasmda shart/yechim o‘qilmasa, status unclear qaytar; taxmin bilan tasdiqlama. Javob to‘liq va to‘g‘ri bo‘lsa approved. Xato yoki tugallanmagan bo‘lsa needs_revision va xatoni sodda qilib tushuntir. O‘zbek tilida faqat JSON qaytar: {"status":"approved"|"needs_revision"|"unclear","feedback":"qisqa tushuntirish","score":0-100}.",
+      instructions: "Sen IJOD EDU maktab o‘qituvchisisan. O‘quvchi sinfi: " + grade + ". Fan: " + subject + ". Vazifa: " + taskTitle + ". Avval File Search orqali aynan shu sinf va fan darsliklaridan topshiriq sharti yoki shu mavzudagi tegishli qoida va yechimni top. Keyin yuborilgan rasmda o‘quvchining yechimini tekshir. Faqat rasmda aniq ko‘ringan dalillarga tayan. Agar darslikdan tegishli topshiriq yoki qoida topilmasa, yoki rasmda shart/yechim o‘qilmasa, status unclear qaytar; taxmin bilan tasdiqlama. Javob to‘liq va to‘g‘ri bo‘lsa approved. Xato yoki tugallanmagan bo‘lsa needs_revision va xatoni sodda qilib tushuntir. O‘zbek tilida faqat JSON formatida javob qaytar. status maydoni approved, needs_revision yoki unclear qiymatidan biri bo‘lsin; feedback qisqa tushuntirish bo‘lsin; score 0 dan 100 gacha butun son bo‘lsin.",
       input: [{
         role: "user",
         content: [
