@@ -344,3 +344,72 @@ html.dark .ijod-route-preferences {
 }
 .ijod-route-preferences .ijod-theme-toggle { background: transparent; border: 0; box-shadow: none; }
 .ijod-route-preferences .ijod-language-select > button { border: 0; background: transparent; box-shadow: none; }
+
+
+/* AI Tutor chat: dedicated dark palette. Light-mode layout remains unchanged. */
+html.dark .ijod-language-tutor {
+  background: #0b1020 !important;
+  color: #e8edf7 !important;
+}
+html.dark .ijod-language-tutor > header {
+  background: rgb(17 26 43 / 96%) !important;
+  border-color: #2b3a52 !important;
+  color: #f1f5fb !important;
+}
+html.dark .ijod-language-tutor .ijod-tutor-chat-window {
+  background: #111a2b !important;
+  border-color: #34445e !important;
+  color: #edf2fb !important;
+}
+html.dark .ijod-language-tutor .ijod-tutor-chat-window > div:first-child {
+  background: #111a2b !important;
+  border-color: #2b3a52 !important;
+  color: #f1f5fb !important;
+}
+html.dark .ijod-language-tutor .ijod-tutor-chat-messages {
+  background: #0d1627 !important;
+  color: #edf2fb !important;
+}
+html.dark .ijod-language-tutor .ijod-tutor-chat-messages h3 {
+  color: #f8faff !important;
+}
+html.dark .ijod-language-tutor .ijod-tutor-chat-messages .bg-white {
+  background: #18243a !important;
+  border-color: #34445e !important;
+  color: #edf2fb !important;
+}
+html.dark .ijod-language-tutor .ijod-tutor-chat-messages .bg-violet-50 {
+  background: #241b3b !important;
+  color: #e7d9ff !important;
+}
+html.dark .ijod-language-tutor .ijod-tutor-live-footer {
+  background: #19172d !important;
+  border-color: #45316b !important;
+  color: #f1eaff !important;
+}
+html.dark .ijod-language-tutor .ijod-tutor-live-footer p {
+  color: #d8c8ff !important;
+}
+html.dark .ijod-language-tutor .ijod-tutor-live-footer .bg-white {
+  background: #111a2b !important;
+  border-color: #45316b !important;
+  color: #edf2fb !important;
+}
+html.dark .ijod-language-tutor .ijod-tutor-chat-composer {
+  background: #111a2b !important;
+  border-color: #2b3a52 !important;
+}
+html.dark .ijod-language-tutor .ijod-tutor-chat-composer > div {
+  background: #0d1627 !important;
+  border-color: #34445e !important;
+}
+html.dark .ijod-language-tutor .ijod-tutor-chat-composer textarea {
+  background: transparent !important;
+  color: #f1f5fb !important;
+}
+html.dark .ijod-language-tutor .ijod-tutor-chat-composer textarea::placeholder {
+  color: #91a0b7 !important;
+}
+html.dark .ijod-language-tutor .ijod-tutor-chat-composer > p {
+  color: #9eabc0 !important;
+}

@@ -534,7 +534,7 @@ export default function LanguageTutorPage() {
         </div>
       </div>
     </div>
-  </main> : <main className="min-h-screen bg-[#f7f7fb] text-gray-900">
+  </main> : <main className="ijod-language-tutor min-h-screen bg-[#f7f7fb] text-gray-900">
     <header className="sticky top-0 z-20 border-b border-gray-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
         <Link href="/" className="text-sm font-semibold text-violet-700">← IJOD AI</Link>
@@ -587,13 +587,13 @@ export default function LanguageTutorPage() {
           <p className="mt-4 rounded-xl bg-violet-50 p-3 text-xs leading-5 text-violet-800">AI xatolaringizni muloyim tuzatadi, yangi so‘zlarni tushuntiradi va darajangizga mos gaplashadi.</p>
         </section>
       </aside>
-      <section className="flex min-h-[680px] flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm">
+      <section className="ijod-tutor-chat-window flex min-h-[680px] flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm">
         <div className="flex items-center gap-3 border-b border-gray-100 p-4 sm:p-5">
           <MoodAvatar mood={mood} speakingLevel={realtimeActive ? mouthLevel : 0} className="h-12 w-12" />
           <div className="min-w-0 flex-1"><h2 className="font-bold">{language === "English" ? "Chat with AI Tutor" : "Разговор с AI-учителем"}</h2><p className="text-xs text-gray-500">{language} · {level} · {personalities.find((p) => p.id === personality)?.label}</p></div>
           <button onClick={completeCurrentLesson} className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50">{currentLessonId ? "Darsni yakunlash" : "Yangi dars"}</button>
         </div>
-        <div className="flex-1 space-y-4 overflow-y-auto bg-[#fcfbff] p-4 sm:p-6">
+        <div className="ijod-tutor-chat-messages flex-1 space-y-4 overflow-y-auto bg-[#fcfbff] p-4 sm:p-6">
           {messages.length === 0 && <div className="mx-auto mt-12 max-w-md text-center">
             <MoodAvatar mood={mood} speakingLevel={realtimeActive ? mouthLevel : 0} className="mx-auto h-20 w-20" />
             <h3 className="mt-5 text-xl font-black">Salom! Men sizning AI Ustozingizman.</h3>
@@ -609,7 +609,7 @@ export default function LanguageTutorPage() {
           {loading && <div className="flex justify-start"><div className="rounded-2xl bg-violet-50 px-4 py-3 text-sm text-violet-700">AI Ustoz o‘ylayapti…</div></div>}
           {error && <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
         </div>
-        <div className="w-full min-w-0 border-t border-violet-100 bg-violet-50/60 px-4 py-3">
+        <div className="ijod-tutor-live-footer w-full min-w-0 border-t border-violet-100 bg-violet-50/60 px-4 py-3">
           <div className="flex flex-col gap-3">
             <div className="w-full min-w-0">
               <p className="text-sm font-bold text-violet-900">Jonli ovozli suhbat</p>
@@ -628,7 +628,7 @@ export default function LanguageTutorPage() {
           </div>
           <p className="mt-2 text-[10px] text-violet-600">OpenAI Realtime API ishlatiladi. Mikrofon ruxsati va internet kerak; audio foydalanishi API hisobingizda alohida narxlanadi.</p>
         </div>
-        <div className="border-t border-gray-100 bg-white p-3 sm:p-4">
+        <div className="ijod-tutor-chat-composer border-t border-gray-100 bg-white p-3 sm:p-4">
           <div className="flex items-end gap-2 rounded-2xl border border-gray-200 bg-gray-50 p-2 focus-within:border-violet-300">
             <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void sendMessage(); } }} rows={2} maxLength={2000} placeholder={language === "English" ? "Write your message..." : "Напишите ваше сообщение..."} className="max-h-32 min-h-12 flex-1 resize-y bg-transparent p-2 text-sm outline-none" />
             <button type="button" disabled={loading || transcribing} onClick={() => listening ? stopMicrophone() : void startMicrophone()} title={listening ? "Yozuvni tugatish" : "Mikrofon orqali gapirish"} aria-label="Mikrofon" className={"flex min-w-[52px] items-center justify-center gap-1 rounded-xl border px-3 py-3 text-lg font-bold transition " + (listening ? "border-red-300 bg-red-50 text-red-600 animate-pulse" : "border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100")}><span>🎙️</span><span className="text-xs">{listening ? "STOP" : "Gapir"}</span></button>
