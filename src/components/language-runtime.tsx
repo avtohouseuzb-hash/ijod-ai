@@ -507,7 +507,7 @@ const translations: Record<"ru" | "en", Record<string, string>> = {
     "SHAXSIY O‘SISH": "PERSONAL GROWTH",
     "Mening natijalarim": "My results",
     "O‘quv jarayoning va fanlar bo‘yicha o‘zlashtirish holati.": "Your learning progress and subject performance.",
-    "O‘rganish — bu sayohat.": "Learning is a journey."
+    "O‘rganish — bu sayohat.": "Learning is a journey.",
     "Rasm tavsifi": "Image description",
     "Rasm yaratish": "Generate image",
     "Rasm yaratilmoqda...": "Generating image...",
