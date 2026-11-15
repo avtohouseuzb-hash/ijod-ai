@@ -4,12 +4,12 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 type Textbook = { id: string; title: string; grade: number; subject: string; status: string; error_message: string | null };
-const subjects = ["Matematika", "Fizika", "Kimyo", "Biologiya", "Ingliz tili", "Tarix", "Ona tili", "Geografiya"];
 
 export default function EduTextbookAdminPage() {
   const [title, setTitle] = useState("");
   const [grade, setGrade] = useState("7");
   const [subject, setSubject] = useState("Matematika");
+  const [part, setPart] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [items, setItems] = useState<Textbook[]>([]);
   const [busy, setBusy] = useState(false);
@@ -35,9 +35,9 @@ export default function EduTextbookAdminPage() {
     if (!file || !title.trim() || busy) return;
     setBusy(true); setMessage("");
     try {
-      if (file.type !== "application/pdf" || file.size > 50 * 1024 * 1024) throw new Error("Faqat 50 MB gacha PDF yuklang.");
+      if (file.type !== "application/pdf" || file.size > 150 * 1024 * 1024) throw new Error("Faqat 150 MB gacha PDF yuklang.");
       const access = await token();
-      const init = await fetch("/api/edu-textbooks", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + access }, body: JSON.stringify({ title, grade, subject, fileName: file.name }) });
+      const init = await fetch("/api/edu-textbooks", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + access }, body: JSON.stringify({ title, grade, subject, part, fileName: file.name }) });
       const data = await init.json();
       if (!init.ok) throw new Error(data.error || "Yuklashni boshlashda xatolik.");
       const { error } = await supabase.storage.from("edu-textbooks").uploadToSignedUrl(data.path, data.token, file, { contentType: "application/pdf", upsert: false });
@@ -53,13 +53,14 @@ export default function EduTextbookAdminPage() {
   }
 
   return <main className="mx-auto max-w-5xl p-5 sm:p-8">
-    <div className="mb-7"><p className="text-xs font-bold uppercase tracking-widest text-violet-600">IJOD EDU · ADMIN</p><h1 className="mt-2 text-3xl font-black text-slate-900">Maktab darsliklari</h1><p className="mt-2 text-sm text-slate-500">Rasmiy darslik PDF fayllarini yuklang. AI ularni indekslab, tegishli sinf va fan bo‘yicha qidiruvga qo‘shadi.</p></div>
+    <div className="mb-7"><p className="text-xs font-bold uppercase tracking-widest text-violet-600">IJOD EDU · ADMIN</p><h1 className="mt-2 text-3xl font-black text-slate-900">Maktab darsliklari</h1><p className="mt-2 text-sm text-slate-500">Rasmiy darslik PDF fayllarini yuklang. Barcha fan nomlari va darslik qismlarini kiritish mumkin. AI ularni indekslab, sinf va fan bo‘yicha qidiruvga qo‘shadi.</p></div>
     <section className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-7">
       <h2 className="text-lg font-bold">Yangi darslik yuklash</h2>
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <label className="text-sm font-semibold text-slate-700">Darslik nomi<input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Masalan: Matematika 7-sinf" className="mt-2 w-full rounded-xl border border-slate-200 p-3 text-sm font-normal" /></label>
         <label className="text-sm font-semibold text-slate-700">Sinf<select value={grade} onChange={e=>setGrade(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 p-3 text-sm">{Array.from({length:11},(_,i)=><option key={i+1} value={String(i+1)}>{i+1}-sinf</option>)}</select></label>
-        <label className="text-sm font-semibold text-slate-700">Fan<select value={subject} onChange={e=>setSubject(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 p-3 text-sm">{subjects.map(s=><option key={s}>{s}</option>)}</select></label>
+        <label className="text-sm font-semibold text-slate-700">Fan nomi<input value={subject} onChange={e=>setSubject(e.target.value)} placeholder="Masalan: Algebra, Adabiyot, Informatika" className="mt-2 w-full rounded-xl border border-slate-200 p-3 text-sm font-normal" /></label>
+        <label className="text-sm font-semibold text-slate-700">Darslik qismi (ixtiyoriy)<input value={part} onChange={e=>setPart(e.target.value)} placeholder="1-qism yoki 2-qism" className="mt-2 w-full rounded-xl border border-slate-200 p-3 text-sm font-normal" /></label>
         <label className="text-sm font-semibold text-slate-700">PDF fayl<input type="file" accept="application/pdf,.pdf" onChange={e=>setFile(e.target.files?.[0] || null)} className="mt-2 block w-full rounded-xl border border-slate-200 p-2 text-xs" /></label>
       </div>
       {file && <p className="mt-3 text-xs text-slate-500">Tanlangan fayl: {file.name} · {(file.size/1024/1024).toFixed(1)} MB</p>}
