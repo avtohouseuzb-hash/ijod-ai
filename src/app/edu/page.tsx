@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { LanguageSelect, ThemeToggle } from "@/components/site-preferences";
 import { getEduSubjects } from "@/lib/edu-subjects";
-import EduFamilyAccess, { EduStudentGradeContext } from "@/components/edu-family-access";
+import EduFamilyAccess, { EduStudentGradeContext, EduStudentProfileContext } from "@/components/edu-family-access";
 
 type Section = "home" | "tutor" | "homework" | "library" | "progress" | "planner";
 
@@ -55,6 +55,13 @@ export default function EduPage() { return <EduFamilyAccess><EduStudentPage /></
 
 function EduStudentPage() {
   const savedStudentGrade = useContext(EduStudentGradeContext);
+  const savedStudentProfile = useContext(EduStudentProfileContext);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [profileSignOutBusy, setProfileSignOutBusy] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const profileMenuRef = useRef<HTMLDivElement | null>(null);
+  const profileName = savedStudentProfile?.displayName?.trim() || "O‘quvchi";
+  const profileInitials = profileName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toLocaleUpperCase("uz-UZ");
   const [section, setSection] = useState<Section>("home");
   const [grade, setGrade] = useState(`${savedStudentGrade}-sinf`);
   const [completed, setCompleted] = useState<number[]>([]);
@@ -107,6 +114,22 @@ function EduStudentPage() {
   const [displayedBoardText, setDisplayedBoardText] = useState("");
   const [boardWriting, setBoardWriting] = useState(false);
   const tutorRequestVersion = useRef(0);
+  useEffect(() => {
+    if (!profileMenuOpen) return;
+    function handleOutsideClick(event: PointerEvent) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) setProfileMenuOpen(false);
+    }
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setProfileMenuOpen(false);
+    }
+    document.addEventListener("pointerdown", handleOutsideClick);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("pointerdown", handleOutsideClick);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [profileMenuOpen]);
+
   useEffect(() => {
     if (!activeBoardText) return;
     setDisplayedBoardText("");
@@ -190,6 +213,17 @@ function EduStudentPage() {
   }
 
   const title = navItems.find((item) => item.id === section)?.label ?? "Umumiy ko‘rinish";
+  async function handleProfileSignOut() {
+    setProfileSignOutBusy(true);
+    setProfileError("");
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      setProfileError("Hisobdan chiqishda xatolik yuz berdi. Qayta urinib ko‘ring.");
+      setProfileSignOutBusy(false);
+      return;
+    }
+    window.location.assign("/login");
+  }
   function resetTutorSession() {
     tutorRequestVersion.current += 1;
     setMessages([]);
@@ -311,7 +345,36 @@ function EduStudentPage() {
             <LanguageSelect className="w-[76px] sm:w-[142px]" />
             <button type="button" onClick={() => setSection("planner")} className={"inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition " + (section === "planner" ? "border-violet-200 bg-violet-50 text-violet-700" : "border-slate-200 bg-white text-slate-500 hover:border-violet-200 hover:text-violet-700")}><Icon name="calendar" className="h-4 w-4" /> <span className="hidden sm:inline">O‘quv rejasi</span><span className="sm:hidden">Reja</span></button>
             <select aria-label="Sinfni tanlash" value={grade} onChange={(e) => changeGrade(e.target.value)} className="rounded-xl border border-violet-100 bg-violet-50 px-3 py-2.5 text-xs font-bold text-violet-700 outline-none focus:ring-2 focus:ring-violet-200">{Array.from({ length: 11 }, (_, i) => <option key={i + 1} value={i + 1 + "-sinf"}>{i + 1}-sinf</option>)}</select>
-            <div className="hidden h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-violet-100 to-cyan-100 text-sm font-black text-violet-700 sm:flex">O‘</div>
+            <div className="relative shrink-0" ref={profileMenuRef}>
+              <button
+                type="button"
+                onClick={() => { setProfileError(""); setProfileMenuOpen((open) => !open); }}
+                aria-label="Profil menyusini ochish"
+                aria-haspopup="menu"
+                aria-expanded={profileMenuOpen}
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-violet-100 to-cyan-100 text-xs font-black text-violet-700 ring-1 ring-violet-200 transition hover:shadow-md focus:outline-none focus:ring-2 focus:ring-violet-400"
+              >
+                {profileInitials || "O"}
+              </button>
+              {profileMenuOpen && (
+                <div role="menu" aria-label="Akkaunt menyusi" className="absolute right-0 top-12 z-50 w-64 rounded-2xl border border-slate-200 bg-white p-2 text-slate-800 shadow-xl">
+                  <div className="rounded-xl bg-violet-50 px-3 py-3">
+                    <p className="truncate text-sm font-bold">{profileName}</p>
+                    <p className="mt-1 text-xs text-violet-700">{savedStudentProfile?.role === "parent" ? "Ota-ona profili" : "O‘quvchi profili"}</p>
+                  </div>
+                  {profileError && <p role="alert" className="px-3 pt-2 text-xs text-rose-600">{profileError}</p>}
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={profileSignOutBusy}
+                    onClick={handleProfileSignOut}
+                    className="mt-2 w-full rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-slate-600 transition hover:bg-rose-50 hover:text-rose-700 disabled:opacity-50"
+                  >
+                    {profileSignOutBusy ? "Chiqilmoqda…" : "Hisobdan chiqish"}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
