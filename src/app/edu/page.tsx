@@ -270,8 +270,15 @@ export default function EduPage() {
     <div className="min-h-screen bg-[#f7f7fc] text-[#202033]">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[248px] flex-col border-r border-[#eceaf5] bg-white px-5 py-6 lg:flex">
         <Link href="/" className="mb-9 flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-gradient-to-br from-violet-600 to-indigo-600 text-xl font-black text-white shadow-lg shadow-violet-200">i</span>
-          <span><span className="block text-[17px] font-black tracking-tight">IJOD <span className="text-violet-600">EDU</span></span><span className="block text-[9px] font-bold tracking-[.2em] text-slate-400">LEARN WITH AI</span></span>
+          <span className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-200">
+            <svg aria-hidden="true" viewBox="0 0 48 48" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m24 6 17 7-17 7-17-7 17-7Z" />
+              <path d="M14 17.1v5.2M34 17.1v5.2" />
+              <path d="M7 22c6-2.5 11.8-1.6 17 2.1 5.2-3.7 11-4.6 17-2.1v15c-6-2.5-11.8-1.6-17 2.1-5.2-3.7-11-4.6-17-2.1V22Z" />
+              <path d="M24 24.1v15" />
+            </svg>
+          </span>
+          <span><span className="block text-[17px] font-black tracking-tight">IJOD <span className="text-violet-600">EDU</span></span><span className="block text-[9px] font-bold tracking-[.13em] text-slate-400">AI BILAN O‘RGANING</span></span>
         </Link>
         <div className="mb-3 px-3 text-[10px] font-extrabold uppercase tracking-[.18em] text-slate-400">O‘QUV MARKAZI</div>
         <nav className="space-y-1">
