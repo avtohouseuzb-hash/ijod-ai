@@ -173,7 +173,7 @@ export default function Home() {
             <div className="min-w-0 flex-1"><div className="text-sm font-semibold">{userEmail ? "Hisobim" : "Mehmon"}</div><div className="truncate text-xs text-gray-400">{userEmail || "Hisob ulanmagan"}</div></div><span className="text-gray-400">⋯</span>
           </button>
           {profileMenuOpen && <div className="absolute bottom-full left-0 right-0 mb-2 rounded-xl border border-gray-200 bg-white p-2 shadow-xl">
-            {userEmail ? <button onClick={handleSignOut} className="w-full rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">Hisobdan chiqish</button> : <Link href="/login" onClick={() => setProfileMenuOpen(false)} className="block rounded-lg px-3 py-2 text-sm text-violet-700 hover:bg-violet-50">Kirish / Ro‘yxatdan o‘tish ↗</Link>}
+            {userEmail ? <><Link href="/edu" onClick={() => setProfileMenuOpen(false)} className="block rounded-lg px-3 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-50">🎓 O‘quvchi kabineti</Link><button onClick={handleSignOut} className="w-full rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">Hisobdan chiqish</button></> : <Link href="/login" onClick={() => setProfileMenuOpen(false)} className="block rounded-lg px-3 py-2 text-sm text-violet-700 hover:bg-violet-50">Kirish / Ro‘yxatdan o‘tish ↗</Link>}
           </div>}
         </div>
       </aside>
@@ -195,7 +195,7 @@ export default function Home() {
             </div>
             <div className="mt-3 border-t border-gray-100 pt-3 dark:border-slate-800">
               <div className="mb-2 px-2 text-sm font-semibold text-slate-800 dark:text-white">{userEmail || "Mehmon"}</div>
-              {userEmail ? <button onClick={handleSignOut} className="w-full rounded-xl px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-50 dark:text-slate-200 dark:hover:bg-slate-900">Hisobdan chiqish</button> : <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-50 dark:text-violet-300 dark:hover:bg-violet-500/10">Kirish / Ro‘yxatdan o‘tish ↗</Link>}
+              {userEmail ? <><Link href="/edu" onClick={() => setMobileMenuOpen(false)} className="mb-1 block rounded-xl px-3 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-50 dark:text-violet-300 dark:hover:bg-violet-500/10">🎓 O‘quvchi kabineti</Link><button onClick={handleSignOut} className="w-full rounded-xl px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-50 dark:text-slate-200 dark:hover:bg-slate-900">Hisobdan chiqish</button></> : <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-50 dark:text-violet-300 dark:hover:bg-violet-500/10">Kirish / Ro‘yxatdan o‘tish ↗</Link>}
             </div>
           </div>
         </aside>

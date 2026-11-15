@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { LanguageSelect, ThemeToggle } from "@/components/site-preferences";
 import { getEduSubjects } from "@/lib/edu-subjects";
+import EduFamilyAccess, { EduStudentGradeContext } from "@/components/edu-family-access";
 
 type Section = "home" | "tutor" | "homework" | "library" | "progress" | "planner";
 
@@ -50,9 +51,12 @@ function Icon({ name, className = "" }: { name: string; className?: string }) {
   return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className={className}>{paths[name] ?? <circle cx="12" cy="12" r="8" />}</svg>;
 }
 
-export default function EduPage() {
+export default function EduPage() { return <EduFamilyAccess><EduStudentPage /></EduFamilyAccess>; }
+
+function EduStudentPage() {
+  const savedStudentGrade = useContext(EduStudentGradeContext);
   const [section, setSection] = useState<Section>("home");
-  const [grade, setGrade] = useState("7-sinf");
+  const [grade, setGrade] = useState(`${savedStudentGrade}-sinf`);
   const [completed, setCompleted] = useState<number[]>([]);
   const [homeworkTask, setHomeworkTask] = useState<number | null>(null);
   const [homeworkImage, setHomeworkImage] = useState("");
