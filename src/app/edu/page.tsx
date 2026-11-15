@@ -5,19 +5,9 @@ import { supabase } from "@/lib/supabase";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { LanguageSelect, ThemeToggle } from "@/components/site-preferences";
+import { getEduSubjects } from "@/lib/edu-subjects";
 
 type Section = "home" | "tutor" | "homework" | "library" | "progress" | "planner";
-
-const subjects = [
-  { name: "Matematika", short: "MAT", detail: "Algebra, geometriya va mantiq", color: "violet", icon: "calculator" },
-  { name: "Fizika", short: "FIZ", detail: "Qonunlar, formulalar va tajribalar", color: "sky", icon: "atom" },
-  { name: "Kimyo", short: "KIM", detail: "Elementlar va reaksiyalar", color: "emerald", icon: "flask" },
-  { name: "Biologiya", short: "BIO", detail: "Tirik tabiat va inson organizmi", color: "lime", icon: "dna" },
-  { name: "Ingliz tili", short: "ENG", detail: "Grammar, vocabulary va speaking", color: "amber", icon: "languages" },
-  { name: "Tarix", short: "TAR", detail: "Davrlar, voqealar va shaxslar", color: "rose", icon: "landmark" },
-  { name: "Ona tili", short: "ONA", detail: "Grammatika va savodxonlik", color: "fuchsia", icon: "bookText" },
-  { name: "Geografiya", short: "GEO", detail: "Materiklar, xaritalar va iqlim", color: "teal", icon: "globe" },
-];
 
 type EduTask = { id: number; subject: string; title: string; meta: string; done: boolean };
 type StudyPlan = { id: string; title: string; subject: string; grade: number; starts_at: string; duration_minutes: number; notes: string; completed_at: string | null };
@@ -81,6 +71,30 @@ export default function EduPage() {
   const [planNotes, setPlanNotes] = useState("");
   const [planSaving, setPlanSaving] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState("Matematika");
+  const [textbooks, setTextbooks] = useState<{ id: string; title: string; subject: string; grade: number; part: string | null; edition: string | null; publisher: string | null }[]>([]);
+  const [textbookLoading, setTextbookLoading] = useState(false);
+  const [textbookError, setTextbookError] = useState("");
+  const [textbookRefresh, setTextbookRefresh] = useState(0);
+  const subjects = useMemo(() => {
+    const colors = ["violet", "sky", "emerald", "lime", "amber", "rose", "fuchsia", "teal"];
+    return getEduSubjects(Number(grade.split("-")[0])).map((name, index) => {
+      const icon = name === "Fizika" ? "atom"
+        : name === "Kimyo" ? "flask"
+        : name === "Biologiya" || name === "Botanika" ? "dna"
+        : name.toLowerCase().includes("tarix") ? "landmark"
+        : name === "Geografiya" ? "globe"
+        : name.toLowerCase().includes("til") || name === "Alifbe" ? "languages"
+        : name === "Matematika" || name === "Algebra" || name === "Geometriya" ? "calculator"
+        : "bookText";
+      return {
+        name,
+        short: name.slice(0, 3).toLocaleUpperCase("uz"),
+        detail: "Fan bo‘yicha mavzular, darslar va mashqlar",
+        color: colors[index % colors.length],
+        icon,
+      };
+    });
+  }, [grade]);
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<{ role: "student" | "system"; text: string }[]>([]);
   const [isSending, setIsSending] = useState(false);
@@ -119,7 +133,35 @@ export default function EduPage() {
     loadPlans();
     return () => { cancelled = true; };
   }, [section]);
-  const filteredSubjects = useMemo(() => subjects.filter((s) => (s.name + " " + s.detail).toLowerCase().includes(subjectQuery.toLowerCase())), [subjectQuery]);
+  const filteredSubjects = useMemo(() => subjects.filter((s) => (s.name + " " + s.detail).toLowerCase().includes(subjectQuery.toLowerCase())), [subjectQuery, subjects]);
+
+  useEffect(() => {
+    const availableSubjects = subjects.map((subject) => subject.name);
+    if (availableSubjects.length && !availableSubjects.includes(selectedSubject)) setSelectedSubject(availableSubjects[0]);
+    if (availableSubjects.length && !availableSubjects.includes(planSubject)) setPlanSubject(availableSubjects[0]);
+  }, [grade, subjects, selectedSubject, planSubject]);
+
+  useEffect(() => {
+    if (section !== "library") return;
+    let cancelled = false;
+    async function loadTextbooks() {
+      setTextbookLoading(true);
+      setTextbookError("");
+      const { data, error } = await supabase
+        .from("edu_textbooks")
+        .select("id,title,subject,grade,part,edition,publisher")
+        .eq("grade", Number(grade.split("-")[0]))
+        .eq("status", "ready")
+        .order("subject")
+        .order("title");
+      if (cancelled) return;
+      if (error) setTextbookError("Darsliklar ro‘yxatini yuklab bo‘lmadi.");
+      setTextbooks(data ?? []);
+      setTextbookLoading(false);
+    }
+    void loadTextbooks();
+    return () => { cancelled = true; };
+  }, [section, grade, textbookRefresh]);
 
   async function addStudyPlan() {
     if (!planTitle.trim() || !planDate) { setPlanError("Dars nomi va sanasini kiriting."); return; }
@@ -307,7 +349,19 @@ export default function EduPage() {
       </section>
       <div className="rounded-2xl border border-slate-200 p-2"><textarea value={question} onChange={(e)=>setQuestion(e.target.value)} onKeyDown={(e)=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendQuestion();}}} rows={2} placeholder="Savolingni shu yerga yoz..." className="w-full resize-none bg-transparent px-2 py-1 text-xs outline-none placeholder:text-slate-400" /><div className="flex items-center justify-between px-1"><span className="text-[10px] text-slate-400">Enter — yuborish · Shift + Enter — yangi qator</span><button onClick={sendQuestion} disabled={!question.trim() || isSending} className="rounded-xl bg-violet-600 px-4 py-2 text-[10px] font-bold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40">{isSending ? "Kutilmoqda…" : "Yuborish"} <Icon name="arrowUpRight" className="ml-1 inline h-3.5 w-3.5" /></button></div></div>{tutorError && <p role="alert" className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700">{tutorError}</p>}<p className="mt-2 text-center text-[9px] text-slate-400">AI Ustoz javoblari tanlangan fan va sinf darajasiga moslashtiriladi.</p></div></section>}
 
-          <>{section === "homework" && <section className="rounded-3xl border border-[#eceaf5] bg-white p-6 sm:p-8"><p className="text-[10px] font-extrabold uppercase tracking-[.18em] text-violet-600">TOPSHIRIQLAR MARKAZI</p><h1 className="mt-2 text-2xl font-black">Uy vazifalarim</h1><p className="mt-2 text-sm text-slate-500">Bajargan ishing rasmini yukla. AI tekshiradi va faqat to‘g‘ri bajarilgan vazifani tasdiqlaydi.</p><div className="mt-6 space-y-3">{tasks.length === 0 ? <p className="rounded-xl bg-slate-50 p-4 text-xs text-slate-500">Hozircha uy vazifalari biriktirilmagan.</p> : tasks.map((task) => <div key={task.id} className="rounded-2xl border border-slate-100 p-4"><div className="flex flex-wrap items-center gap-3"><span className={"flex h-8 w-8 items-center justify-center rounded-full border " + (completed.includes(task.id) ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 text-slate-300")}>{completed.includes(task.id) ? <Icon name="check" className="h-4 w-4" /> : <Icon name="bookText" className="h-4 w-4" />}</span><div className="min-w-0 flex-1"><p className="text-sm font-bold">{task.title}</p><p className="mt-1 text-xs text-slate-400">{task.subject} · {task.meta}</p></div><span className={"rounded-full px-3 py-1 text-[10px] font-bold " + (completed.includes(task.id) ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700")}>{completed.includes(task.id) ? "AI tasdiqladi · Bajarildi" : "Tekshirilmagan"}</span></div>{homeworkFeedback[task.id] && <div className="mt-3 rounded-xl bg-violet-50 p-3 text-xs leading-5 text-violet-900">{homeworkFeedback[task.id].feedback}{homeworkFeedback[task.id].status === "approved" && <p className="mt-1 font-bold">AI bahosi: {homeworkFeedback[task.id].score}/100</p>}</div>}<button onClick={() => { setHomeworkTask(task.id); setHomeworkImage(""); setHomeworkFileName(""); setHomeworkError(""); }} className="mt-3 rounded-xl border border-violet-200 px-3 py-2 text-[11px] font-bold text-violet-700">{completed.includes(task.id) ? "Qayta tekshirtirish" : "Rasm yuklash va AI tekshiruvi"}</button></div>)}</div>{homeworkTask !== null && <div className="mt-6 rounded-2xl border-2 border-dashed border-violet-200 bg-violet-50/50 p-5 text-center"><p className="text-sm font-bold">{tasks.find((task) => task.id === homeworkTask)?.title} — bajarilgan ish rasmi</p><p className="mt-1 text-xs text-slate-500">Topshiriq sharti va yechim to‘liq, tiniq ko‘rinsin. JPG, PNG yoki WEBP · 8 MB gacha.</p><label className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-white px-4 py-3 text-xs font-bold text-violet-700 shadow-sm"><Icon name="upload" className="h-4 w-4" /> Rasm tanlash<input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => handleHomeworkFile(event.target.files?.[0])} /></label>{homeworkImage && <div className="mt-4 flex flex-col items-center gap-2"><img src={homeworkImage} alt="Yuklangan uy vazifasi" className="max-h-56 max-w-full rounded-xl border border-violet-100 object-contain" /><p className="text-xs text-slate-500">{homeworkFileName}</p></div>}{homeworkError && <p role="alert" className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700">{homeworkError}</p>}<div className="mt-4 flex justify-center gap-2"><button onClick={() => { setHomeworkTask(null); setHomeworkImage(""); setHomeworkError(""); }} disabled={homeworkBusy} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600">Bekor qilish</button><button onClick={checkHomework} disabled={!homeworkImage || homeworkBusy} className="rounded-xl bg-violet-600 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-40">{homeworkBusy ? "AI tekshiryapti…" : "AI orqali tekshirish"}</button></div></div>}</section>}</>{section === "library" && <section><div className="rounded-3xl bg-gradient-to-r from-[#eae5ff] to-[#e5f7f7] p-6 sm:p-8"><p className="text-[10px] font-extrabold uppercase tracking-[.18em] text-violet-700">BILIMLAR KUTUBXONASI</p><h1 className="mt-2 text-2xl font-black">Darsliklar va mavzular</h1><p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">Sinf va fan bo‘yicha kerakli materiallarni bir joydan top. Darsliklar kutubxonasi kontent bilan to‘ldirilgach, shu yerda ko‘rinadi.</p></div><div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{subjects.map(s=><button key={s.name} onClick={()=>{setSelectedSubject(s.name);setSection("tutor");}} className="rounded-2xl border border-[#eceaf5] bg-white p-4 text-left hover:border-violet-200 hover:shadow-lg"><span className="text-violet-600"><Icon name={s.icon} className="h-6 w-6" /></span><p className="mt-3 text-sm font-bold">{s.name}</p><p className="mt-1 text-[10px] text-slate-400">{grade} · Darsliklar va mavzular</p></button>)}</div></section>}
+          <>{section === "homework" && <section className="rounded-3xl border border-[#eceaf5] bg-white p-6 sm:p-8"><p className="text-[10px] font-extrabold uppercase tracking-[.18em] text-violet-600">TOPSHIRIQLAR MARKAZI</p><h1 className="mt-2 text-2xl font-black">Uy vazifalarim</h1><p className="mt-2 text-sm text-slate-500">Bajargan ishing rasmini yukla. AI tekshiradi va faqat to‘g‘ri bajarilgan vazifani tasdiqlaydi.</p><div className="mt-6 space-y-3">{tasks.length === 0 ? <p className="rounded-xl bg-slate-50 p-4 text-xs text-slate-500">Hozircha uy vazifalari biriktirilmagan.</p> : tasks.map((task) => <div key={task.id} className="rounded-2xl border border-slate-100 p-4"><div className="flex flex-wrap items-center gap-3"><span className={"flex h-8 w-8 items-center justify-center rounded-full border " + (completed.includes(task.id) ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 text-slate-300")}>{completed.includes(task.id) ? <Icon name="check" className="h-4 w-4" /> : <Icon name="bookText" className="h-4 w-4" />}</span><div className="min-w-0 flex-1"><p className="text-sm font-bold">{task.title}</p><p className="mt-1 text-xs text-slate-400">{task.subject} · {task.meta}</p></div><span className={"rounded-full px-3 py-1 text-[10px] font-bold " + (completed.includes(task.id) ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700")}>{completed.includes(task.id) ? "AI tasdiqladi · Bajarildi" : "Tekshirilmagan"}</span></div>{homeworkFeedback[task.id] && <div className="mt-3 rounded-xl bg-violet-50 p-3 text-xs leading-5 text-violet-900">{homeworkFeedback[task.id].feedback}{homeworkFeedback[task.id].status === "approved" && <p className="mt-1 font-bold">AI bahosi: {homeworkFeedback[task.id].score}/100</p>}</div>}<button onClick={() => { setHomeworkTask(task.id); setHomeworkImage(""); setHomeworkFileName(""); setHomeworkError(""); }} className="mt-3 rounded-xl border border-violet-200 px-3 py-2 text-[11px] font-bold text-violet-700">{completed.includes(task.id) ? "Qayta tekshirtirish" : "Rasm yuklash va AI tekshiruvi"}</button></div>)}</div>{homeworkTask !== null && <div className="mt-6 rounded-2xl border-2 border-dashed border-violet-200 bg-violet-50/50 p-5 text-center"><p className="text-sm font-bold">{tasks.find((task) => task.id === homeworkTask)?.title} — bajarilgan ish rasmi</p><p className="mt-1 text-xs text-slate-500">Topshiriq sharti va yechim to‘liq, tiniq ko‘rinsin. JPG, PNG yoki WEBP · 8 MB gacha.</p><label className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-white px-4 py-3 text-xs font-bold text-violet-700 shadow-sm"><Icon name="upload" className="h-4 w-4" /> Rasm tanlash<input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => handleHomeworkFile(event.target.files?.[0])} /></label>{homeworkImage && <div className="mt-4 flex flex-col items-center gap-2"><img src={homeworkImage} alt="Yuklangan uy vazifasi" className="max-h-56 max-w-full rounded-xl border border-violet-100 object-contain" /><p className="text-xs text-slate-500">{homeworkFileName}</p></div>}{homeworkError && <p role="alert" className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700">{homeworkError}</p>}<div className="mt-4 flex justify-center gap-2"><button onClick={() => { setHomeworkTask(null); setHomeworkImage(""); setHomeworkError(""); }} disabled={homeworkBusy} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600">Bekor qilish</button><button onClick={checkHomework} disabled={!homeworkImage || homeworkBusy} className="rounded-xl bg-violet-600 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-40">{homeworkBusy ? "AI tekshiryapti…" : "AI orqali tekshirish"}</button></div></div>}</section>}</>{section === "library" && <section>
+            <div className="rounded-3xl bg-gradient-to-r from-[#eae5ff] to-[#e5f7f7] p-6 sm:p-8">
+              <p className="text-[10px] font-extrabold uppercase tracking-[.18em] text-violet-700">BILIMLAR KUTUBXONASI</p>
+              <h1 className="mt-2 text-2xl font-black">Darsliklar va fanlar katalogi</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">{grade} uchun fanlar ro‘yxati. PDF hali yuklanmagan fanlarda AI Ustoz umumiy fan bilimlari asosida tushuntiradi; rasmiy kitob sahifasi yoki mashq raqamini taxmin qilmaydi.</p>
+            </div>
+            <h2 className="mt-6 text-lg font-black">Fanlar</h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{subjects.map(s=><button key={s.name} onClick={()=>{changeTutorSubject(s.name);setSection("tutor");}} className="rounded-2xl border border-[#eceaf5] bg-white p-4 text-left hover:border-violet-200 hover:shadow-lg"><span className="text-violet-600"><Icon name={s.icon} className="h-6 w-6" /></span><p className="mt-3 text-sm font-bold">{s.name}</p><p className="mt-1 text-[10px] text-slate-400">{grade} · AI darsi va mavzular</p></button>)}</div>
+            <div className="mt-8">
+              <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-black">Indekslangan rasmiy darsliklar</h2><button onClick={()=>setTextbookRefresh((value)=>value+1)} className="text-xs font-bold text-violet-700">Yangilash</button></div>
+              {textbookLoading ? <p className="mt-4 text-sm text-slate-400">Darsliklar tekshirilmoqda…</p> : textbookError ? <p role="alert" className="mt-4 rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{textbookError}</p> : textbooks.length === 0 ? <div className="mt-4 rounded-2xl border border-dashed border-violet-200 bg-white p-6"><p className="text-sm font-bold text-slate-700">Bu sinf uchun hozircha PDF darslik indekslanmagan.</p><p className="mt-1 text-xs leading-5 text-slate-500">Fanlar katalogi mavjud. PDF topilgach, administrator uni yuklaydi va AI Ustoz aynan shu kitobga tayana oladi.</p><Link href="/edu/admin/textbooks" className="mt-3 inline-flex rounded-xl bg-violet-600 px-4 py-2 text-xs font-bold text-white">Administrator: darslik yuklash</Link></div> : <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{textbooks.map(book=><button key={book.id} onClick={()=>{changeTutorSubject(book.subject);setSection("tutor");setQuestion(book.title+" darsligidagi asosiy mavzularni tushuntirib ber.");}} className="rounded-2xl border border-[#eceaf5] bg-white p-4 text-left hover:border-violet-200 hover:shadow-lg"><p className="text-sm font-bold">{book.title}</p><p className="mt-1 text-xs text-slate-500">{book.grade}-sinf · {book.subject}{book.part ? " · "+book.part : ""}</p>{book.edition && <p className="mt-1 text-[10px] text-slate-400">{book.edition}</p>}{book.publisher && <p className="mt-1 text-[10px] text-slate-400">{book.publisher}</p>}</button>)}</div>}
+            </div>
+          </section>}
 
           {section === "planner" && <section className="space-y-5">
             <div className="rounded-3xl bg-gradient-to-r from-[#eae5ff] to-[#e5f7f7] p-6 sm:p-8"><p className="text-[10px] font-extrabold uppercase tracking-[.18em] text-violet-700">SHAXSIY REJALASHTIRISH</p><h1 className="mt-2 text-2xl font-black">Mening o‘quv rejam</h1><p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">Darslaringni rejalashtir, bajarilganini belgilab bor. Rejalaring faqat o‘z hisobingda saqlanadi.</p></div>
