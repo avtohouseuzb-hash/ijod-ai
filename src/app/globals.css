@@ -413,3 +413,30 @@ html.dark .ijod-language-tutor .ijod-tutor-chat-composer textarea::placeholder {
 html.dark .ijod-language-tutor .ijod-tutor-chat-composer > p {
   color: #9eabc0 !important;
 }
+
+
+/* IJOD EDU interactive whiteboard: keep handwriting readable in dark mode. */
+html.dark .edu-interactive-board {
+  background: #111a2b !important;
+  border-color: #394766 !important;
+}
+html.dark .edu-interactive-board > div:first-child {
+  background: #18243a !important;
+  border-color: #394766 !important;
+  color: #f1f5fb !important;
+}
+html.dark .edu-interactive-board > div:first-child span:last-child {
+  color: #c4a5ff !important;
+}
+html.dark .edu-interactive-board-paper {
+  background-color: #172238 !important;
+  background-image: linear-gradient(rgb(148 163 184 / 15%) 1px, transparent 1px) !important;
+  color: #f8fafc !important;
+}
+html.dark .edu-interactive-board-text {
+  color: #f8fafc !important;
+  text-shadow: 0 0 1px rgb(255 255 255 / 15%);
+}
+html.dark .edu-interactive-board-paper > div {
+  color: #9aa9bf !important;
+}
