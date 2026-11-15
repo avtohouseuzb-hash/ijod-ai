@@ -33,13 +33,16 @@ export async function POST(request: Request) {
 
   try {
     await auth.service.from("edu_textbooks").update({ status: "indexing", error_message: null }).eq("id", id);
-    const { data: settings } = await auth.service.from("edu_textbook_settings").select("openai_vector_store_id").eq("id", true).maybeSingle();
-    let vectorStoreId = settings?.openai_vector_store_id as string | null;
+    const { data: collection } = await auth.service.from("edu_textbook_collections")
+      .select("openai_vector_store_id").eq("grade", textbook.grade).eq("subject", textbook.subject).maybeSingle();
+    let vectorStoreId = collection?.openai_vector_store_id as string | null;
     if (!vectorStoreId) {
-      const store = await openai.vectorStores.create({ name: "IJOD EDU — O‘zbekiston maktab darsliklari" });
+      const store = await openai.vectorStores.create({ name: "IJOD EDU — " + textbook.grade + "-sinf — " + textbook.subject });
       vectorStoreId = store.id;
-      const { error: saveError } = await auth.service.from("edu_textbook_settings").upsert({ id: true, openai_vector_store_id: vectorStoreId, updated_at: new Date().toISOString() });
-      if (saveError) throw new Error("Vector Store identifikatorini saqlab bo‘lmadi.");
+      const { error: saveError } = await auth.service.from("edu_textbook_collections").upsert({
+        grade: textbook.grade, subject: textbook.subject, openai_vector_store_id: vectorStoreId, updated_at: new Date().toISOString(),
+      });
+      if (saveError) throw new Error("Sinf va fan indeksini saqlab bo‘lmadi.");
     }
     const arrayBuffer = await blob.arrayBuffer();
     const file = new File([arrayBuffer], textbook.title + ".pdf", { type: "application/pdf" });
