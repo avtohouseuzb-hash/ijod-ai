@@ -31,9 +31,12 @@ export async function POST(request: Request) {
   if (!bytes.length || bytes.length > 8 * 1024 * 1024) return NextResponse.json({ error: "Rasm hajmi 8 MB dan oshmasin." }, { status: 400 });
 
   const service = createClient(url, secret, { auth: { persistSession: false, autoRefreshToken: false } });
-  const vectorSettings = await service.from("edu_textbook_settings").select("openai_vector_store_id").eq("id", true).maybeSingle();
-  const vectorStoreId = vectorSettings.data?.openai_vector_store_id as string | null;
-  const { count } = await service.from("edu_textbooks").select("id", { count: "exact", head: true }).eq("grade", Number(grade.split("-")[0])).eq("subject", subject).eq("status", "ready");
+  const gradeNumber = Number(grade.split("-")[0]);
+  const { data: collection } = await service.from("edu_textbook_collections").select("openai_vector_store_id")
+    .eq("grade", gradeNumber).eq("subject", subject).maybeSingle();
+  const vectorStoreId = collection?.openai_vector_store_id as string | null;
+  const { count } = await service.from("edu_textbooks").select("id", { count: "exact", head: true })
+    .eq("grade", gradeNumber).eq("subject", subject).eq("status", "ready");
   if (!vectorStoreId || !count) return NextResponse.json({ error: grade + " uchun " + subject + " darsliklari hali yuklanmagan." }, { status: 409 });
 
   const requestId = crypto.randomUUID();
