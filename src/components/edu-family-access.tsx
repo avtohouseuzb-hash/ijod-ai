@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -15,6 +15,7 @@ export default function EduFamilyAccess({children}:{children:ReactNode}){
  const [loading,setLoading]=useState(true),[role,setRole]=useState<Role|null>(null),[links,setLinks]=useState<Link[]>([]);
  const [choice,setChoice]=useState<"student"|"parent"|null>(null),[name,setName]=useState(""),[grade,setGrade]=useState("7"),[code,setCode]=useState(""),[newCode,setNewCode]=useState(""),[busy,setBusy]=useState(false),[error,setError]=useState(""),[note,setNote]=useState("");
  async function refresh(){try{const d=await api();setRole(d.role);setLinks(d.links||[]);}catch(e){setError(e instanceof Error?e.message:"Profil yuklanmadi.");}finally{setLoading(false);}}
+ useEffect(()=>{refresh();},[]);
  useEffect(()=>{refresh();},[]);
  async function run(fn:()=>Promise<void>){setBusy(true);setError("");setNote("");try{await fn();}catch(e){setError(e instanceof Error?e.message:"Xatolik yuz berdi.");}finally{setBusy(false);}}
  if(loading)return <div className="flex min-h-screen items-center justify-center bg-[#f7f7fc] text-sm text-slate-500">IJOD EDU yuklanmoqda…</div>;
