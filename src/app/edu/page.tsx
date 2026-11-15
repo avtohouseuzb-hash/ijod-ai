@@ -278,7 +278,7 @@ export default function EduPage() {
               <path d="M24 24.1v15" />
             </svg>
           </span>
-          <span><span className="block text-[17px] font-black tracking-tight">IJOD <span className="text-violet-600">EDU</span></span><span className="block text-[9px] font-bold tracking-[.13em] text-slate-400">AI BILAN TA’LIM</span></span>
+          <span><span className="block text-[17px] font-black tracking-tight">IJOD <span className="text-violet-600">EDU</span></span><span className="block text-[9px] font-bold tracking-[.13em] text-slate-400">AI BILAN O‘RGANING</span></span>
         </Link>
         <div className="mb-3 px-3 text-[10px] font-extrabold uppercase tracking-[.18em] text-slate-400">O‘QUV MARKAZI</div>
         <nav className="space-y-1">
