@@ -56,10 +56,9 @@ export default function EduPage() { return <EduFamilyAccess><EduStudentPage /></
 function EduStudentPage() {
   const savedStudentGrade = useContext(EduStudentGradeContext);
   const savedStudentProfile = useContext(EduStudentProfileContext);
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [profileSignOutBusy, setProfileSignOutBusy] = useState(false);
   const [profileError, setProfileError] = useState("");
-  const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const profileName = savedStudentProfile?.displayName?.trim() || "O‘quvchi";
   const profileInitials = profileName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toLocaleUpperCase("uz-UZ");
   const [section, setSection] = useState<Section>("home");
@@ -115,20 +114,18 @@ function EduStudentPage() {
   const [boardWriting, setBoardWriting] = useState(false);
   const tutorRequestVersion = useRef(0);
   useEffect(() => {
-    if (!profileMenuOpen) return;
-    function handleOutsideClick(event: PointerEvent) {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) setProfileMenuOpen(false);
-    }
+    if (!profileModalOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setProfileMenuOpen(false);
+      if (event.key === "Escape") setProfileModalOpen(false);
     }
-    document.addEventListener("pointerdown", handleOutsideClick);
     document.addEventListener("keydown", handleEscape);
     return () => {
-      document.removeEventListener("pointerdown", handleOutsideClick);
+      document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleEscape);
     };
-  }, [profileMenuOpen]);
+  }, [profileModalOpen]);
 
   useEffect(() => {
     if (!activeBoardText) return;
@@ -345,38 +342,89 @@ function EduStudentPage() {
             <LanguageSelect className="w-[76px] sm:w-[142px]" />
             <button type="button" onClick={() => setSection("planner")} className={"inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition " + (section === "planner" ? "border-violet-200 bg-violet-50 text-violet-700" : "border-slate-200 bg-white text-slate-500 hover:border-violet-200 hover:text-violet-700")}><Icon name="calendar" className="h-4 w-4" /> <span className="hidden sm:inline">O‘quv rejasi</span><span className="sm:hidden">Reja</span></button>
             <select aria-label="Sinfni tanlash" value={grade} onChange={(e) => changeGrade(e.target.value)} className="rounded-xl border border-violet-100 bg-violet-50 px-3 py-2.5 text-xs font-bold text-violet-700 outline-none focus:ring-2 focus:ring-violet-200">{Array.from({ length: 11 }, (_, i) => <option key={i + 1} value={i + 1 + "-sinf"}>{i + 1}-sinf</option>)}</select>
-            <div className="relative shrink-0" ref={profileMenuRef}>
-              <button
-                type="button"
-                onClick={() => { setProfileError(""); setProfileMenuOpen((open) => !open); }}
-                aria-label="Profil menyusini ochish"
-                aria-haspopup="menu"
-                aria-expanded={profileMenuOpen}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-violet-100 to-cyan-100 text-xs font-black text-violet-700 ring-1 ring-violet-200 transition hover:shadow-md focus:outline-none focus:ring-2 focus:ring-violet-400"
-              >
-                {profileInitials || "O"}
-              </button>
-              {profileMenuOpen && (
-                <div role="menu" aria-label="Akkaunt menyusi" className="absolute right-0 top-12 z-50 w-64 rounded-2xl border border-slate-200 bg-white p-2 text-slate-800 shadow-xl">
-                  <div className="rounded-xl bg-violet-50 px-3 py-3">
-                    <p className="truncate text-sm font-bold">{profileName}</p>
-                    <p className="mt-1 text-xs text-violet-700">{savedStudentProfile?.role === "parent" ? "Ota-ona profili" : "O‘quvchi profili"}</p>
-                  </div>
-                  {profileError && <p role="alert" className="px-3 pt-2 text-xs text-rose-600">{profileError}</p>}
-                  <button
-                    type="button"
-                    role="menuitem"
-                    disabled={profileSignOutBusy}
-                    onClick={handleProfileSignOut}
-                    className="mt-2 w-full rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-slate-600 transition hover:bg-rose-50 hover:text-rose-700 disabled:opacity-50"
-                  >
-                    {profileSignOutBusy ? "Chiqilmoqda…" : "Hisobdan chiqish"}
-                  </button>
-                </div>
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={() => { setProfileError(""); setProfileModalOpen(true); }}
+              aria-label="Profil oynasini ochish"
+              aria-haspopup="dialog"
+              aria-expanded={profileModalOpen}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-100 to-cyan-100 text-xs font-black text-violet-700 ring-1 ring-violet-200 transition hover:scale-105 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-violet-400"
+            >
+              {profileInitials || "O"}
+            </button>
           </div>
         </header>
+
+        {profileModalOpen && (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-slate-950/55 px-4 py-6 backdrop-blur-sm"
+            onMouseDown={(event) => { if (event.target === event.currentTarget) setProfileModalOpen(false); }}
+          >
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="edu-profile-title"
+              className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-white/70 bg-white p-6 text-slate-800 shadow-2xl shadow-slate-950/25 sm:p-8"
+            >
+              <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-violet-200/70 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-20 -left-16 h-44 w-44 rounded-full bg-cyan-100/80 blur-3xl" />
+              <div className="relative">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[.18em] text-violet-600">IJOD EDU · AKKAUNT</p>
+                    <h2 id="edu-profile-title" className="mt-2 text-2xl font-black tracking-tight">Mening profilim</h2>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setProfileModalOpen(false)}
+                    aria-label="Oynani yopish"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-xl leading-none text-slate-500 transition hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="mt-6 flex items-center gap-4 rounded-2xl bg-gradient-to-r from-violet-50 to-cyan-50 p-4">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 text-lg font-black text-white shadow-lg shadow-violet-200">
+                    {profileInitials || "O"}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-base font-black">{profileName}</p>
+                    <p className="mt-1 text-xs font-semibold text-violet-700">
+                      {savedStudentProfile?.role === "parent" ? "Ota-ona profili" : "O‘quvchi profili"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Profil turi</p>
+                    <p className="mt-2 text-sm font-bold text-slate-800">
+                      {savedStudentProfile?.role === "parent" ? "Ota-ona" : "O‘quvchi"}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Sinf</p>
+                    <p className="mt-2 text-sm font-bold text-slate-800">
+                      {savedStudentProfile?.role === "parent" ? "—" : grade}
+                    </p>
+                  </div>
+                </div>
+
+                {profileError && <p role="alert" className="mt-4 rounded-xl bg-rose-50 px-3 py-2.5 text-xs text-rose-700">{profileError}</p>}
+
+                <button
+                  type="button"
+                  disabled={profileSignOutBusy}
+                  onClick={handleProfileSignOut}
+                  className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700 transition hover:bg-rose-100 disabled:cursor-wait disabled:opacity-50"
+                >
+                  {profileSignOutBusy ? "Hisobdan chiqilmoqda…" : "Hisobdan chiqish"}
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
 
         <div className="mx-auto max-w-[1440px] px-4 py-6 sm:px-7 sm:py-8">
           {section === "home" && <>
