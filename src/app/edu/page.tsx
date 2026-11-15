@@ -4,19 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { getEduSubjects } from "@/lib/edu-subjects";
 
 type Section = "home" | "tutor" | "homework" | "library" | "progress";
-
-const subjects = [
-  { name: "Matematika", short: "MAT", detail: "Algebra, geometriya va mantiq", color: "violet", icon: "calculator", progress: 72 },
-  { name: "Fizika", short: "FIZ", detail: "Qonunlar, formulalar va tajribalar", color: "sky", icon: "atom", progress: 48 },
-  { name: "Kimyo", short: "KIM", detail: "Elementlar va reaksiyalar", color: "emerald", icon: "flask", progress: 64 },
-  { name: "Biologiya", short: "BIO", detail: "Tirik tabiat va inson organizmi", color: "lime", icon: "dna", progress: 81 },
-  { name: "Ingliz tili", short: "ENG", detail: "Grammar, vocabulary va speaking", color: "amber", icon: "languages", progress: 58 },
-  { name: "Tarix", short: "TAR", detail: "Davrlar, voqealar va shaxslar", color: "rose", icon: "landmark", progress: 35 },
-  { name: "Ona tili", short: "ONA", detail: "Grammatika va savodxonlik", color: "fuchsia", icon: "bookText", progress: 76 },
-  { name: "Geografiya", short: "GEO", detail: "Materiklar, xaritalar va iqlim", color: "teal", icon: "globe", progress: 43 },
-];
 
 const tasks = [
   { id: 1, subject: "Matematika", title: "Kvadrat tenglamalar", meta: "5 ta misol · 20 daqiqa", done: true },
@@ -81,6 +71,19 @@ export default function EduPage() {
   const [activeBoardText, setActiveBoardText] = useState("");
   const [displayedBoardText, setDisplayedBoardText] = useState("");
   const [boardWriting, setBoardWriting] = useState(false);
+  const gradeSubjects = getEduSubjects(Number(grade.split("-")[0]));
+  const subjectColors = ["violet", "sky", "emerald", "lime", "amber", "rose", "fuchsia", "teal"];
+  const subjects = gradeSubjects.map((name, index) => ({
+    name,
+    short: name.slice(0, 3).toUpperCase(),
+    detail: "Darslik, mavzular va mashqlar bo‘yicha o‘rganish",
+    color: subjectColors[index % subjectColors.length],
+    icon: name.toLowerCase().includes("matem") || name === "Algebra" || name === "Geometriya" ? "calculator" : name.toLowerCase().includes("til") ? "languages" : "bookText",
+    progress: 0,
+  }));
+  useEffect(() => {
+    if (!gradeSubjects.includes(selectedSubject)) setSelectedSubject(gradeSubjects[0] || "Matematika");
+  }, [grade, selectedSubject]);
   useEffect(() => {
     if (!activeBoardText) return;
     setDisplayedBoardText("");
@@ -236,7 +239,7 @@ export default function EduPage() {
             </section>
           </>}
 
-          {section === "tutor" && <section className="grid gap-5 xl:grid-cols-[.8fr_1.2fr]"><div className="rounded-3xl bg-[#17152c] p-6 text-white"><span className="text-[10px] font-bold uppercase tracking-[.18em] text-violet-200">SHAXSIY YORDAMCHI</span><div className="mt-7 flex h-16 w-16 items-center justify-center rounded-[22px] bg-gradient-to-br from-violet-300 to-cyan-200 text-[#211b3d]"><Icon name="spark" className="h-8 w-8" /></div><h1 className="mt-5 text-2xl font-black">Salom! Men sening AI Ustozingman.</h1><p className="mt-3 text-sm leading-6 text-slate-300">Qaysi mavzu qiyin bo‘lyapti? Birgalikda, bosqichma-bosqich o‘rganamiz.</p><div className="mt-6 rounded-2xl border border-white/10 bg-white/[.06] p-4"><label htmlFor="tutor-subject" className="text-[10px] font-bold uppercase tracking-widest text-violet-200">FANNI TANLANG</label><select id="tutor-subject" value={selectedSubject} onChange={(e) => setSelectedSubject(e.target.value)} className="mt-2 w-full rounded-xl border border-white/15 bg-[#27243d] px-3 py-3 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-violet-300">{subjects.map((subject) => <option key={subject.name} value={subject.name}>{subject.name}</option>)}</select><p className="mt-2 text-xs text-slate-400">{grade} darajasi uchun · {subjects.length} ta fan</p></div></div><div className="flex min-h-[520px] flex-col rounded-3xl border border-[#eceaf5] bg-white p-5"><div className="border-b border-slate-100 pb-4"><h2 className="text-lg font-black">Ustoz bilan suhbat</h2><p className="mt-1 text-xs text-slate-400">Savolingni yoz yoki tayyor mavzulardan birini tanla.</p></div><div className="flex-1 space-y-3 overflow-y-auto py-5">{messages.length===0?<div className="flex h-full min-h-[260px] flex-col items-center justify-center text-center"><div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-50 text-violet-600"><Icon name="spark" className="h-7 w-7" /></div><p className="mt-4 text-sm font-bold">Bugun nimani o‘rganamiz?</p><p className="mt-1 max-w-xs text-xs leading-5 text-slate-400">Savolingni yubor yoki quyidagi takliflardan birini tanla.</p><div className="mt-5 flex flex-wrap justify-center gap-2">{["Mavzuni sodda tushuntir","Misolni bosqichma-bosqich yech","Menga 5 ta test ber"].map((v)=><button key={v} onClick={()=>setQuestion(v)} className="rounded-full border border-violet-100 bg-violet-50/60 px-3 py-2 text-[10px] font-semibold text-violet-700 hover:bg-violet-100">{v}</button>)}</div></div>:messages.map((m,i)=><div key={i} className={"max-w-[90%] rounded-2xl px-4 py-3 text-xs leading-5 "+(m.role==="student"?"ml-auto bg-violet-600 text-white":"bg-slate-50 text-slate-600")}>{m.text}</div>)}</div>
+          {section === "tutor" && <section className="grid gap-5 xl:grid-cols-[.8fr_1.2fr]"><div className="rounded-3xl bg-[#17152c] p-6 text-white"><span className="text-[10px] font-bold uppercase tracking-[.18em] text-violet-200">SHAXSIY YORDAMCHI</span><div className="mt-7 flex h-16 w-16 items-center justify-center rounded-[22px] bg-gradient-to-br from-violet-300 to-cyan-200 text-[#211b3d]"><Icon name="spark" className="h-8 w-8" /></div><h1 className="mt-5 text-2xl font-black">Salom! Men sening AI Ustozingman.</h1><p className="mt-3 text-sm leading-6 text-slate-300">Qaysi mavzu qiyin bo‘lyapti? Birgalikda, bosqichma-bosqich o‘rganamiz.</p><div className="mt-6 rounded-2xl border border-white/10 bg-white/[.06] p-4"><label htmlFor="tutor-subject" className="text-[10px] font-bold uppercase tracking-widest text-violet-200">FANNI TANLANG</label><select id="tutor-subject" value={selectedSubject} onChange={(e) => setSelectedSubject(e.target.value)} className="mt-2 w-full rounded-xl border border-white/15 bg-[#27243d] px-3 py-3 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-violet-300">{gradeSubjects.map((subject) => <option key={subject.name} value={subject.name}>{subject.name}</option>)}</select><p className="mt-2 text-xs text-slate-400">{grade} darajasi uchun · {gradeSubjects.length} ta fan</p></div></div><div className="flex min-h-[520px] flex-col rounded-3xl border border-[#eceaf5] bg-white p-5"><div className="border-b border-slate-100 pb-4"><h2 className="text-lg font-black">Ustoz bilan suhbat</h2><p className="mt-1 text-xs text-slate-400">Savolingni yoz yoki tayyor mavzulardan birini tanla.</p></div><div className="flex-1 space-y-3 overflow-y-auto py-5">{messages.length===0?<div className="flex h-full min-h-[260px] flex-col items-center justify-center text-center"><div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-50 text-violet-600"><Icon name="spark" className="h-7 w-7" /></div><p className="mt-4 text-sm font-bold">Bugun nimani o‘rganamiz?</p><p className="mt-1 max-w-xs text-xs leading-5 text-slate-400">Savolingni yubor yoki quyidagi takliflardan birini tanla.</p><div className="mt-5 flex flex-wrap justify-center gap-2">{["Mavzuni sodda tushuntir","Misolni bosqichma-bosqich yech","Menga 5 ta test ber"].map((v)=><button key={v} onClick={()=>setQuestion(v)} className="rounded-full border border-violet-100 bg-violet-50/60 px-3 py-2 text-[10px] font-semibold text-violet-700 hover:bg-violet-100">{v}</button>)}</div></div>:messages.map((m,i)=><div key={i} className={"max-w-[90%] rounded-2xl px-4 py-3 text-xs leading-5 "+(m.role==="student"?"ml-auto bg-violet-600 text-white":"bg-slate-50 text-slate-600")}>{m.text}</div>)}</div>
       <section className="mb-4 overflow-hidden rounded-2xl border border-[#e7e2fa] bg-[#fcfbff] shadow-inner">
         <div className="flex items-center justify-between border-b border-violet-100 bg-white px-4 py-3"><div className="flex items-center gap-2 text-xs font-extrabold text-slate-700"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-100 text-violet-700"><Icon name="bookText" className="h-4 w-4" /></span> INTERAKTIV DOSKA</div><span className="text-[9px] font-bold uppercase tracking-wider text-violet-500">{boardWriting ? "YOZILMOQDA…" : activeBoardText ? "TAYYOR" : "USTOZ JAVOBI SHU YERDA"}</span></div>
         <div className="relative min-h-[150px] overflow-hidden bg-[#fffefb] p-4 sm:p-5" style={{backgroundImage:"linear-gradient(rgba(139,120,190,.09) 1px, transparent 1px)",backgroundSize:"100% 32px"}}>
