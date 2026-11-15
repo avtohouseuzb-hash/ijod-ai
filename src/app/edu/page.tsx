@@ -61,7 +61,9 @@ function Icon({ name, className = "" }: { name: string; className?: string }) {
   return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className={className}>{paths[name] ?? <circle cx="12" cy="12" r="8" />}</svg>;
 }
 
-export default function EduPage() { return <EduFamilyAccess><EduStudentPage /></EduFamilyAccess>; }\n\nfunction EduStudentPage() {
+export default function EduPage() { return <EduFamilyAccess><EduStudentPage /></EduFamilyAccess>; }
+
+function EduStudentPage() {
   const [section, setSection] = useState<Section>("home");
   const [grade, setGrade] = useState("7-sinf");
   const [completed, setCompleted] = useState<number[]>([]);
