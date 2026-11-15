@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { LanguageSelect, ThemeToggle } from "@/components/site-preferences";
+import EduFamilyAccess from "@/components/edu-family-access";
 
 type Section = "home" | "tutor" | "homework" | "library" | "progress" | "planner";
 
@@ -60,7 +61,7 @@ function Icon({ name, className = "" }: { name: string; className?: string }) {
   return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className={className}>{paths[name] ?? <circle cx="12" cy="12" r="8" />}</svg>;
 }
 
-export default function EduPage() {
+export default function EduPage() { return <EduFamilyAccess><EduStudentPage /></EduFamilyAccess>; }\n\nfunction EduStudentPage() {
   const [section, setSection] = useState<Section>("home");
   const [grade, setGrade] = useState("7-sinf");
   const [completed, setCompleted] = useState<number[]>([]);
