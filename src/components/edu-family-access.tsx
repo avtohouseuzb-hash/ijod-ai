@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { supabase } from "@/lib/supabase";
 
 type Role={user_id:string;role:"student"|"parent";display_name:string;grade:number|null};
@@ -10,7 +11,7 @@ async function api(body?:Record<string,unknown>){
  const res=await fetch("/api/edu-family",{method:body?"POST":"GET",headers:{...(body?{"Content-Type":"application/json"}:{}),Authorization:"Bearer "+session.access_token},...(body?{body:JSON.stringify(body)}:{})});
  const data=await res.json();if(!res.ok)throw new Error(data.error||"Xatolik yuz berdi.");return data;
 }
-export default function EduFamilyAccess({children}:{children:React.ReactNode}){
+export default function EduFamilyAccess({children}:{children:ReactNode}){
  const [loading,setLoading]=useState(true),[role,setRole]=useState<Role|null>(null),[links,setLinks]=useState<Link[]>([]);
  const [choice,setChoice]=useState<"student"|"parent"|null>(null),[name,setName]=useState(""),[grade,setGrade]=useState("7"),[code,setCode]=useState(""),[newCode,setNewCode]=useState(""),[busy,setBusy]=useState(false),[error,setError]=useState(""),[note,setNote]=useState("");
  async function refresh(){try{const d=await api();setRole(d.role);setLinks(d.links||[]);}catch(e){setError(e instanceof Error?e.message:"Profil yuklanmadi.");}finally{setLoading(false);}}
