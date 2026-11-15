@@ -1,8 +1,7 @@
-// 2026–2027-yil tayanch o‘quv rejasi (vazirning 133-son buyrug‘i)
-// O‘zbek tilida ta’lim beriladigan maktablar uchun.
-// IJOD EDU katalogida amaliy fanlardan foydalanuvchi so‘roviga ko‘ra faqat
-// Texnologiya qoldirilgan; Musiqa, Tasviriy san’at, Chizmachilik,
-// Jismoniy tarbiya va chaqiruvga qadar tayyorgarlik kartochkalari chiqarilmaydi.
+// 2026–2027 tayanch o‘quv reja — o‘zbek tilida ta’lim beriladigan maktablar.
+// Manba: Maktabgacha va maktab ta’limi vazirining 10.04.2026 yildagi
+// 133-son buyrug‘i, 1-ilova.
+// Portal talabi: amaliy fanlardan faqat Texnologiya qoldiriladi.
 
 export const eduSubjectsByGrade: Record<number, string[]> = {
   1: [
@@ -141,6 +140,7 @@ export const eduSubjectsByGrade: Record<number, string[]> = {
     "Fizika",
     "Kimyo",
     "Biologiya",
+    "Geografiya",
   ],
   11: [
     "Ona tili",
