@@ -74,12 +74,12 @@ export async function POST(request: Request) {
       .flatMap((item) => item.content)
       .filter((part) => part.type === "output_text")
       .map((part) => part.text)
-      .join("\\n")
+      .join("\n")
       .trim();
     let text = response.output_text?.trim() || outputMessageText;
-    const isGreeting = /^(sal[o0][mn]|assalomu alaykum|assalom|hello|hi|hey)[!?.\\s]*$/i.test(input.message.trim());
-    const compactMessage = input.message.trim().replace(/\\s/g, "");
-    const isRepeatedNoise = compactMessage.length >= 5 && /(.)\\1{4,}/.test(compactMessage);
+    const isGreeting = /^(sal[o0][mn]|assalomu alaykum|assalom|hello|hi|hey)[!?.\s]*$/i.test(input.message.trim());
+    const compactMessage = input.message.trim().replace(/\s/g, "");
+    const isRepeatedNoise = compactMessage.length >= 5 && /(.)\1{4,}/.test(compactMessage);
     const isTruncatedHeading = /^(M|MA|MAV|MAVZ|MAVZU:?|XULOSA:?)$/i.test(text);
 
     if (response.status === "incomplete" || isTruncatedHeading || !text) {
