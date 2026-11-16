@@ -92,6 +92,7 @@ export async function POST(request: Request) {
       const imageFile = await toFile(Buffer.from(match[2], "base64"), "source." + extension, { type: mimeType });
       const prompt = "Recreate the uploaded image as a translated version in " + targetLanguage + ". Source language: " + source + ". CRITICAL: replace the original written words inside the image with their translations; do not merely copy the original image. Translate every readable word, including text used as a logo or heading, whenever it has a normal dictionary meaning. For this exact logo, when the target language is English, replace the word IJOD with ART (not IJOD); keep AI as AI. Keep the same overall logo design, letter styling, gradient colors, icons, white background, spacing and composition, changing only the lettering needed for translation. Do not add explanations, extra text, watermarks or unrelated objects. Render the translated text clearly and legibly. Return only the edited image.";
       const edited = await openai.images.edit({ model: "gpt-image-2.5-sunburst", image: imageFile, prompt, size: "1024x1024" });
+      await recordAiUsage(serviceClient, { userId: user.id, requestId, feature: "AI Tarjima · Rasm", model: "gpt-image-2.5-sunburst" });
       const generatedImage = edited.data?.[0]?.b64_json;
       if (!generatedImage) throw new Error("EMPTY_TRANSLATED_IMAGE");
       creditReserved = false;
@@ -109,6 +110,7 @@ export async function POST(request: Request) {
       }],
       max_output_tokens: 3000,
     });
+    await recordAiUsage(serviceClient, { userId: user.id, requestId, feature: "AI Tarjima", model: "gpt-6-luna", usage: response.usage });
     const translatedText = response.output_text?.trim();
     if (!translatedText) throw new Error("EMPTY_TRANSLATION_RESPONSE");
     creditReserved = false;
