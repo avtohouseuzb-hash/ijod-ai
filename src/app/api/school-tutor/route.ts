@@ -89,23 +89,26 @@ export async function POST(request: Request) {
   const grade = typeof input.grade === "string" && /^(?:[1-9]|10|11)-sinf$/.test(input.grade) ? input.grade : "7-sinf";
   let imageDataUrl: string | null = null;
   if (input.imageDataUrl !== undefined && input.imageDataUrl !== null && input.imageDataUrl !== "") {
-    if (typeof input.imageDataUrl !== "string") {
+    const uploadedImage: unknown = input.imageDataUrl;
+    if (typeof uploadedImage !== "string") {
       return NextResponse.json({ error: "Rasm JPG, PNG yoki WEBP formatida bo‘lishi kerak." }, { status: 400 });
     }
     const allowedImagePrefixes = ["data:image/jpeg;base64,", "data:image/png;base64,", "data:image/webp;base64,"];
-    const imagePrefix = allowedImagePrefixes.find((prefix) => input.imageDataUrl.startsWith(prefix));
-    const imagePayload = imagePrefix ? input.imageDataUrl.slice(imagePrefix.length) : "";
-    const isValidBase64 = imagePayload.length > 0 && new RegExp("^[A-Za-z0-9+/=]+$").test(imagePayload);
+    const imagePrefix = allowedImagePrefixes.find((prefix) => uploadedImage.startsWith(prefix));
+    const imagePayload = imagePrefix ? uploadedImage.slice(imagePrefix.length) : "";
+    const isValidBase64 = imagePayload.length > 0 && Array.from(imagePayload).every((character) =>
+      (character >= "A" && character <= "Z") ||
+      (character >= "a" && character <= "z") ||
+      (character >= "0" && character <= "9") || character === "+" || character === "/" || character === "="
+    );
     if (!imagePrefix || !isValidBase64) {
       return NextResponse.json({ error: "Rasm JPG, PNG yoki WEBP formatida bo‘lishi kerak." }, { status: 400 });
     }
-    }
-    if (input.imageDataUrl.length > 4_200_000) {
+    if (uploadedImage.length > 4_200_000) {
       return NextResponse.json({ error: "Rasm hajmi 3 MB dan oshmasin." }, { status: 413 });
     }
-    imageDataUrl = input.imageDataUrl;
+    imageDataUrl = uploadedImage;
   }
-
   // Greetings, unclear repeated characters, and handwriting demonstrations do not need an LLM call.
   const userMessage = input.message.trim();
   const isGreeting = /^(sal[o0][mn]|assalomu alaykum|assalom|hello|hi|hey)[!?.\s]*$/i.test(userMessage);
