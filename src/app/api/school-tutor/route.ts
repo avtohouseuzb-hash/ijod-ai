@@ -7,11 +7,12 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 type ChemistryVisualPayload =
   | { kind: "atom"; title: string; subtitle: string }
+  | { kind: "orbital"; title: string; subtitle: string }
   | { kind: "molecule"; title: string; formula: string; subtitle: string; atoms: string[] }
   | { kind: "reaction"; title: string; equation: string; subtitle: string }
   | { kind: "summary"; title: string; points: string[] };
 
-function buildChemistryVisual(question: string, answer: string): ChemistryVisualPayload {
+function buildChemistryVisual(question: string): ChemistryVisualPayload {
   // Select the diagram from the learner's actual question only.
   // The generated answer may mention atoms/electrons while explaining orbitals;
   // it must never override the topic that the learner requested.
@@ -242,7 +243,7 @@ export async function POST(request: Request) {
 
     reserved = false;
     const visual = subject.toLocaleLowerCase("uz-UZ").includes("kimyo")
-      ? buildChemistryVisual(userMessage, text)
+      ? buildChemistryVisual(userMessage)
       : undefined;
     const youtubeQuery = subject.toLocaleLowerCase("uz-UZ").includes("kimyo")
       ? `${grade} kimyo ${userMessage} mavzusi o‘zbek tilida`.slice(0, 180)
