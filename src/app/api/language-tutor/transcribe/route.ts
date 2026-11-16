@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { recordAiUsage } from "@/lib/ai-usage";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
@@ -32,6 +33,11 @@ export async function POST(request: Request) {
       language,
       response_format: "json",
     });
+    const serviceKey = process.env.SUPABASE_SECRET_KEY;
+    if (serviceKey && process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      const service = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+      await recordAiUsage(service, { userId: user.id, feature: "AI til ustoz · Nutq transkripsiyasi", model: "gpt-4o-mini-transcribe" });
+    }
     return NextResponse.json({ text: result.text || "" });
   } catch (error) {
     console.error("IJOD AI speech transcription error:", error);
