@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { recordAiUsage } from "@/lib/ai-usage";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
@@ -65,6 +66,7 @@ ${mood === "angry" || personality === "strict" ? "STRICT MODE: use informal sen,
       ],
       max_output_tokens: 600,
     });
+    await recordAiUsage(service, { userId: user.id, requestId, feature: "AI til ustoz", model: "gpt-6-luna", usage: response.usage });
     const text = response.output_text?.trim();
     if (!text) throw new Error("AI bo‘sh javob qaytardi.");
     reserved = false;
