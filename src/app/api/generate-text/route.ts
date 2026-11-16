@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { recordAiUsage } from "@/lib/ai-usage";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
@@ -265,6 +266,7 @@ export async function POST(request: Request) {
       max_output_tokens: 900,
     });
 
+    await recordAiUsage(serviceClient, { userId: user.id, requestId, feature: "AI Matn · " + safeType, model: "gpt-6-luna", usage: response.usage });
     const text = response.output_text?.trim();
 
     if (!text) {
@@ -298,6 +300,7 @@ export async function POST(request: Request) {
         prompt: logoPrompt,
         size: "1024x1024",
       });
+      await recordAiUsage(serviceClient, { userId: user.id, requestId, feature: "AI Brend logo rasmi", model: "gpt-image-2.5-sunburst" });
       const logoB64 = logoResult.data?.[0]?.b64_json;
       if (!logoB64) throw new Error("Logo rasmi yaratilmadi.");
       image = "data:image/png;base64," + logoB64;
