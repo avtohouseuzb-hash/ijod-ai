@@ -11,27 +11,17 @@ type SelectedVideo = {
 
 const VERIFIED_CHEMISTRY_VIDEOS: Array<{ keywords: string[]; video: SelectedVideo }> = [
   {
-    keywords: ["orbital", "orbitallar", "orbital nima", "elektron orbital"],
+    keywords: ["orbital", "orbitallar", "orbital nima", "elektron orbital", "orbitallar va elektron konfiguratsiya"],
     video: {
-      id: "WyzRTs6kqa0",
-      title: "Orbitallar | Kimyo va hayot",
-      channelTitle: "Khan Academy O‘zbek",
-      thumbnailUrl: "https://i.ytimg.com/vi/WyzRTs6kqa0/hqdefault.jpg",
-      url: "https://www.youtube.com/watch?v=WyzRTs6kqa0",
+      id: "i3M63yMG-CE",
+      title: "Bog‘lar va orbitallar sonini topish",
+      channelTitle: "ICC | KIMYO",
+      thumbnailUrl: "https://i.ytimg.com/vi/i3M63yMG-CE/hqdefault.jpg",
+      url: "https://www.youtube.com/watch?v=i3M63yMG-CE",
     },
   },
   {
-    keywords: ["elektron konfiguratsiya", "orbitallar va elektron konfiguratsiya"],
-    video: {
-      id: "rsHYb5lgJYs",
-      title: "Orbitallar va elektron konfiguratsiya",
-      channelTitle: "Khan Academy O‘zbek",
-      thumbnailUrl: "https://i.ytimg.com/vi/rsHYb5lgJYs/hqdefault.jpg",
-      url: "https://www.youtube.com/watch?v=rsHYb5lgJYs",
-    },
-  },
-  {
-    keywords: ["kimyoga kirish", "atomlar birikmalar ionlar", "atomlar, birikmalar va ionlar"],
+    keywords: ["kimyoga kirish", "atomlar birikmalar ionlar"],
     video: {
       id: "_leSmn0fF2M",
       title: "Kimyoga kirish: atomlar, birikmalar va ionlar",
