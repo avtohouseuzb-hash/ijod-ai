@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { recordAiUsage } from "@/lib/ai-usage";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
@@ -49,6 +50,7 @@ export async function POST(request: Request) {
       file,
       prompt: "Transcribe the speech accurately in its original language. For Uzbek speech, use Uzbek Latin script and preserve names and wording.",
     });
+    await recordAiUsage(serviceClient, { userId: user.id, requestId, feature: "Audio · Matnga transkripsiya", model: "gpt-transcribe" });
     const { data: profile, error: profileError } = await serviceClient.from("profiles").select("credits").eq("user_id", user.id).maybeSingle();
     if (profileError) throw new Error("Kredit qoldig‘ini o‘qib bo‘lmadi.");
     return NextResponse.json({ text: transcript.text, remainingCredits: profile?.credits ?? null });
