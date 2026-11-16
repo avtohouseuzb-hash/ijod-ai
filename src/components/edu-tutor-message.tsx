@@ -17,7 +17,7 @@ export type EduTutorMessageData = {
   text: string;
   imageDataUrl?: string;
   videos?: EduTutorVideo[];
-  youtubeSearchUrl?: string;
+  videoNotice?: string;
 };
 
 export default function EduTutorMessage({ message }: { message: EduTutorMessageData }) {
@@ -77,24 +77,31 @@ export default function EduTutorMessage({ message }: { message: EduTutorMessageD
       <p className="whitespace-pre-wrap break-words">{message.text}</p>
       {audioUrl && <audio controls autoPlay src={audioUrl} className="mt-3 h-9 w-full" />}
       {audioError && <p role="alert" className="mt-2 text-[10px] text-rose-600">{audioError}</p>}
-      {message.videos && message.videos.length > 0 && (
-        <div className="mt-4 rounded-xl border border-red-100 bg-white p-3">
-          <div className="mb-2 flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-700"><span className="text-red-600">▶</span> Mavzuga mos videolar</div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {message.videos.map((video) => (
-              <a key={video.id} href={video.url} target="_blank" rel="noreferrer" className="group overflow-hidden rounded-xl border border-slate-100 bg-white transition hover:border-red-200">
-                {video.thumbnailUrl && <img src={video.thumbnailUrl} alt="" className="aspect-video w-full object-cover" loading="lazy" />}
-                <span className="block p-2.5"><span className="block text-[11px] font-bold leading-4 text-slate-800 group-hover:text-red-600">{video.title}</span><span className="mt-1 block text-[10px] text-slate-400">{video.channelTitle}</span></span>
-              </a>
-            ))}
+      {message.videos && message.videos.length > 0 && (() => {
+        const video = message.videos[0];
+        return (
+          <div className="mt-4 overflow-hidden rounded-xl border border-red-100 bg-white">
+            <div className="flex items-center gap-2 px-3 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-700"><span className="text-red-600">▶</span> Ustoz tanlagan bitta video</div>
+            <div className="aspect-video w-full bg-black">
+              <iframe
+                src={"https://www.youtube-nocookie.com/embed/" + encodeURIComponent(video.id) + "?rel=0"}
+                title={video.title}
+                className="h-full w-full"
+                loading="lazy"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+              />
+            </div>
+            <div className="p-3">
+              <p className="text-[11px] font-bold leading-5 text-slate-800">{video.title}</p>
+              <p className="mt-1 text-[10px] text-slate-400">{video.channelTitle}</p>
+              <a href={video.url} target="_blank" rel="noreferrer" className="mt-2 inline-block text-[10px] font-semibold text-red-700 hover:underline">YouTube’da ochish ↗</a>
+            </div>
           </div>
-        </div>
-      )}
-      {message.youtubeSearchUrl && (!message.videos || message.videos.length === 0) && (
-        <a href={message.youtubeSearchUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-2 rounded-xl border border-red-100 bg-white px-3 py-2.5 text-[10px] font-bold text-red-700 hover:bg-red-50">
-          <span>▶</span> YouTube’da shu mavzudagi videolarni ko‘rish
-        </a>
-      )}
+        );
+      })()}
+      {message.videoNotice && <p className="mt-3 rounded-xl bg-slate-100 px-3 py-2.5 text-[10px] leading-5 text-slate-500">{message.videoNotice}</p>}
     </article>
   );
 }

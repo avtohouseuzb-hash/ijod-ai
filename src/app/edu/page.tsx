@@ -350,12 +350,16 @@ function EduStudentPage() {
         }).then((videoData) => {
           if (requestVersion !== tutorRequestVersion.current) return;
           setMessages((current) => current.map((item) => item.id === assistantMessageId
-            ? { ...item, videos: Array.isArray(videoData.videos) ? videoData.videos : [], ...(typeof videoData.youtubeSearchUrl === "string" ? { youtubeSearchUrl: videoData.youtubeSearchUrl } : {}) }
+            ? {
+                ...item,
+                videos: Array.isArray(videoData.videos) ? videoData.videos.slice(0, 1) : [],
+                ...(typeof videoData.videoNotice === "string" ? { videoNotice: videoData.videoNotice } : {}),
+              }
             : item));
         }).catch((error) => {
           console.error("EDU YouTube search failed:", error);
           setMessages((current) => current.map((item) => item.id === assistantMessageId
-            ? { ...item, youtubeSearchUrl: "https://www.youtube.com/results?search_query=" + encodeURIComponent(videoQuery) }
+            ? { ...item, videoNotice: "Video topilmadi. Hozircha darsni davom ettirishing mumkin." }
             : item));
         });
       }
