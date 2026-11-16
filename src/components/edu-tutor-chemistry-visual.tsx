@@ -2,6 +2,7 @@
 
 export type ChemistryVisual =
   | { kind: "atom"; title: string; subtitle: string }
+  | { kind: "orbital"; title: string; subtitle: string }
   | { kind: "molecule"; title: string; formula: string; subtitle: string; atoms: string[] }
   | { kind: "reaction"; title: string; equation: string; subtitle: string }
   | { kind: "summary"; title: string; points: string[] };
@@ -49,6 +50,56 @@ export default function EduTutorChemistryVisual({ visual }: { visual: ChemistryV
             </div>
           </div>
           <p className="md:col-span-2 rounded-xl bg-amber-50 px-3 py-2 text-[10px] leading-5 text-amber-800">{visual.subtitle}</p>
+        </div>
+      )}
+
+      {visual.kind === "orbital" && (
+        <div className="grid gap-3 p-4 lg:grid-cols-2">
+          <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-xs font-extrabold text-slate-800">1. ORBITA</p>
+              <span className="rounded-full bg-white px-2 py-1 text-[9px] font-bold text-slate-500">Soddalashtirilgan model</span>
+            </div>
+            <svg viewBox="0 0 240 160" role="img" aria-label="Bor modelida elektron orbitasi: yadro atrofidagi aylana yo‘l" className="mx-auto block w-full max-w-[300px]">
+              <circle cx="120" cy="78" r="49" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeDasharray="5 4" />
+              <circle cx="120" cy="78" r="13" fill="#fb923c" stroke="#ea580c" strokeWidth="1.5" />
+              <text x="120" y="82" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">Yadro</text>
+              <circle cx="120" cy="29" r="7" fill="#2563eb" stroke="white" strokeWidth="2" />
+              <path d="M 137 34 Q 151 43 160 58" fill="none" stroke="#2563eb" strokeWidth="1.5" strokeLinecap="round" />
+              <path d="M 155 50 L 160 58 L 150 57" fill="none" stroke="#2563eb" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <text x="120" y="145" textAnchor="middle" fill="#475569" fontSize="10">Elektron uchun chizilgan yo‘l</text>
+            </svg>
+            <p className="mt-2 rounded-xl bg-white p-3 text-[11px] leading-5 text-slate-600">Eski Bor tasvirida elektron yadro atrofida ma’lum aylana yo‘lda deb ko‘rsatiladi. Bu zamonaviy orbitalning o‘zi emas.</p>
+          </div>
+
+          <div className="rounded-2xl border border-violet-100 bg-violet-50/50 p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-xs font-extrabold text-slate-800">2. ORBITAL</p>
+              <span className="rounded-full bg-white px-2 py-1 text-[9px] font-bold text-violet-600">Elektron buluti sohasi</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-xl bg-white p-2">
+                <p className="text-center text-[10px] font-bold text-slate-700">s-orbital</p>
+                <svg viewBox="0 0 120 110" role="img" aria-label="Shar shaklidagi s orbital" className="mx-auto block w-full">
+                  <defs><radialGradient id="edu-s-orbital"><stop offset="0%" stopColor="#38bdf8" stopOpacity=".08"/><stop offset="65%" stopColor="#38bdf8" stopOpacity=".28"/><stop offset="100%" stopColor="#0ea5e9" stopOpacity=".5"/></radialGradient></defs>
+                  <circle cx="60" cy="52" r="37" fill="url(#edu-s-orbital)" stroke="#0ea5e9" strokeWidth="1.5" />
+                  <circle cx="60" cy="52" r="5" fill="#f97316" />
+                  <text x="60" y="103" textAnchor="middle" fill="#64748b" fontSize="8">Shar shakli</text>
+                </svg>
+              </div>
+              <div className="rounded-xl bg-white p-2">
+                <p className="text-center text-[10px] font-bold text-slate-700">p-orbital</p>
+                <svg viewBox="0 0 120 110" role="img" aria-label="Gantel shaklidagi p orbital" className="mx-auto block w-full">
+                  <ellipse cx="36" cy="52" rx="31" ry="22" fill="#60a5fa" fillOpacity=".42" stroke="#3b82f6" strokeWidth="1.5" />
+                  <ellipse cx="84" cy="52" rx="31" ry="22" fill="#a78bfa" fillOpacity=".42" stroke="#8b5cf6" strokeWidth="1.5" />
+                  <circle cx="60" cy="52" r="5" fill="#f97316" />
+                  <text x="60" y="103" textAnchor="middle" fill="#64748b" fontSize="8">Gantel shakli</text>
+                </svg>
+              </div>
+            </div>
+            <p className="mt-2 rounded-xl bg-white p-3 text-[11px] leading-5 text-slate-600">Orbital — elektronni topish ehtimoli yuqori bo‘lgan fazo sohasi. Bu aniq chiziq yoki elektron yuradigan yo‘l emas.</p>
+          </div>
+          <p className="lg:col-span-2 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2.5 text-[11px] leading-5 text-amber-900">{visual.subtitle} Chizmalar tushunishni osonlashtirish uchun soddalashtirilgan.</p>
         </div>
       )}
 

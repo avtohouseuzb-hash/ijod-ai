@@ -11,13 +11,13 @@ type SelectedVideo = {
 
 const VERIFIED_CHEMISTRY_VIDEOS: Array<{ keywords: string[]; video: SelectedVideo }> = [
   {
-    keywords: ["orbital", "orbitallar", "orbital nima", "elektron orbital", "orbitallar va elektron konfiguratsiya"],
+    keywords: ["orbital", "orbitallar", "orbital nima", "orbita", "elektron orbital", "orbitallar va elektron konfiguratsiya"],
     video: {
-      id: "i3M63yMG-CE",
-      title: "Bog‘lar va orbitallar sonini topish",
-      channelTitle: "ICC | KIMYO",
-      thumbnailUrl: "https://i.ytimg.com/vi/i3M63yMG-CE/hqdefault.jpg",
-      url: "https://www.youtube.com/watch?v=i3M63yMG-CE",
+      id: "WyzRTs6kqa0",
+      title: "Orbitallar | Kimyo va hayot",
+      channelTitle: "Khan Academy O‘zbek",
+      thumbnailUrl: "https://i.ytimg.com/vi/WyzRTs6kqa0/hqdefault.jpg",
+      url: "https://www.youtube.com/watch?v=WyzRTs6kqa0",
     },
   },
   {

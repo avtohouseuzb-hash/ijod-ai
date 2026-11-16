@@ -12,15 +12,20 @@ type ChemistryVisualPayload =
   | { kind: "summary"; title: string; points: string[] };
 
 function buildChemistryVisual(question: string, answer: string): ChemistryVisualPayload {
-  const q = (question + " " + answer).toLocaleLowerCase("uz-UZ").replace(/₂/g, "2").replace(/₃/g, "3");
-  if (/(proton|neytron|elektron|atom|yadro)/i.test(q)) {
+  // Select the diagram from the learner's actual question only.
+  // The generated answer may mention atoms/electrons while explaining orbitals;
+  // it must never override the topic that the learner requested.
+  const q = question.toLocaleLowerCase("uz-UZ").replace(/₂/g, "2").replace(/₃/g, "3");
+
+  if (["orbital", "orbitallar", "orbita", "orbitall", "electron orbital"].some((term) => q.includes(term))) {
     return {
-      kind: "atom",
-      title: "Atom ichki tuzilishi",
-      subtitle: "Misol: geliy atomida 2 proton va 2 neytron yadroda, 2 elektron esa yadro atrofida joylashadi. Chizma soddalashtirilgan modeldir.",
+      kind: "orbital",
+      title: "Orbita va orbital — farqi nimada?",
+      subtitle: "Orbita — eski Bor modelida elektron uchun chizilgan soddalashtirilgan yo‘l. Orbital esa elektronni topish ehtimoli katta bo‘lgan fazo sohasi; u aniq aylana yo‘l emas. s-orbital shar, p-orbital esa gantelga o‘xshaydi.",
     };
   }
-  if (/(nacl|osh tuzi|natriy xlorid)/i.test(q)) {
+
+  if (q.includes("nacl") || q.includes("osh tuzi") || q.includes("natriy xlorid")) {
     return {
       kind: "molecule",
       title: "Osh tuzi tarkibi",
@@ -29,7 +34,7 @@ function buildChemistryVisual(question: string, answer: string): ChemistryVisual
       subtitle: "Natriy xlorid natriy va xlor ionlaridan tuzilgan. Bu rasm ionli birikma tarkibini soddalashtirib ko‘rsatadi.",
     };
   }
-  if (/(suv hosil|vodorod.*kislorod|h2.*o2)/i.test(q)) {
+  if (q.includes("suv hosil") || (q.includes("vodorod") && q.includes("kislorod") && q.includes("reaksiya"))) {
     return {
       kind: "reaction",
       title: "Suv hosil bo‘lish reaksiyasi",
@@ -37,7 +42,7 @@ function buildChemistryVisual(question: string, answer: string): ChemistryVisual
       subtitle: "Tenglama muvozanatlangan: chap va o‘ng tomonda 4 ta vodorod atomi hamda 2 ta kislorod atomi bor.",
     };
   }
-  if (/(h2o|suv molekul|suvning tarkib)/i.test(q)) {
+  if (q.includes("h2o") || q.includes("suv molekul") || q.includes("suvning tarkib")) {
     return {
       kind: "molecule",
       title: "Suv molekulasi",
@@ -46,7 +51,7 @@ function buildChemistryVisual(question: string, answer: string): ChemistryVisual
       subtitle: "Suv molekulasi 2 ta vodorod (H) va 1 ta kislorod (O) atomidan tuzilgan.",
     };
   }
-  if (/(co2|karbonat angidrid)/i.test(q)) {
+  if (q.includes("co2") || q.includes("karbonat angidrid")) {
     return {
       kind: "molecule",
       title: "Karbonat angidrid molekulasi",
@@ -55,6 +60,14 @@ function buildChemistryVisual(question: string, answer: string): ChemistryVisual
       subtitle: "CO₂ molekulasida 1 ta uglerod va 2 ta kislorod atomi bor.",
     };
   }
+  if (["proton", "neytron", "elektron", "atom", "yadro"].some((term) => q.includes(term))) {
+    return {
+      kind: "atom",
+      title: "Atom ichki tuzilishi",
+      subtitle: "Misol: geliy atomida 2 proton va 2 neytron yadroda, 2 elektron esa yadro atrofida joylashadi. Chizma soddalashtirilgan modeldir.",
+    };
+  }
+
   const points = answer.split(/(?<=[.!?])\s+/).map((part) => part.trim()).filter((part) => part.length > 18).slice(0, 4);
   return {
     kind: "summary",
@@ -181,7 +194,7 @@ export async function POST(request: Request) {
     ? " Rasmiy darslik qidiruvi yoqilgan: faqat shu sinf va fan uchun indekslangan kitoblarga tayangan holda javob ber. Topilgan manba bo‘lmasa sahifa yoki mashq raqamini aytma."
     : " Hozircha shu sinf va fan uchun PDF darslik indekslanmagan. Umumiy fan bilimlari asosida o‘rgat, lekin javobni rasmiy darslikdan olingandek ko‘rsatma. Sahifa, bob yoki mashq raqamini taxmin qilma; o‘quvchi aniq kitobdagi topshiriqni so‘rasa, matnini yoki rasmini yuborishini so‘ra.";
   const chemistryGuidance = subject.toLocaleLowerCase("uz-UZ").includes("kimyo")
-    ? " Kimyo fanida quruq uzun matn yozma: o‘quvchini qiziqtiradigan qisqa izoh, kundalik hayotdan o‘xshatish, kichik tajriba yoki kuzatuv va bitta savol ber. Xavfli moddalar bilan uyda tajriba qilishni buyurma. Atom, molekula va reaksiya kabi narsalarni tasavvur qilishiga yordam ber."
+    ? " Kimyo fanida quruq uzun matn yozma: qisqa, qiziqarli tushuntirish, kundalik hayotdan o‘xshatish va bitta tekshiruv savoli ber. Xavfli moddalar bilan uyda tajriba buyurma. Mavzularni aralashtirma: savol proton/neytron haqida bo‘lsa atom tuzilishini, orbital haqida bo‘lsa orbital shakllarini tushuntir. ‘Orbita’ va ‘orbital’ bir xil emas: orbita eski Bor modelidagi soddalashtirilgan yo‘l; orbital elektronni topish ehtimoli katta bo‘lgan fazo sohasi. Orbitalni aylana yo‘l deb tasvirlama. s-orbital shar, p-orbital gantel shaklida bo‘lishini tushuntir."
     : "";
   const imageGuidance = imageDataUrl
     ? " O‘quvchi rasm yubordi. Rasmni diqqat bilan ko‘r: undagi topshiriq, formula yoki xatoni aniqlab, ko‘rinmayotgan joylarni taxmin qilmasdan so‘ra."
