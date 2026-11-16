@@ -63,6 +63,11 @@ export default function EduTutorDrawingBoard({ drawing }: { drawing: TutorDrawin
         <div className="rounded-xl border border-slate-100 bg-[#fffefb] p-3">
           <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Harfning yozilish tartibi</p>
           <svg viewBox="0 0 100 100" role="img" aria-label={drawing.title + " yozilishini chizib ko‘rsatish"} className="block w-full touch-none">
+            <defs>
+              <marker id="tutor-stroke-arrow" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto">
+                <path d="M0 0 L5 2.5 L0 5" fill="#7c3aed" />
+              </marker>
+            </defs>
             <path d="M 8 24 H 92 M 8 78 H 92" stroke="#cbd5e1" strokeWidth="0.8" strokeDasharray="2 2" />
             <path d="M 8 50 H 92" stroke="#e2e8f0" strokeWidth="0.5" strokeDasharray="1 3" />
             {drawing.strokes.map((stroke, index) => {
@@ -71,7 +76,7 @@ export default function EduTutorDrawingBoard({ drawing }: { drawing: TutorDrawin
               const sy = start ? Number(start[2]) : 10;
               return (
                 <g key={index}>
-                  <path d={stroke.d} fill="none" stroke="#7c3aed" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" pathLength={100} strokeDasharray={100} strokeDashoffset={100} style={{ animation: "ijod-tutor-draw 1.25s ease-out forwards", animationDelay: `${index * 1.15}s` }} />
+                  <path d={stroke.d} fill="none" stroke="#7c3aed" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" pathLength={100} strokeDasharray={100} strokeDashoffset={100} markerEnd="url(#tutor-stroke-arrow)" style={{ animation: "ijod-tutor-draw 1.25s ease-out forwards", animationDelay: `${index * 1.15}s` }} />
                   <circle cx={sx} cy={sy} r="4" fill="#f59e0b" stroke="white" strokeWidth="1.2" />
                   <text x={sx + 5} y={sy - 4} fill="#92400e" fontSize="6" fontWeight="bold">{index + 1}</text>
                 </g>
