@@ -6,7 +6,6 @@ type UsageSource = {
   total_tokens?: number | null;
   prompt_tokens?: number | null;
   completion_tokens?: number | null;
-  [key: string]: unknown;
 };
 
 export async function recordAiUsage(
