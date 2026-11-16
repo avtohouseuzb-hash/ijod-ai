@@ -34,7 +34,7 @@ export async function POST(request: Request) {
   const userMessage = input.message.trim();
   const isGreeting = /^(sal[o0][mn]|assalomu alaykum|assalom|hello|hi|hey)[!?.\s]*$/i.test(userMessage);
   const compactMessage = userMessage.replace(/\s/g, "");
-  const isRepeatedNoise = compactMessage.length >= 5 && /(.)\\1{4,}/.test(compactMessage);
+  const isRepeatedNoise = compactMessage.length >= 5 && /(.)\1{4,}/.test(compactMessage);
 
   if (isGreeting) {
     return NextResponse.json({
@@ -130,7 +130,7 @@ export async function POST(request: Request) {
       .join("\n")
       .trim();
     let text = response.output_text?.trim() || outputMessageText;
-    text = text.replace(/\\*\\*/g, "").trim();
+    text = text.replace(/\*\*/g, "").trim();
     const isTruncatedHeading = /^(M|MA|MAV|MAVZ|MAVZU:?|XULOSA:?)$/i.test(text);
     if (response.status === "incomplete" || isTruncatedHeading || !text) {
       throw new Error("AI javobi to‘liq kelmadi. Iltimos, yana bir marta yubor.");
