@@ -29,6 +29,59 @@ export async function POST(request: Request) {
   const subject = typeof input.subject === "string" ? input.subject.trim().slice(0, 80) : "Matematika";
   if (!subject) return NextResponse.json({ error: "Fanni tanlang." }, { status: 400 });
   const grade = typeof input.grade === "string" && /^(?:[1-9]|10|11)-sinf$/.test(input.grade) ? input.grade : "7-sinf";
+
+  // Greetings, unclear repeated characters, and handwriting demonstrations do not need an LLM call.
+  const userMessage = input.message.trim();
+  const isGreeting = /^(sal[o0][mn]|assalomu alaykum|assalom|hello|hi|hey)[!?.\\s]*$/i.test(userMessage);
+  const compactMessage = userMessage.replace(/\\s/g, "");
+  const isRepeatedNoise = compactMessage.length >= 5 && /(.)\\1{4,}/.test(compactMessage);
+
+  if (isGreeting) {
+    return NextResponse.json({
+      kind: "greeting",
+      text: "Salom! 😊 Bugun qaysi mavzuni o‘rganamiz? Savolingni yoz, men senga tushunarli qilib yordam beraman.",
+    });
+  }
+
+  if (isRepeatedNoise) {
+    return NextResponse.json({
+      kind: "greeting",
+      text: "Xabaringni to‘liq tushunmadim. Iltimos, savolingni qaytadan, aniqroq yoz.",
+    });
+  }
+
+  const letterMatch = userMessage.match(/\\b([a-z])\\s+harf(?:ini|ni)?\\b/i)
+    ?? userMessage.match(/harf(?:ini|ni)?\\s+([a-z])\\b/i);
+  const requestedLetter = letterMatch?.[1]?.toLocaleLowerCase("uz-UZ") ?? null;
+  const isHandwritingRequest = Boolean(requestedLetter) && /(yoz|chiz|ko‘rsat|korsat)/i.test(userMessage);
+
+  if (isHandwritingRequest && requestedLetter === "a") {
+    return NextResponse.json({
+      kind: "handwriting",
+      text: "Kichik “a” harfini ikki harakatda yozamiz. Avval oval shakl chizamiz, keyin uning o‘ng tomonidan pastga tik chiziq tushiramiz. Pastdagi doskada ustoz chizgan yo‘nalishni kuzat, so‘ng o‘zing ham chizib ko‘r.",
+      drawing: {
+        title: "Kichik “a” harfi",
+        subtitle: "Ikki harakat: 1) oval shakl, 2) o‘ng tomondan pastga tik chiziq.",
+        strokes: [
+          {
+            label: "1. Qalamni o‘rta chiziqdan sal yuqoriga qo‘y. Chap tomonga tushirib, pastdan aylantir va yana tepaga qaytib oval chiz.",
+            d: "M 53 25 C 40 22 30 34 30 50 C 30 66 40 77 53 75 C 64 74 70 63 70 50 C 70 37 64 27 53 25",
+          },
+          {
+            label: "2. Ovalning o‘ng yuqori qismidan boshlab, tik chiziqni pastga tushir.",
+            d: "M 70 26 L 70 76",
+          },
+        ],
+      },
+    });
+  }
+
+  if (isHandwritingRequest && requestedLetter) {
+    return NextResponse.json({
+      kind: "lesson",
+      text: "“" + requestedLetter + "” harfini yozishni tushuntirib beraman. Hozircha chizib ko‘rsatish mashqi kichik “a” harfi uchun tayyorlangan. Boshqa harflarning chizma ketma-ketligini ham qo‘shamiz.",
+    });
+  }
   const history = Array.isArray(input.history)
     ? input.history.slice(-10).filter((item): item is { role: "user" | "assistant"; content: string } =>
         !!item && typeof item === "object" &&
@@ -77,55 +130,13 @@ export async function POST(request: Request) {
       .join("\n")
       .trim();
     let text = response.output_text?.trim() || outputMessageText;
-    const isGreeting = /^(sal[o0][mn]|assalomu alaykum|assalom|hello|hi|hey)[!?.\s]*$/i.test(input.message.trim());
-    const compactMessage = input.message.trim().replace(/\s/g, "");
-    const isRepeatedNoise = compactMessage.length >= 5 && /(.)\1{4,}/.test(compactMessage);
     const isTruncatedHeading = /^(M|MA|MAV|MAVZ|MAVZU:?|XULOSA:?)$/i.test(text);
-    const userMessage = input.message.trim();
-    const letterMatch = userMessage.match(/\b([a-z])\s+harf(?:ini|ni)?\b/i)
-      ?? userMessage.match(/harf(?:ini|ni)?\s+([a-z])\b/i);
-    const requestedLetter = letterMatch?.[1]?.toLocaleLowerCase("uz-UZ") ?? null;
-    const isHandwritingRequest = Boolean(requestedLetter) && /(yoz|chiz|ko‘rsat|korsat)/i.test(userMessage);
-
-    if (isGreeting) {
-      text = "Salom! 😊 Bugun qaysi mavzuni o‘rganamiz? Savolingni yoz, men senga tushunarli qilib yordam beraman.";
-    } else if (isRepeatedNoise) {
-      text = "Xabaringni to‘liq tushunmadim. Iltimos, savolingni qaytadan, aniqroq yoz. Qaysi mavzu yoki misolda yordam kerak?";
-    } else if (response.status === "incomplete" || isTruncatedHeading || !text) {
+    if (response.status === "incomplete" || isTruncatedHeading || !text) {
       throw new Error("AI javobi to‘liq kelmadi. Iltimos, yana bir marta yubor.");
     }
 
-    let drawing: { title: string; subtitle: string; strokes: Array<{ label: string; d: string }> } | null = null;
-    let kind: "greeting" | "lesson" | "handwriting" = isGreeting ? "greeting" : "lesson";
-
-    if (isHandwritingRequest && requestedLetter === "a") {
-      kind = "handwriting";
-      text = "Kichik “a” harfini ikki harakatda yozamiz. Avval oval shakl chizamiz, keyin uning o‘ng tomonidan pastga tik chiziq tushiramiz. Pastdagi doskada ustoz chizgan yo‘nalishni kuzat, so‘ng o‘zing ham chizib ko‘r.";
-      drawing = {
-        title: "Kichik “a” harfi",
-        subtitle: "Ikki harakat: 1) oval shakl, 2) o‘ng tomondan pastga tik chiziq.",
-        strokes: [
-          {
-            label: "1. Qalamni o‘rta chiziqdan sal yuqoriga qo‘y. Chap tomonga tushirib, pastdan aylantir va yana tepaga qaytib oval chiz.",
-            d: "M 53 25 C 40 22 30 34 30 50 C 30 66 40 77 53 75 C 64 74 70 63 70 50 C 70 37 64 27 53 25",
-          },
-          {
-            label: "2. Ovalning o‘ng yuqori qismidan boshlab, tik chiziqni pastga tushir.",
-            d: "M 70 26 L 70 76",
-          },
-        ],
-      };
-    } else if (isHandwritingRequest && requestedLetter) {
-      text = "“" + requestedLetter + "” harfini yozishni o‘rganamiz. Hozircha interaktiv chizma doskasida kichik “a” harfi ko‘rsatiladi; boshqa harflar uchun chizma ketma-ketligini keyingi bosqichda qo‘shamiz.";
-    }
-
     reserved = false;
-    return NextResponse.json({
-      text,
-      kind,
-      ...(drawing ? { drawing } : {}),
-      sourceMode: useTextbook ? "textbook" : "general",
-    });
+    return NextResponse.json({ text, kind: "lesson", sourceMode: useTextbook ? "textbook" : "general" });
   } catch (error) {
     if (reserved) {
       const { error: refundError } = await service.rpc("refund_credit", {
