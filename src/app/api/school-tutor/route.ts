@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     });
   }
 
-  const letterMatch = userMessage.match(/\b([a-z])\s+harf(?:ini|ni)?\b/i)
+  const letterMatch = userMessage.match(/\b([a-z])\s+(?:harf(?:ini|ni)?|ni)\b/i)
     ?? userMessage.match(/harf(?:ini|ni)?\s+([a-z])\b/i);
   const requestedLetter = letterMatch?.[1]?.toLocaleLowerCase("uz-UZ") ?? null;
   const isHandwritingRequest = Boolean(requestedLetter) && /(yoz|chiz|ko‘rsat|korsat)/i.test(userMessage);
