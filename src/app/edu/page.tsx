@@ -10,6 +10,7 @@ import EduFamilyAccess, { EduStudentGradeContext, EduStudentProfileContext } fro
 import EduTutorDrawingBoard, { type TutorDrawing } from "@/components/edu-tutor-drawing-board";
 import EduTutorChemistryVisual, { type ChemistryVisual } from "@/components/edu-tutor-chemistry-visual";
 import EduTutorMessage, { type EduTutorMessageData } from "@/components/edu-tutor-message";
+import EduTutorLessonBoard, { type EduTutorBoardPlan } from "@/components/edu-tutor-lesson-board";
 
 type Section = "home" | "tutor" | "homework" | "library" | "progress" | "planner";
 
@@ -115,6 +116,7 @@ function EduStudentPage() {
   const [boardText, setBoardText] = useState("");
   const [drawingBoard, setDrawingBoard] = useState<TutorDrawing | null>(null);
   const [boardVisual, setBoardVisual] = useState<ChemistryVisual | null>(null);
+  const [lessonBoard, setLessonBoard] = useState<EduTutorBoardPlan | null>(null);
   const [tutorImageDataUrl, setTutorImageDataUrl] = useState("");
   const [tutorImageName, setTutorImageName] = useState("");
   const [tutorImageError, setTutorImageError] = useState("");
@@ -225,6 +227,7 @@ function EduStudentPage() {
     setBoardText("");
     setDrawingBoard(null);
     setBoardVisual(null);
+    setLessonBoard(null);
     setTutorImageDataUrl("");
     setTutorImageName("");
     setTutorImageError("");
@@ -326,14 +329,17 @@ function EduStudentPage() {
         setBoardText("");
         setDrawingBoard(null);
         setBoardVisual(null);
+        setLessonBoard(null);
       } else if (data.drawing && typeof data.drawing.title === "string" && Array.isArray(data.drawing.strokes)) {
         setBoardText("");
         setDrawingBoard(data.drawing as TutorDrawing);
         setBoardVisual(null);
+        setLessonBoard(null);
       } else {
         setBoardText("");
         setDrawingBoard(null);
         setBoardVisual(chemistryVisual ?? null);
+        setLessonBoard(data.board && typeof data.board.title === "string" ? data.board as EduTutorBoardPlan : null);
       }
 
       if (requestSubject.toLocaleLowerCase("uz-UZ").includes("kimyo")) {
@@ -575,10 +581,10 @@ function EduStudentPage() {
                 <section className="mb-4 overflow-hidden rounded-2xl border border-[#e7e2fa] bg-[#fcfbff] shadow-inner">
                   <div className="flex items-center justify-between border-b border-violet-100 bg-white px-4 py-3">
                     <div className="flex items-center gap-2 text-xs font-extrabold text-slate-700"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-100 text-violet-700"><Icon name="bookText" className="h-4 w-4" /></span> INTERAKTIV DOSKA</div>
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-violet-500">{drawingBoard ? "CHIZMA TAYYOR" : boardVisual ? "SXEMA TAYYOR" : boardText ? "TAYYOR" : "MAVZU KUTILMOQDA"}</span>
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-violet-500">{drawingBoard ? "CHIZMA TAYYOR" : lessonBoard ? "DARS TAYYOR" : boardVisual ? "SXEMA TAYYOR" : boardText ? "TAYYOR" : "MAVZU KUTILMOQDA"}</span>
                   </div>
                   <div className="relative min-h-[150px] overflow-hidden bg-[#fffefb] p-4 sm:p-5" style={{backgroundImage:"linear-gradient(rgba(139,120,190,.09) 1px, transparent 1px)",backgroundSize:"100% 32px"}}>
-                    {drawingBoard ? <EduTutorDrawingBoard drawing={drawingBoard} /> : boardVisual ? <EduTutorChemistryVisual visual={boardVisual} /> : boardText ? <pre className="whitespace-pre-wrap break-words font-mono text-[12px] leading-8 text-[#292344] sm:text-sm">{boardText}</pre> : <div className="flex min-h-[110px] flex-col items-center justify-center gap-2 py-7 text-center text-xs text-slate-400"><Icon name="spark" className="h-6 w-6 text-violet-300" /><p>Ustoz mavzuga mos sxema va chizmalarni shu yerda ko‘rsatadi.</p><p className="text-[10px]">Kimyoda atom, molekula va reaksiyalar tasvirlanadi.</p></div>}
+                    {drawingBoard ? <EduTutorDrawingBoard drawing={drawingBoard} /> : lessonBoard ? <EduTutorLessonBoard board={lessonBoard} visual={boardVisual} /> : boardVisual ? <EduTutorChemistryVisual visual={boardVisual} /> : boardText ? <pre className="whitespace-pre-wrap break-words font-mono text-[12px] leading-8 text-[#292344] sm:text-sm">{boardText}</pre> : <div className="flex min-h-[110px] flex-col items-center justify-center gap-2 py-7 text-center text-xs text-slate-400"><Icon name="spark" className="h-6 w-6 text-violet-300" /><p>Ustoz savolingga mos dars rejasini shu yerda ko‘rsatadi.</p><p className="text-[10px]">Mavzu, bosqichlar, misol va sxema.</p></div>}
                   </div>
                 </section>
 

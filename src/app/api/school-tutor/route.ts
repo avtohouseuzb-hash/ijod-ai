@@ -11,8 +11,27 @@ type ChemistryVisualPayload =
   | { kind: "molecule"; title: string; formula: string; subtitle: string; atoms: string[] }
   | { kind: "reaction"; title: string; equation: string; subtitle: string }
   | { kind: "summary"; title: string; points: string[] };
+type TutorStructuredResponse = {
+  answer: string;
+  board: {
+    title: string;
+    explanation: string;
+    steps: string[];
+    formula: string;
+    example: string;
+    summary: string;
+    checkQuestion: string;
+    diagram: {
+      kind: "none" | "flow" | "timeline" | "comparison" | "concept_map";
+      title: string;
+      nodes: string[];
+      relationships: string[];
+      caption: string;
+    };
+  };
+};
 
-function buildChemistryVisual(question: string): ChemistryVisualPayload {
+function buildChemistryVisual(question: string, answer: string): ChemistryVisualPayload {
   // Select the diagram from the learner's actual question only.
   // The generated answer may mention atoms/electrons while explaining orbitals;
   // it must never override the topic that the learner requested.
@@ -212,7 +231,58 @@ export async function POST(request: Request) {
   try {
     const response = await openai.responses.create({
       model: "gpt-6-luna",
-      instructions: `Sen IJOD EDU platformasining shaxsiy AI ustozisan. O‘quvchi sinfi: ${grade}. Tanlangan fan: ${subject}. Har doim tabiiy, sodda va to‘g‘ri o‘zbek tilida gapir; ingliz tili fanida inglizcha misol va o‘zbekcha izoh ber. O‘quvchining yoshiga mos, mehribon, sabrli va rag‘batlantiruvchi bo‘l.\n\nMUHIM SUHBAT QOIDALARI: Agar o‘quvchi salomlashsa, oddiy va iliq salom qaytarib, bugun nimani o‘rganishni xohlashini so‘ra. Bunday paytda MAVZU, qadamlar yoki XULOSA sarlavhalarini ishlatma. Agar xabar tushunarsiz, takroriy harflar yoki ma’nosiz belgilar bo‘lsa, muloyimlik bilan savolni qayta yozishni so‘ra; tasodifiy javob bermagin. Savol fan mavzusiga oid bo‘lsa, mavzuni tushuntir, keyin bitta kichik savol bilan tushunganini tekshir.\n\nDARS TUSHUNTIRISH: Sinf darajasidan murakkab termin ishlatma va yangi terminni izohla. Matematik/fizik masalalarda yechimni bosqichma-bosqich, formula va birliklar bilan ko‘rsat. Kimyoda elementlar va reaksiyalarni aniq yoz. Tarix, geografiya va biologiyada sabab-oqibat hamda hayotiy misol keltir. Faqat darsga oid savolga javob berganda birinchi satrda to‘liq MAVZU: nomini yoz; keyin kerakli qadamlar, oxirida XULOSA: va ENDI SEN: bilan bitta mashq ber. Javobni hech qachon yarim so‘z yoki kesik sarlavha bilan tugatma. Odatda 100–180 so‘zdan oshirma, ammo masalani to‘liq tushuntirish uchun zarur qadamlarni qoldirma. Bilmagan faktni to‘qima. ${sourceGuidance}${chemistryGuidance}${imageGuidance}`,
+      instructions: `Sen IJOD EDU maktab platformasining shaxsiy AI ustozisan. O‘quvchi sinfi: ${grade}. Fan: ${subject}. Tabiiy, sodda va to‘g‘ri o‘zbek tilida tushuntir; ingliz tili fanida inglizcha misollar va o‘zbekcha izoh ber. Mehribon, sabrli bo‘l va bolaning yoshiga mos so‘zlardan foydalan.
+
+SENING JAVOBING IKKI QISM BO‘LSIN:
+1) answer — chatda o‘quvchi o‘qiydigan qisqa va qiziqarli izoh. Savolni bevosita tushuntir, kerak bo‘lsa kundalik hayotdan misol keltir. Uzun devor-matn yozma.
+2) board — doskaga qo‘yiladigan alohida dars materiali. HAR BIR FAN VA HAR BIR DARS SAVOLI UCHUN to‘ldir. Doska chat javobini takrorlamasin: mavzu sarlavhasi, mazmunli izoh, 2–5 ta mantiqiy qadam, kerakli formula/qoida, yechilgan misol, xulosa va bitta tekshiruv savolini yoz. Formula yoki misol kerak bo‘lmasa bo‘sh satr qaytar; to‘qima.
+
+DIAGRAM QOIDASI: Chizma mavzuni yaxshiroq tushuntirsa, diagram.kind ni flow, timeline, comparison yoki concept_map qilib nodes va relationships ni to‘ldir. Chizma kerak bo‘lmasa none bo‘lsin. Matematikada yechim bosqichlari, sonlar o‘qi yoki grafik; fizikada kuchlar va harakat sxemasi; kimyoda atom, molekula yoki reaksiya; biologiyada organ yoki tizim; tarixda vaqt chizig‘i; geografiyada hudud yoki tabiiy jarayon; tillarda gap tuzilishi; informatikada algoritm ketma-ketligini ko‘rsat. Chizma aynan savolga mos bo‘lsin, bezak uchun umumiy sxema tuzma.
+
+FAN QOIDALARI: Matematik/fizik masalalarda hisobni bosqichma-bosqich va birliklar bilan yech. Kimyoda formula va reaksiyalarni tekshir, orbital va orbitani aralashtirma. Tarixda sana va sabab-oqibatni, geografiyada joylashuv va jarayonni, biologiyada tuzilish va vazifani aniq tushuntir. Tillar fanida qoida va misol, adabiyotda matn tahlili, informatikada algoritm yoki kod bo‘lagini izohla. O‘quvchi xato qilsa, koyima — xatosini muloyim ko‘rsatib to‘g‘ri yo‘lni tushuntir. Bilmagan faktni to‘qima.
+
+Salomlashuvga oddiy salom qaytar va doska uchun dars materiali yaratma. Tushunarsiz belgilar bo‘lsa, savolni qayta yozishni so‘ra. Dars savolida esa board ning barcha kerakli maydonlarini to‘ldir. ${sourceGuidance}${chemistryGuidance}${imageGuidance}`,
+      text: {
+        format: {
+          type: "json_schema",
+          name: "edu_tutor_lesson",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              answer: { type: "string" },
+              board: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  title: { type: "string" },
+                  explanation: { type: "string" },
+                  steps: { type: "array", items: { type: "string" } },
+                  formula: { type: "string" },
+                  example: { type: "string" },
+                  summary: { type: "string" },
+                  checkQuestion: { type: "string" },
+                  diagram: {
+                    type: "object",
+                    additionalProperties: false,
+                    properties: {
+                      kind: { type: "string", enum: ["none", "flow", "timeline", "comparison", "concept_map"] },
+                      title: { type: "string" },
+                      nodes: { type: "array", items: { type: "string" } },
+                      relationships: { type: "array", items: { type: "string" } },
+                      caption: { type: "string" }
+                    },
+                    required: ["kind", "title", "nodes", "relationships", "caption"]
+                  }
+                },
+                required: ["title", "explanation", "steps", "formula", "example", "summary", "checkQuestion", "diagram"]
+              }
+            },
+            required: ["answer", "board"]
+          }
+        }
+      },
       input: [
         ...history.map(item => ({ role: item.role, content: item.content })),
         {
@@ -224,7 +294,7 @@ export async function POST(request: Request) {
         },
       ],
       ...(useTextbook ? { tools: [{ type: "file_search" as const, vector_store_ids: [vectorStoreId as string], max_num_results: 5 }], include: ["file_search_call.results" as const] } : {}),
-      max_output_tokens: 1800,
+      max_output_tokens: 2600,
     });
     await recordAiUsage(service, { userId: user.id, requestId, feature: "IJOD EDU · AI Ustoz", model: "gpt-6-luna", usage: response.usage });
     const outputMessageText = response.output
@@ -232,24 +302,33 @@ export async function POST(request: Request) {
       .flatMap((item) => item.content)
       .filter((part) => part.type === "output_text")
       .map((part) => part.text)
-      .join("\n")
+      .join("\\n")
       .trim();
-    let text = response.output_text?.trim() || outputMessageText;
-    text = text.replace(/\*\*/g, "").trim();
-    const isTruncatedHeading = /^(M|MA|MAV|MAVZ|MAVZU:?|XULOSA:?)$/i.test(text);
-    if (response.status === "incomplete" || isTruncatedHeading || !text) {
-      throw new Error("AI javobi to‘liq kelmadi. Iltimos, yana bir marta yubor.");
+    const structuredText = response.output_text?.trim() || outputMessageText;
+    if (response.status === "incomplete" || !structuredText) {
+      throw new Error("AI dars javobi to‘liq kelmadi. Iltimos, yana bir marta yubor.");
     }
-
+    let lesson: TutorStructuredResponse;
+    try {
+      lesson = JSON.parse(structuredText) as TutorStructuredResponse;
+    } catch {
+      throw new Error("AI dars javobini doska formatiga keltira olmadi. Qayta urinib ko‘ring.");
+    }
+    const text = typeof lesson.answer === "string" ? lesson.answer.trim() : "";
+    const board = lesson.board;
+    if (!text || !board || typeof board.title !== "string" || !Array.isArray(board.steps) || !board.diagram) {
+      throw new Error("AI dars javobida chat yoki doska ma’lumoti yetishmayapti.");
+    }
     reserved = false;
     const visual = subject.toLocaleLowerCase("uz-UZ").includes("kimyo")
-      ? buildChemistryVisual(userMessage)
+      ? buildChemistryVisual(userMessage, text)
       : undefined;
     const youtubeQuery = subject.toLocaleLowerCase("uz-UZ").includes("kimyo")
       ? `${grade} kimyo ${userMessage} mavzusi o‘zbek tilida`.slice(0, 180)
       : undefined;
     return NextResponse.json({
       text,
+      board,
       kind: "lesson",
       ...(visual ? { visual } : {}),
       ...(youtubeQuery ? { youtubeQuery } : {}),
