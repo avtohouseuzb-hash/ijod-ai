@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { recordAiUsage } from "@/lib/ai-usage";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
@@ -40,6 +41,11 @@ export async function POST(request: Request) {
       instructions: `Speak in natural conversational ${language}, with authentic pronunciation and smooth pacing. ${moodInstructions[body.mood] || moodInstructions.neutral} Read only the supplied text. Do not announce punctuation, emojis, or formatting.`,
       response_format: "mp3",
     });
+    const serviceKey = process.env.SUPABASE_SECRET_KEY;
+    if (serviceKey && process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      const service = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+      await recordAiUsage(service, { userId: user.id, feature: "AI til ustoz · Ovoz sintezi", model: "gpt-4o-mini-tts" });
+    }
     return new Response(await result.arrayBuffer(), {
       headers: { "Content-Type": "audio/mpeg", "Cache-Control": "no-store" },
     });
