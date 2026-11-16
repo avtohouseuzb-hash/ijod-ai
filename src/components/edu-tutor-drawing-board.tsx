@@ -41,10 +41,11 @@ export default function EduTutorDrawingBoard({ drawing }: { drawing: TutorDrawin
   function finishPractice() {
     if (!drawingNow.current) return;
     drawingNow.current = false;
-    setActiveStroke((current) => {
-      if (current.trim()) setPracticeStrokes((strokes) => [...strokes, current]);
-      return "";
-    });
+    const completedStroke = activeStroke;
+    setActiveStroke("");
+    if (completedStroke.trim()) {
+      setPracticeStrokes((strokes) => [...strokes, completedStroke]);
+    }
   }
 
   return (
