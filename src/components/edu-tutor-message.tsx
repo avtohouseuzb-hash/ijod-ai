@@ -48,10 +48,8 @@ export default function EduTutorMessage({ message }: { message: EduTutorMessageD
       const blob = await response.blob();
       if (!blob.size) throw new Error("Audio fayl bo‘sh.");
       const nextUrl = URL.createObjectURL(blob);
-      setAudioUrl((current) => {
-        if (current) URL.revokeObjectURL(current);
-        return nextUrl;
-      });
+      if (audioUrl) URL.revokeObjectURL(audioUrl);
+      setAudioUrl(nextUrl);
     } catch (error) {
       setAudioError(error instanceof Error ? error.message : "Ovoz yaratishda xatolik.");
     } finally {

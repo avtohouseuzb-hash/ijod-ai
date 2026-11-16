@@ -55,7 +55,7 @@ function buildChemistryVisual(question: string, answer: string): ChemistryVisual
       subtitle: "CO₂ molekulasida 1 ta uglerod va 2 ta kislorod atomi bor.",
     };
   }
-  const points = answer.split(/(?<=[.!?])\\s+/).map((part) => part.trim()).filter((part) => part.length > 18).slice(0, 4);
+  const points = answer.split(/(?<=[.!?])\s+/).map((part) => part.trim()).filter((part) => part.length > 18).slice(0, 4);
   return {
     kind: "summary",
     title: "Mavzuning muhim nuqtalari",
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
   const grade = typeof input.grade === "string" && /^(?:[1-9]|10|11)-sinf$/.test(input.grade) ? input.grade : "7-sinf";
   let imageDataUrl: string | null = null;
   if (input.imageDataUrl !== undefined && input.imageDataUrl !== null && input.imageDataUrl !== "") {
-    if (typeof input.imageDataUrl !== "string" || !/^data:image\\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(input.imageDataUrl)) {
+    if (typeof input.imageDataUrl !== "string" || !/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(input.imageDataUrl)) {
       return NextResponse.json({ error: "Rasm JPG, PNG yoki WEBP formatida bo‘lishi kerak." }, { status: 400 });
     }
     if (input.imageDataUrl.length > 4_200_000) {

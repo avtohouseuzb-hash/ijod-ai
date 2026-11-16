@@ -530,35 +530,71 @@ function EduStudentPage() {
             </section>
           </>}
 
-            <div className="flex-1 space-y-3 overflow-y-auto py-5" aria-live="polite">
-              {messages.length === 0 ? (
-                <div className="flex h-full min-h-[260px] flex-col items-center justify-center text-center">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-50 text-violet-600"><Icon name="spark" className="h-7 w-7" /></div>
-                  <p className="mt-4 text-sm font-bold">Bugun nimani o‘rganamiz?</p>
-                  <p className="mt-1 max-w-xs text-xs leading-5 text-slate-400">Savolingni yoz, tajribani ko‘r, rasm yubor yoki ustoz izohini tingla.</p>
-                  <div className="mt-5 flex flex-wrap justify-center gap-2">{["Atom qanday tuzilgan?", "Suv molekulasini chiz", "Proton va elektron farqi nima?"].map((v)=><button key={v} onClick={()=>setQuestion(v)} className="rounded-full border border-violet-100 bg-violet-50/60 px-3 py-2 text-[10px] font-semibold text-violet-700 hover:bg-violet-100">{v}</button>)}</div>
+          {section === "tutor" && (
+            <section className="grid gap-5 xl:grid-cols-[.8fr_1.2fr]">
+              <div className="rounded-3xl bg-[#17152c] p-6 text-white">
+                <span className="text-[10px] font-bold uppercase tracking-[.18em] text-violet-200">SHAXSIY YORDAMCHI</span>
+                <div className="mt-7 flex h-16 w-16 items-center justify-center rounded-[22px] bg-gradient-to-br from-violet-300 to-cyan-200 text-[#211b3d]"><Icon name="spark" className="h-8 w-8" /></div>
+                <h1 className="mt-5 text-2xl font-black">Salom! Men sening AI Ustozingman.</h1>
+                <p className="mt-3 text-sm leading-6 text-slate-300">Qaysi mavzu qiyin bo‘lyapti? Birgalikda, bosqichma-bosqich o‘rganamiz.</p>
+                <div className="mt-6 rounded-2xl border border-white/10 bg-white/[.06] p-4">
+                  <label htmlFor="tutor-subject" className="text-[10px] font-bold uppercase tracking-widest text-violet-200">FANNI TANLANG</label>
+                  <select id="tutor-subject" value={selectedSubject} onChange={(e) => changeTutorSubject(e.target.value)} className="mt-2 w-full rounded-xl border border-white/15 bg-[#27243d] px-3 py-3 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-violet-300">{subjects.map((subject) => <option key={subject.name} value={subject.name}>{subject.name}</option>)}</select>
+                  <p className="mt-2 text-xs text-slate-400">{grade} darajasi uchun · {subjects.length} ta fan</p>
                 </div>
-              ) : messages.map((message) => <EduTutorMessage key={message.id} message={message} />)}
-              {isSending && <div className="mr-auto rounded-2xl bg-slate-100 px-4 py-3 text-xs text-slate-500">Ustoz javob tayyorlayapti…</div>}
-            </div>
-      <section className="mb-4 overflow-hidden rounded-2xl border border-[#e7e2fa] bg-[#fcfbff] shadow-inner">
-        <div className="flex items-center justify-between border-b border-violet-100 bg-white px-4 py-3"><div className="flex items-center gap-2 text-xs font-extrabold text-slate-700"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-100 text-violet-700"><Icon name="bookText" className="h-4 w-4" /></span> INTERAKTIV DOSKA</div><span className="text-[9px] font-bold uppercase tracking-wider text-violet-500">{drawingBoard ? "CHIZMA TAYYOR" : boardVisual ? "SXEMA TAYYOR" : boardText ? "TAYYOR" : "MAVZU KUTILMOQDA"}</span></div>
-        <div className="relative min-h-[150px] overflow-hidden bg-[#fffefb] p-4 sm:p-5" style={{backgroundImage:"linear-gradient(rgba(139,120,190,.09) 1px, transparent 1px)",backgroundSize:"100% 32px"}}>
-          {drawingBoard ? <EduTutorDrawingBoard drawing={drawingBoard} /> : boardVisual ? <EduTutorChemistryVisual visual={boardVisual} /> : boardText ? <pre className="whitespace-pre-wrap break-words font-mono text-[12px] leading-8 text-[#292344] sm:text-sm">{boardText}</pre> : <div className="flex min-h-[110px] flex-col items-center justify-center gap-2 py-7 text-center text-xs text-slate-400"><Icon name="spark" className="h-6 w-6 text-violet-300" /><p>Ustoz mavzuga mos sxema va chizmalarni shu yerda ko‘rsatadi.</p><p className="text-[10px]">Kimyoda atom, molekula va reaksiyalar tasvirlanadi.</p></div>}
-        </div>
-      </section>
-      <div className="rounded-2xl border border-slate-200 p-2">
-        {tutorImageDataUrl && <div className="mb-3 flex items-center gap-3 rounded-xl bg-cyan-50 p-2.5"><img src={tutorImageDataUrl} alt="Yuklanadigan rasm" className="h-16 w-16 rounded-lg border border-cyan-100 bg-white object-contain" /><div className="min-w-0 flex-1"><p className="truncate text-[11px] font-bold text-slate-700">{tutorImageName}</p><p className="text-[10px] text-slate-500">AI Ustoz rasmni ko‘rib chiqadi</p></div><button type="button" onClick={()=>{setTutorImageDataUrl("");setTutorImageName("");if(tutorImageInputRef.current)tutorImageInputRef.current.value="";}} className="rounded-lg px-2 py-1 text-xs font-bold text-rose-600 hover:bg-white">✕</button></div>}
-        <textarea value={question} onChange={(e)=>setQuestion(e.target.value)} onKeyDown={(e)=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendQuestion();}}} rows={2} placeholder="Savolingni yoz yoki rasm yuklab, tushuntirishni so‘ra..." className="w-full resize-none bg-transparent px-2 py-1 text-xs outline-none placeholder:text-slate-400" />
-        <div className="flex flex-wrap items-center justify-between gap-2 px-1 pt-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-cyan-100 bg-cyan-50 px-3 py-2 text-[10px] font-bold text-cyan-800 hover:bg-cyan-100">📷 Rasm yuklash<input ref={tutorImageInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event)=>handleTutorImageFile(event.target.files?.[0])} /></label>
-            <span className="text-[9px] text-slate-400">JPG · PNG · WEBP · 3 MB gacha</span>
-          </div>
-          <button onClick={sendQuestion} disabled={(!question.trim()&&!tutorImageDataUrl)||isSending} className="rounded-xl bg-violet-600 px-4 py-2 text-[10px] font-bold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40">{isSending ? "Kutilmoqda…" : "Yuborish"} <Icon name="arrowUpRight" className="ml-1 inline h-3.5 w-3.5" /></button>
-        </div>
-      </div>
-      {tutorImageError && <p role="alert" className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700">{tutorImageError}</p>}
+                {selectedSubject.toLocaleLowerCase("uz-UZ").includes("kimyo") && (
+                  <div className="mt-4 rounded-2xl border border-cyan-200/15 bg-cyan-100/5 p-4">
+                    <p className="text-xs font-extrabold text-cyan-100">KIMYONI KO‘RIB, TINGLAB O‘RGAN</p>
+                    <p className="mt-2 text-[11px] leading-5 text-slate-300">Atom va molekula sxemalari doskada chiqadi. Javobni ovozda tingla yoki topshiriq rasmini yubor.</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex min-h-[620px] flex-col rounded-3xl border border-[#eceaf5] bg-white p-5">
+                <div className="border-b border-slate-100 pb-4">
+                  <h2 className="text-lg font-black">Ustoz bilan suhbat</h2>
+                  <p className="mt-1 text-xs text-slate-400">Savolingni yoz, rasm yubor yoki javobni ovozda tingla.</p>
+                </div>
+
+                <div className="flex-1 space-y-3 overflow-y-auto py-5" aria-live="polite">
+                  {messages.length === 0 ? (
+                    <div className="flex h-full min-h-[260px] flex-col items-center justify-center text-center">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-50 text-violet-600"><Icon name="spark" className="h-7 w-7" /></div>
+                      <p className="mt-4 text-sm font-bold">Bugun nimani o‘rganamiz?</p>
+                      <p className="mt-1 max-w-xs text-xs leading-5 text-slate-400">Savolingni yoz, tajribani ko‘r, rasm yubor yoki ustoz izohini tingla.</p>
+                      <div className="mt-5 flex flex-wrap justify-center gap-2">{["Atom qanday tuzilgan?", "Suv molekulasini chiz", "Proton va elektron farqi nima?"].map((v)=><button key={v} onClick={()=>setQuestion(v)} className="rounded-full border border-violet-100 bg-violet-50/60 px-3 py-2 text-[10px] font-semibold text-violet-700 hover:bg-violet-100">{v}</button>)}</div>
+                    </div>
+                  ) : messages.map((message) => <EduTutorMessage key={message.id} message={message} />)}
+                  {isSending && <div className="mr-auto rounded-2xl bg-slate-100 px-4 py-3 text-xs text-slate-500">Ustoz javob tayyorlayapti…</div>}
+                </div>
+
+                <section className="mb-4 overflow-hidden rounded-2xl border border-[#e7e2fa] bg-[#fcfbff] shadow-inner">
+                  <div className="flex items-center justify-between border-b border-violet-100 bg-white px-4 py-3">
+                    <div className="flex items-center gap-2 text-xs font-extrabold text-slate-700"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-100 text-violet-700"><Icon name="bookText" className="h-4 w-4" /></span> INTERAKTIV DOSKA</div>
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-violet-500">{drawingBoard ? "CHIZMA TAYYOR" : boardVisual ? "SXEMA TAYYOR" : boardText ? "TAYYOR" : "MAVZU KUTILMOQDA"}</span>
+                  </div>
+                  <div className="relative min-h-[150px] overflow-hidden bg-[#fffefb] p-4 sm:p-5" style={{backgroundImage:"linear-gradient(rgba(139,120,190,.09) 1px, transparent 1px)",backgroundSize:"100% 32px"}}>
+                    {drawingBoard ? <EduTutorDrawingBoard drawing={drawingBoard} /> : boardVisual ? <EduTutorChemistryVisual visual={boardVisual} /> : boardText ? <pre className="whitespace-pre-wrap break-words font-mono text-[12px] leading-8 text-[#292344] sm:text-sm">{boardText}</pre> : <div className="flex min-h-[110px] flex-col items-center justify-center gap-2 py-7 text-center text-xs text-slate-400"><Icon name="spark" className="h-6 w-6 text-violet-300" /><p>Ustoz mavzuga mos sxema va chizmalarni shu yerda ko‘rsatadi.</p><p className="text-[10px]">Kimyoda atom, molekula va reaksiyalar tasvirlanadi.</p></div>}
+                  </div>
+                </section>
+
+                <div className="rounded-2xl border border-slate-200 p-2">
+                  {tutorImageDataUrl && <div className="mb-3 flex items-center gap-3 rounded-xl bg-cyan-50 p-2.5"><img src={tutorImageDataUrl} alt="Yuklanadigan rasm" className="h-16 w-16 rounded-lg border border-cyan-100 bg-white object-contain" /><div className="min-w-0 flex-1"><p className="truncate text-[11px] font-bold text-slate-700">{tutorImageName}</p><p className="text-[10px] text-slate-500">AI Ustoz rasmni ko‘rib chiqadi</p></div><button type="button" onClick={()=>{setTutorImageDataUrl("");setTutorImageName("");if(tutorImageInputRef.current)tutorImageInputRef.current.value="";}} className="rounded-lg px-2 py-1 text-xs font-bold text-rose-600 hover:bg-white">✕</button></div>}
+                  <textarea value={question} onChange={(e)=>setQuestion(e.target.value)} onKeyDown={(e)=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendQuestion();}}} rows={2} placeholder="Savolingni yoz yoki rasm yuklab, tushuntirishni so‘ra..." className="w-full resize-none bg-transparent px-2 py-1 text-xs outline-none placeholder:text-slate-400" />
+                  <div className="flex flex-wrap items-center justify-between gap-2 px-1 pt-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-cyan-100 bg-cyan-50 px-3 py-2 text-[10px] font-bold text-cyan-800 hover:bg-cyan-100">📷 Rasm yuklash<input ref={tutorImageInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event)=>handleTutorImageFile(event.target.files?.[0])} /></label>
+                      <span className="text-[9px] text-slate-400">JPG · PNG · WEBP · 3 MB gacha</span>
+                    </div>
+                    <button onClick={sendQuestion} disabled={(!question.trim()&&!tutorImageDataUrl)||isSending} className="rounded-xl bg-violet-600 px-4 py-2 text-[10px] font-bold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40">{isSending ? "Kutilmoqda…" : "Yuborish"} <Icon name="arrowUpRight" className="ml-1 inline h-3.5 w-3.5" /></button>
+                  </div>
+                </div>
+                {tutorImageError && <p role="alert" className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700">{tutorImageError}</p>}
+                {tutorError && <p role="alert" className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700">{tutorError}</p>}
+                <p className="mt-2 text-center text-[9px] text-slate-400">AI Ustoz javoblari tanlangan fan va sinf darajasiga moslashtiriladi.</p>
+              </div>
+            </section>
+          )}
 
           <>{section === "homework" && <section className="rounded-3xl border border-[#eceaf5] bg-white p-6 sm:p-8"><p className="text-[10px] font-extrabold uppercase tracking-[.18em] text-violet-600">TOPSHIRIQLAR MARKAZI</p><h1 className="mt-2 text-2xl font-black">Uy vazifalarim</h1><p className="mt-2 text-sm text-slate-500">Bajargan ishing rasmini yukla. AI tekshiradi va faqat to‘g‘ri bajarilgan vazifani tasdiqlaydi.</p><div className="mt-6 space-y-3">{tasks.length === 0 ? <p className="rounded-xl bg-slate-50 p-4 text-xs text-slate-500">Hozircha uy vazifalari biriktirilmagan.</p> : tasks.map((task) => <div key={task.id} className="rounded-2xl border border-slate-100 p-4"><div className="flex flex-wrap items-center gap-3"><span className={"flex h-8 w-8 items-center justify-center rounded-full border " + (completed.includes(task.id) ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 text-slate-300")}>{completed.includes(task.id) ? <Icon name="check" className="h-4 w-4" /> : <Icon name="bookText" className="h-4 w-4" />}</span><div className="min-w-0 flex-1"><p className="text-sm font-bold">{task.title}</p><p className="mt-1 text-xs text-slate-400">{task.subject} · {task.meta}</p></div><span className={"rounded-full px-3 py-1 text-[10px] font-bold " + (completed.includes(task.id) ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700")}>{completed.includes(task.id) ? "AI tasdiqladi · Bajarildi" : "Tekshirilmagan"}</span></div>{homeworkFeedback[task.id] && <div className="mt-3 rounded-xl bg-violet-50 p-3 text-xs leading-5 text-violet-900">{homeworkFeedback[task.id].feedback}{homeworkFeedback[task.id].status === "approved" && <p className="mt-1 font-bold">AI bahosi: {homeworkFeedback[task.id].score}/100</p>}</div>}<button onClick={() => { setHomeworkTask(task.id); setHomeworkImage(""); setHomeworkFileName(""); setHomeworkError(""); }} className="mt-3 rounded-xl border border-violet-200 px-3 py-2 text-[11px] font-bold text-violet-700">{completed.includes(task.id) ? "Qayta tekshirtirish" : "Rasm yuklash va AI tekshiruvi"}</button></div>)}</div>{homeworkTask !== null && <div className="mt-6 rounded-2xl border-2 border-dashed border-violet-200 bg-violet-50/50 p-5 text-center"><p className="text-sm font-bold">{tasks.find((task) => task.id === homeworkTask)?.title} — bajarilgan ish rasmi</p><p className="mt-1 text-xs text-slate-500">Topshiriq sharti va yechim to‘liq, tiniq ko‘rinsin. JPG, PNG yoki WEBP · 8 MB gacha.</p><label className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-white px-4 py-3 text-xs font-bold text-violet-700 shadow-sm"><Icon name="upload" className="h-4 w-4" /> Rasm tanlash<input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => handleHomeworkFile(event.target.files?.[0])} /></label>{homeworkImage && <div className="mt-4 flex flex-col items-center gap-2"><img src={homeworkImage} alt="Yuklangan uy vazifasi" className="max-h-56 max-w-full rounded-xl border border-violet-100 object-contain" /><p className="text-xs text-slate-500">{homeworkFileName}</p></div>}{homeworkError && <p role="alert" className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700">{homeworkError}</p>}<div className="mt-4 flex justify-center gap-2"><button onClick={() => { setHomeworkTask(null); setHomeworkImage(""); setHomeworkError(""); }} disabled={homeworkBusy} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600">Bekor qilish</button><button onClick={checkHomework} disabled={!homeworkImage || homeworkBusy} className="rounded-xl bg-violet-600 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-40">{homeworkBusy ? "AI tekshiryapti…" : "AI orqali tekshirish"}</button></div></div>}</section>}</>{section === "library" && <section>
             <div className="rounded-3xl bg-gradient-to-r from-[#eae5ff] to-[#e5f7f7] p-6 sm:p-8">
