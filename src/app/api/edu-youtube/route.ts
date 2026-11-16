@@ -2,7 +2,8 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
-  const accessToken = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
+  const authHeader = request.headers.get("authorization") ?? "";
+  const accessToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
   if (!accessToken) return NextResponse.json({ error: "Avval hisobingizga kiring." }, { status: 401 });
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
