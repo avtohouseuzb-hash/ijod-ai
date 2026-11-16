@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { recordAiUsage } from "@/lib/ai-usage";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
@@ -67,6 +68,7 @@ export async function POST(request: Request) {
       ...(useTextbook ? { tools: [{ type: "file_search" as const, vector_store_ids: [vectorStoreId as string], max_num_results: 5 }], include: ["file_search_call.results" as const] } : {}),
       max_output_tokens: 850,
     });
+    await recordAiUsage(service, { userId: user.id, requestId, feature: "IJOD EDU · AI Ustoz", model: "gpt-6-luna", usage: response.usage });
     const text = response.output_text?.trim();
     if (!text) throw new Error("AI bo‘sh javob qaytardi.");
     reserved = false;
