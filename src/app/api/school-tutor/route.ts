@@ -32,8 +32,8 @@ export async function POST(request: Request) {
 
   // Greetings, unclear repeated characters, and handwriting demonstrations do not need an LLM call.
   const userMessage = input.message.trim();
-  const isGreeting = /^(sal[o0][mn]|assalomu alaykum|assalom|hello|hi|hey)[!?.\\s]*$/i.test(userMessage);
-  const compactMessage = userMessage.replace(/\\s/g, "");
+  const isGreeting = /^(sal[o0][mn]|assalomu alaykum|assalom|hello|hi|hey)[!?.\s]*$/i.test(userMessage);
+  const compactMessage = userMessage.replace(/\s/g, "");
   const isRepeatedNoise = compactMessage.length >= 5 && /(.)\\1{4,}/.test(compactMessage);
 
   if (isGreeting) {
@@ -50,8 +50,8 @@ export async function POST(request: Request) {
     });
   }
 
-  const letterMatch = userMessage.match(/\\b([a-z])\\s+harf(?:ini|ni)?\\b/i)
-    ?? userMessage.match(/harf(?:ini|ni)?\\s+([a-z])\\b/i);
+  const letterMatch = userMessage.match(/\b([a-z])\s+harf(?:ini|ni)?\b/i)
+    ?? userMessage.match(/harf(?:ini|ni)?\s+([a-z])\b/i);
   const requestedLetter = letterMatch?.[1]?.toLocaleLowerCase("uz-UZ") ?? null;
   const isHandwritingRequest = Boolean(requestedLetter) && /(yoz|chiz|ko‘rsat|korsat)/i.test(userMessage);
 
@@ -130,6 +130,7 @@ export async function POST(request: Request) {
       .join("\n")
       .trim();
     let text = response.output_text?.trim() || outputMessageText;
+    text = text.replace(/\\*\\*/g, "").trim();
     const isTruncatedHeading = /^(M|MA|MAV|MAVZ|MAVZU:?|XULOSA:?)$/i.test(text);
     if (response.status === "incomplete" || isTruncatedHeading || !text) {
       throw new Error("AI javobi to‘liq kelmadi. Iltimos, yana bir marta yubor.");
