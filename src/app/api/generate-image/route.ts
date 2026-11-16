@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { recordAiUsage } from "@/lib/ai-usage";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
@@ -68,6 +69,7 @@ export async function POST(request: Request) {
     const result = inputImage
       ? await openai.images.edit({ ...imageOptions, image: inputImage })
       : await openai.images.generate(imageOptions);
+    await recordAiUsage(serviceClient, { userId: user.id, requestId, feature: serviceName, model: "gpt-image-2.5-sunburst" });
     const b64 = result.data?.[0]?.b64_json;
     if (!b64) throw new Error("Image API bo‘sh natija qaytardi.");
 
