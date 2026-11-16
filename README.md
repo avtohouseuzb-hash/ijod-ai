@@ -45,3 +45,8 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - When an indexed textbook is available, AI Tutor and homework checking search only the selected grade and subject's collection.
 - When no matching PDF has been indexed, AI Tutor still teaches using general subject knowledge. It must not claim to quote the official textbook or invent book pages, chapters, or exercise numbers.
 - Only indexed (`ready`) PDFs appear as official textbooks in the student library. The curriculum/subject catalogue remains available even while PDF materials are not yet uploaded.
+
+
+- For real video cards in IJOD EDU chemistry lessons, optionally add a server-side `YOUTUBE_API_KEY` (YouTube Data API v3) to Vercel. Without it, students still get a direct YouTube topic-search link.
+- AI Tutor image uploads accept JPG, PNG, and WEBP up to 3 MB and are sent to the Responses API as image input. The image is not stored as a permanent textbook asset.
+- AI Tutor answers can be listened to with the existing speech endpoint; audio is only generated when the student presses “Tinglash”.

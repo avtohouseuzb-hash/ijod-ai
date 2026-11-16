@@ -31,9 +31,7 @@ export default function EduTutorChemistryVisual({ visual }: { visual: ChemistryV
               <circle cx="170" cy="120" r="10" fill="#64748b" /><text x="170" y="124" textAnchor="middle" fontSize="10" fontWeight="bold" fill="white">n⁰</text>
               <circle cx="38" cy="110" r="8" fill="#2563eb" stroke="white" strokeWidth="2" /><text x="38" y="113" textAnchor="middle" fontSize="7" fontWeight="bold" fill="white">e−</text>
               <circle cx="258" cy="110" r="8" fill="#2563eb" stroke="white" strokeWidth="2" /><text x="258" y="113" textAnchor="middle" fontSize="7" fontWeight="bold" fill="white">e−</text>
-              <circle cx="91" cy="62" r="8" fill="#2563eb" stroke="white" strokeWidth="2" /><text x="91" y="65" textAnchor="middle" fontSize="7" fontWeight="bold" fill="white">e−</text>
-              <circle cx="229" cy="158" r="8" fill="#2563eb" stroke="white" strokeWidth="2" /><text x="229" y="161" textAnchor="middle" fontSize="7" fontWeight="bold" fill="white">e−</text>
-              <text x="160" y="207" textAnchor="middle" fill="#64748b" fontSize="10">Atomning soddalashtirilgan modeli</text>
+              <text x="160" y="207" textAnchor="middle" fill="#64748b" fontSize="10">Geliy atomining soddalashtirilgan modeli</text>
             </svg>
           </div>
           <div className="space-y-2">
