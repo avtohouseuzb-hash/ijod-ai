@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { recordAiUsage } from "@/lib/ai-usage";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
@@ -63,6 +64,7 @@ export async function POST(request: Request) {
       ] }],
       max_output_tokens: 1800,
     });
+    await recordAiUsage(service, { userId: user.id, requestId, feature: "AI Mahsulot kartochkasi · Matn", model: "gpt-6-luna", usage: textResponse.usage });
     const cardText = textResponse.output_text?.trim();
     if (!cardText) throw new Error("AI kartochka matnini qaytarmadi.");
 
@@ -70,6 +72,7 @@ export async function POST(request: Request) {
     const imageResult = inputImage
       ? await openai.images.edit({ model: "gpt-image-2.5-sunburst", prompt: imagePrompt, image: inputImage, size: "1024x1536" })
       : await openai.images.generate({ model: "gpt-image-2.5-sunburst", prompt: imagePrompt, size: "1024x1536" });
+    await recordAiUsage(service, { userId: user.id, requestId, feature: "AI Mahsulot kartochkasi · Rasm", model: "gpt-image-2.5-sunburst" });
     const b64 = imageResult.data?.[0]?.b64_json;
     if (!b64) throw new Error("AI mahsulot rasmini yaratmadi.");
 
