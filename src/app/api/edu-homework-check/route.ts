@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { recordAiUsage } from "@/lib/ai-usage";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
@@ -60,6 +61,7 @@ export async function POST(request: Request) {
       ...(useTextbook ? { tools: [{ type: "file_search" as const, vector_store_ids: [vectorStoreId as string], max_num_results: 5 }], include: ["file_search_call.results" as const] } : {}),
       max_output_tokens: 450,
     });
+    await recordAiUsage(service, { userId: user.id, requestId, feature: "IJOD EDU · Uy vazifasini tekshirish", model: "gpt-6-luna", usage: response.usage });
     const raw = response.output_text?.trim() || "";
     const parsed = JSON.parse(raw.replace(/^json\s*/i, ""));
     if (!["approved", "needs_revision", "unclear"].includes(parsed.status) || typeof parsed.feedback !== "string") throw new Error("AI tekshiruv javobi noto‘g‘ri formatda.");
