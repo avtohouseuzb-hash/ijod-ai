@@ -60,17 +60,37 @@ export async function POST(request: Request) {
   try {
     const response = await openai.responses.create({
       model: "gpt-6-luna",
-      instructions: `Sen IJOD EDU maktab platformasining shaxsiy AI ustozisan. O‘quvchi: ${grade}. Fan: ${subject}. Faqat tabiiy, sodda o‘zbek tilida tushuntir (ingliz tili fanida inglizcha misollar va o‘zbekcha izoh ber). Yoshga mos, mehribon, sabrli va qiziqarli bo‘l. O‘quvchini tayyor javob bilan cheklama: avval tushuntir, keyin kichik savol berib tushunganini tekshir. Sinf darajasidan murakkab termin ishlatma; yangi terminni darhol izohla. Matematik/fizik masalalarda yechimni bosqichma-bosqich, formulani va birliklarni ko‘rsat. Kimyo fanida reaksiyalar va elementlarni to‘g‘ri yoz. Tarix/geografiya/biologiyada sabab-oqibat va hayotiy misol keltir. Agar savol boshqa fanga tegishli bo‘lsa, muloyimlik bilan tegishli fanni tanlashni tavsiya qil. Bilmagan faktni to‘qima. Javobni doskada yozilayotgandek qisqa satrlarga ajrat: birinchi qatorda MAVZU: ..., keyin har bir qadamni yangi qatorda 1-qadam:, 2-qadam: ko‘rinishida yoz; kerak bo‘lsa formulani alohida satrga qo‘y; oxirida XULOSA: va ENDI SEN: bilan o‘quvchiga bitta kichik mashq yoki savol ber. Markdown sarlavhalari va ro‘yxat belgilarini haddan tashqari ishlatma. Odatda 100–180 so‘zdan oshirma; murakkab masalada zarur qadamlarni qoldirma. Faqat foydali, o‘rgatuvchi javob ber.${sourceGuidance}`,
+      instructions: `Sen IJOD EDU platformasining shaxsiy AI ustozisan. O‘quvchi sinfi: ${grade}. Tanlangan fan: ${subject}. Har doim tabiiy, sodda va to‘g‘ri o‘zbek tilida gapir; ingliz tili fanida inglizcha misol va o‘zbekcha izoh ber. O‘quvchining yoshiga mos, mehribon, sabrli va rag‘batlantiruvchi bo‘l.\n\nMUHIM SUHBAT QOIDALARI: Agar o‘quvchi salomlashsa, oddiy va iliq salom qaytarib, bugun nimani o‘rganishni xohlashini so‘ra. Bunday paytda MAVZU, qadamlar yoki XULOSA sarlavhalarini ishlatma. Agar xabar tushunarsiz, takroriy harflar yoki ma’nosiz belgilar bo‘lsa, muloyimlik bilan savolni qayta yozishni so‘ra; tasodifiy javob bermagin. Savol fan mavzusiga oid bo‘lsa, mavzuni tushuntir, keyin bitta kichik savol bilan tushunganini tekshir.\n\nDARS TUSHUNTIRISH: Sinf darajasidan murakkab termin ishlatma va yangi terminni izohla. Matematik/fizik masalalarda yechimni bosqichma-bosqich, formula va birliklar bilan ko‘rsat. Kimyoda elementlar va reaksiyalarni aniq yoz. Tarix, geografiya va biologiyada sabab-oqibat hamda hayotiy misol keltir. Faqat darsga oid savolga javob berganda birinchi satrda to‘liq MAVZU: nomini yoz; keyin kerakli qadamlar, oxirida XULOSA: va ENDI SEN: bilan bitta mashq ber. Javobni hech qachon yarim so‘z yoki kesik sarlavha bilan tugatma. Odatda 100–180 so‘zdan oshirma, ammo masalani to‘liq tushuntirish uchun zarur qadamlarni qoldirma. Bilmagan faktni to‘qima. ${sourceGuidance}`,
       input: [
         ...history.map(item => ({ role: item.role, content: item.content })),
         { role: "user", content: "Sinf: " + grade + ". Fan: " + subject + ". Savol: " + input.message.trim() },
       ],
       ...(useTextbook ? { tools: [{ type: "file_search" as const, vector_store_ids: [vectorStoreId as string], max_num_results: 5 }], include: ["file_search_call.results" as const] } : {}),
-      max_output_tokens: 850,
+      max_output_tokens: 1800,
     });
     await recordAiUsage(service, { userId: user.id, requestId, feature: "IJOD EDU · AI Ustoz", model: "gpt-6-luna", usage: response.usage });
-    const text = response.output_text?.trim();
-    if (!text) throw new Error("AI bo‘sh javob qaytardi.");
+    const outputMessageText = response.output
+      .filter((item) => item.type === "message")
+      .flatMap((item) => item.content)
+      .filter((part) => part.type === "output_text")
+      .map((part) => part.text)
+      .join("\\n")
+      .trim();
+    let text = response.output_text?.trim() || outputMessageText;
+    const isGreeting = /^(sal[o0][mn]|assalomu alaykum|assalom|hello|hi|hey)[!?.\\s]*$/i.test(input.message.trim());
+    const compactMessage = input.message.trim().replace(/\\s/g, "");
+    const isRepeatedNoise = compactMessage.length >= 5 && /(.)\\1{4,}/.test(compactMessage);
+    const isTruncatedHeading = /^(M|MA|MAV|MAVZ|MAVZU:?|XULOSA:?)$/i.test(text);
+
+    if (response.status === "incomplete" || isTruncatedHeading || !text) {
+      if (isGreeting) {
+        text = "Salom! 😊 Bugun qaysi mavzuni o‘rganamiz? Savolingni yoz, men uni senga sodda va bosqichma-bosqich tushuntiraman.";
+      } else if (isRepeatedNoise) {
+        text = "Xabaringni to‘liq tushunmadim. Iltimos, savolingni qaytadan, aniqroq yoz. Qaysi mavzu yoki misolda yordam kerak?";
+      } else {
+        throw new Error("AI javobi to‘liq kelmadi. Iltimos, yana bir marta yubor.");
+      }
+    }
     reserved = false;
     return NextResponse.json({ text, sourceMode: useTextbook ? "textbook" : "general" });
   } catch (error) {
