@@ -7,6 +7,7 @@ import Link from "next/link";
 import { LanguageSelect, ThemeToggle } from "@/components/site-preferences";
 import { getEduSubjects } from "@/lib/edu-subjects";
 import EduFamilyAccess, { EduStudentGradeContext, EduStudentProfileContext } from "@/components/edu-family-access";
+import EduTutorDrawingBoard, { type TutorDrawing } from "@/components/edu-tutor-drawing-board";
 
 type Section = "home" | "tutor" | "homework" | "library" | "progress" | "planner";
 
@@ -110,6 +111,7 @@ function EduStudentPage() {
   const [isSending, setIsSending] = useState(false);
   const [tutorError, setTutorError] = useState("");
   const [boardText, setBoardText] = useState("");
+  const [drawingBoard, setDrawingBoard] = useState<TutorDrawing | null>(null);
   const tutorRequestVersion = useRef(0);
   useEffect(() => {
     if (!profileModalOpen) return;
@@ -214,6 +216,7 @@ function EduStudentPage() {
     setQuestion("");
     setTutorError("");
     setBoardText("");
+    setDrawingBoard(null);
     setIsSending(false);
   }
   function changeTutorSubject(nextSubject: string) {
@@ -277,7 +280,16 @@ function EduStudentPage() {
       if (requestVersion !== tutorRequestVersion.current) return;
       if (!response.ok || typeof data.text !== "string") throw new Error(data.error || "Javob olishda xatolik yuz berdi.");
       setMessages((current) => [...current, { role: "system", text: data.text }]);
-      setBoardText(data.text);
+      if (data.kind === "greeting") {
+        setBoardText("");
+        setDrawingBoard(null);
+      } else if (data.drawing && typeof data.drawing.title === "string" && Array.isArray(data.drawing.strokes)) {
+        setBoardText("");
+        setDrawingBoard(data.drawing as TutorDrawing);
+      } else {
+        setBoardText("");
+        setDrawingBoard(null);
+      }
     } catch (error) {
       if (requestVersion !== tutorRequestVersion.current) return;
       const message = error instanceof Error ? error.message : "Noma’lum xatolik yuz berdi.";
@@ -449,9 +461,9 @@ function EduStudentPage() {
 
           {section === "tutor" && <section className="grid gap-5 xl:grid-cols-[.8fr_1.2fr]"><div className="rounded-3xl bg-[#17152c] p-6 text-white"><span className="text-[10px] font-bold uppercase tracking-[.18em] text-violet-200">SHAXSIY YORDAMCHI</span><div className="mt-7 flex h-16 w-16 items-center justify-center rounded-[22px] bg-gradient-to-br from-violet-300 to-cyan-200 text-[#211b3d]"><Icon name="spark" className="h-8 w-8" /></div><h1 className="mt-5 text-2xl font-black">Salom! Men sening AI Ustozingman.</h1><p className="mt-3 text-sm leading-6 text-slate-300">Qaysi mavzu qiyin bo‘lyapti? Birgalikda, bosqichma-bosqich o‘rganamiz.</p><div className="mt-6 rounded-2xl border border-white/10 bg-white/[.06] p-4"><label htmlFor="tutor-subject" className="text-[10px] font-bold uppercase tracking-widest text-violet-200">FANNI TANLANG</label><select id="tutor-subject" value={selectedSubject} onChange={(e) => changeTutorSubject(e.target.value)} className="mt-2 w-full rounded-xl border border-white/15 bg-[#27243d] px-3 py-3 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-violet-300">{subjects.map((subject) => <option key={subject.name} value={subject.name}>{subject.name}</option>)}</select><p className="mt-2 text-xs text-slate-400">{grade} darajasi uchun · {subjects.length} ta fan</p></div></div><div className="flex min-h-[520px] flex-col rounded-3xl border border-[#eceaf5] bg-white p-5"><div className="border-b border-slate-100 pb-4"><h2 className="text-lg font-black">Ustoz bilan suhbat</h2><p className="mt-1 text-xs text-slate-400">Savolingni yoz yoki tayyor mavzulardan birini tanla.</p></div><div className="flex-1 space-y-3 overflow-y-auto py-5" aria-live="polite">{messages.length===0?<div className="flex h-full min-h-[260px] flex-col items-center justify-center text-center"><div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-50 text-violet-600"><Icon name="spark" className="h-7 w-7" /></div><p className="mt-4 text-sm font-bold">Bugun nimani o‘rganamiz?</p><p className="mt-1 max-w-xs text-xs leading-5 text-slate-400">Savolingni yubor yoki quyidagi takliflardan birini tanla.</p><div className="mt-5 flex flex-wrap justify-center gap-2">{["Mavzuni sodda tushuntir","Misolni bosqichma-bosqich yech","Menga 5 ta test ber"].map((v)=><button key={v} onClick={()=>setQuestion(v)} className="rounded-full border border-violet-100 bg-violet-50/60 px-3 py-2 text-[10px] font-semibold text-violet-700 hover:bg-violet-100">{v}</button>)}</div></div>:messages.map((m,i)=>m.role==="student"?<div key={"student-"+i} className="ml-auto max-w-[90%] rounded-2xl bg-violet-600 px-4 py-3 text-xs leading-5 text-white">{m.text}</div>:<article key={"tutor-"+i} className="mr-auto max-w-[95%] rounded-2xl border border-violet-100 bg-violet-50/70 px-4 py-3 text-xs leading-6 text-slate-800"><p className="mb-1 text-[9px] font-extrabold uppercase tracking-wider text-violet-600">AI USTOZ</p><p className="whitespace-pre-wrap break-words">{m.text}</p></article>)}{isSending&&<div className="mr-auto rounded-2xl bg-slate-100 px-4 py-3 text-xs text-slate-500">Ustoz javob tayyorlayapti…</div>}</div>
       <section className="mb-4 overflow-hidden rounded-2xl border border-[#e7e2fa] bg-[#fcfbff] shadow-inner">
-        <div className="flex items-center justify-between border-b border-violet-100 bg-white px-4 py-3"><div className="flex items-center gap-2 text-xs font-extrabold text-slate-700"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-100 text-violet-700"><Icon name="bookText" className="h-4 w-4" /></span> INTERAKTIV DOSKA</div><span className="text-[9px] font-bold uppercase tracking-wider text-violet-500">{boardText ? "TAYYOR" : "USTOZ JAVOBI SHU YERDA"}</span></div>
+        <div className="flex items-center justify-between border-b border-violet-100 bg-white px-4 py-3"><div className="flex items-center gap-2 text-xs font-extrabold text-slate-700"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-100 text-violet-700"><Icon name="bookText" className="h-4 w-4" /></span> INTERAKTIV DOSKA</div><span className="text-[9px] font-bold uppercase tracking-wider text-violet-500">{drawingBoard ? "CHIZMA TAYYOR" : boardText ? "TAYYOR" : "CHIZMA KUTILMOQDA"}</span></div>
         <div className="relative min-h-[150px] overflow-hidden bg-[#fffefb] p-4 sm:p-5" style={{backgroundImage:"linear-gradient(rgba(139,120,190,.09) 1px, transparent 1px)",backgroundSize:"100% 32px"}}>
-          {boardText ? <pre className="whitespace-pre-wrap break-words font-mono text-[12px] leading-8 text-[#292344] sm:text-sm">{boardText}</pre> : <div className="flex min-h-[110px] items-center justify-center text-center text-xs text-slate-400">Ustoz tushuntirishni boshlaganda yozuvlar shu doskada ko‘rinadi.</div>}
+          {drawingBoard ? <EduTutorDrawingBoard drawing={drawingBoard} /> : boardText ? <pre className="whitespace-pre-wrap break-words font-mono text-[12px] leading-8 text-[#292344] sm:text-sm">{boardText}</pre> : <div className="flex min-h-[110px] flex-col items-center justify-center gap-2 py-7 text-center text-xs text-slate-400"><Icon name="spark" className="h-6 w-6 text-violet-300" /><p>Bu doskada faqat chizma va yozish mashqlari ko‘rsatiladi.</p><p className="text-[10px]">Masalan: “Kichik a harfini chizib ko‘rsat”.</p></div>}
         </div>
       </section>
       <div className="rounded-2xl border border-slate-200 p-2"><textarea value={question} onChange={(e)=>setQuestion(e.target.value)} onKeyDown={(e)=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendQuestion();}}} rows={2} placeholder="Savolingni shu yerga yoz..." className="w-full resize-none bg-transparent px-2 py-1 text-xs outline-none placeholder:text-slate-400" /><div className="flex items-center justify-between px-1"><span className="text-[10px] text-slate-400">Enter — yuborish · Shift + Enter — yangi qator</span><button onClick={sendQuestion} disabled={!question.trim() || isSending} className="rounded-xl bg-violet-600 px-4 py-2 text-[10px] font-bold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40">{isSending ? "Kutilmoqda…" : "Yuborish"} <Icon name="arrowUpRight" className="ml-1 inline h-3.5 w-3.5" /></button></div></div>{tutorError && <p role="alert" className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700">{tutorError}</p>}<p className="mt-2 text-center text-[9px] text-slate-400">AI Ustoz javoblari tanlangan fan va sinf darajasiga moslashtiriladi.</p></div></section>}
