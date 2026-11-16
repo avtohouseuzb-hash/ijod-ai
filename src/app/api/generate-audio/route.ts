@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { recordAiUsage } from "@/lib/ai-usage";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
@@ -72,6 +73,7 @@ export async function POST(request: Request) {
       response_format: "mp3",
       instructions: accentInstructions[accent] + " Preserve the original language; do not translate. Speak at a natural conversational pace.",
     });
+    await recordAiUsage(serviceClient, { userId: user.id, requestId, feature: "AI Ovoz", model: "gpt-4o-mini-tts" });
     const audioBuffer = Buffer.from(await speech.arrayBuffer());
     if (!audioBuffer.length) throw new Error("Audio API bo‘sh fayl qaytardi.");
 
