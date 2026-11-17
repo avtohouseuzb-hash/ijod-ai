@@ -69,8 +69,8 @@ export async function POST(request: Request) {
 
     if (existing.role !== body.role) {
       const [parentLinks, studentLinks] = await Promise.all([
-        service.from("edu_parent_student_links").select("id").eq("parent_user_id", ctx.user.id).limit(1),
-        service.from("edu_parent_student_links").select("id").eq("student_user_id", ctx.user.id).limit(1),
+        service.from("edu_parent_student_links").select("id").eq("parent_user_id", ctx.user.id).in("status", ["pending", "active"]).limit(1),
+        service.from("edu_parent_student_links").select("id").eq("student_user_id", ctx.user.id).in("status", ["pending", "active"]).limit(1),
       ]);
 
       if (parentLinks.error || studentLinks.error) {
