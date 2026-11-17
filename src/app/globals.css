@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Prevent wide dashboard controls and lesson diagrams from expanding mobile pages. */
+html, body { width: 100%; max-width: 100%; min-width: 0; overflow-x: clip; }
+body > * { min-width: 0; }
+
 :root {
   --background: #ffffff;
   --foreground: #171717;

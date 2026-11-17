@@ -27,7 +27,7 @@ function LessonDiagram({ diagram }: { diagram: EduTutorBoardPlan["diagram"] }) {
   const isSequence = diagram.kind === "flow" || diagram.kind === "timeline";
 
   return (
-    <section className="rounded-2xl border border-cyan-100 bg-gradient-to-br from-cyan-50/80 to-violet-50/70 p-4">
+    <section className="min-w-0 rounded-2xl border border-cyan-100 bg-gradient-to-br from-cyan-50/80 to-violet-50/70 p-4">
       <p className="text-[9px] font-black uppercase tracking-widest text-cyan-700">KO‘RGAZMALI SXEMA</p>
       <h4 className="mt-1 text-sm font-extrabold text-slate-800">{diagram.title || "Mavzu sxemasi"}</h4>
       <div className={isSequence ? "mt-4 flex flex-wrap items-center gap-2" : "mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3"}>
@@ -46,8 +46,8 @@ function LessonDiagram({ diagram }: { diagram: EduTutorBoardPlan["diagram"] }) {
 
 export default function EduTutorLessonBoard({ board, visual }: { board: EduTutorBoardPlan; visual?: ChemistryVisual | null }) {
   return (
-    <div className="space-y-3">
-      <header className="rounded-2xl border border-violet-100 bg-gradient-to-r from-violet-50 to-cyan-50 p-4">
+    <div className="w-full min-w-0 max-w-full space-y-3">
+      <header className="min-w-0 rounded-2xl border border-violet-100 bg-gradient-to-r from-violet-50 to-cyan-50 p-4">
         <p className="text-[9px] font-black uppercase tracking-widest text-violet-600">BUGUNGI DARS</p>
         <h3 className="mt-1 text-base font-black text-slate-900">{board.title}</h3>
         <p className="mt-2 text-xs leading-6 text-slate-700">{board.explanation}</p>

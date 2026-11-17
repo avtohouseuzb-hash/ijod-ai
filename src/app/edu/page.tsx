@@ -380,7 +380,7 @@ function EduStudentPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f7fc] text-[#202033]">
+    <div className="min-h-screen w-full min-w-0 max-w-full overflow-x-clip bg-[#f7f7fc] text-[#202033]">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[248px] flex-col border-r border-[#eceaf5] bg-white px-5 py-6 lg:flex">
         <Link href="/" className="mb-9 flex items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-200">
@@ -409,17 +409,25 @@ function EduStudentPage() {
         </div>
       </aside>
 
-      <main className="min-h-screen lg:ml-[248px]">
-        <header className="sticky top-0 z-20 flex h-[68px] items-center justify-between border-b border-[#eceaf5] bg-white/90 px-4 backdrop-blur-xl sm:px-7">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50 font-bold text-violet-700 lg:hidden">i</Link>
-            <div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-slate-400">IJOD EDU <span className="mx-1 text-slate-300">/</span> MAKTAB</p><p className="text-sm font-bold text-slate-800">{title}</p></div>
+      <main className="min-h-screen min-w-0 max-w-full overflow-x-clip lg:ml-[248px]">
+        <header className="sticky top-0 z-20 flex min-h-[60px] w-full min-w-0 items-center justify-between gap-2 border-b border-[#eceaf5] bg-white/95 px-3 py-2 backdrop-blur-xl sm:h-[68px] sm:px-7 sm:py-0">
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+            <Link href="/" aria-label="IJOD EDU bosh sahifasi" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-sm font-black text-violet-700 lg:hidden">i</Link>
+            <div className="min-w-0">
+              <p className="hidden truncate text-[10px] font-bold uppercase tracking-[.16em] text-slate-400 sm:block">IJOD EDU <span className="mx-1 text-slate-300">/</span> MAKTAB</p>
+              <p className="truncate text-xs font-bold text-slate-800 sm:text-sm">{title}</p>
+            </div>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <ThemeToggle />
-            <LanguageSelect className="w-[76px] sm:w-[142px]" />
-            <button type="button" onClick={() => setSection("planner")} className={"inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition " + (section === "planner" ? "border-violet-200 bg-violet-50 text-violet-700" : "border-slate-200 bg-white text-slate-500 hover:border-violet-200 hover:text-violet-700")}><Icon name="calendar" className="h-4 w-4" /> <span className="hidden sm:inline">O‘quv rejasi</span><span className="sm:hidden">Reja</span></button>
-            <select aria-label="Sinfni tanlash" value={grade} onChange={(e) => changeGrade(e.target.value)} className="rounded-xl border border-violet-100 bg-violet-50 px-3 py-2.5 text-xs font-bold text-violet-700 outline-none focus:ring-2 focus:ring-violet-200">{Array.from({ length: 11 }, (_, i) => <option key={i + 1} value={i + 1 + "-sinf"}>{i + 1}-sinf</option>)}</select>
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
+            <div className="hidden items-center gap-3 sm:flex">
+              <ThemeToggle />
+              <LanguageSelect className="w-[76px] md:w-[142px]" />
+            </div>
+            <button type="button" onClick={() => setSection("planner")} aria-label="O‘quv rejasi" className={"inline-flex h-9 w-9 items-center justify-center gap-2 rounded-xl border px-2 text-xs font-semibold transition sm:h-auto sm:w-auto sm:px-3 sm:py-2 " + (section === "planner" ? "border-violet-200 bg-violet-50 text-violet-700" : "border-slate-200 bg-white text-slate-500 hover:border-violet-200 hover:text-violet-700")}>
+              <Icon name="calendar" className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline">O‘quv rejasi</span>
+            </button>
+            <select aria-label="Sinfni tanlash" value={grade} onChange={(e) => changeGrade(e.target.value)} className="h-9 min-w-0 max-w-[82px] rounded-xl border border-violet-100 bg-violet-50 px-2 text-[11px] font-bold text-violet-700 outline-none focus:ring-2 focus:ring-violet-200 sm:h-auto sm:max-w-none sm:px-3 sm:py-2.5 sm:text-xs">{Array.from({ length: 11 }, (_, i) => <option key={i + 1} value={i + 1 + "-sinf"}>{i + 1}-sinf</option>)}</select>
             <button
               type="button"
               onClick={() => { setProfileError(""); setProfileModalOpen(true); }}
@@ -431,7 +439,7 @@ function EduStudentPage() {
               {profileInitials || "O"}
             </button>
           </div>
-        </header>
+        </header>header>
 
         {profileModalOpen && (
           <div
@@ -504,7 +512,7 @@ function EduStudentPage() {
           </div>
         )}
 
-        <div className="mx-auto max-w-[1440px] px-4 py-6 sm:px-7 sm:py-8">
+        <div className="mx-auto w-full min-w-0 max-w-[1440px] px-3 py-4 sm:px-7 sm:py-8">
           {section === "home" && <>
             <section className="relative isolate overflow-hidden rounded-[28px] bg-[#17152c] px-6 py-7 text-white shadow-xl shadow-violet-100 sm:px-9 sm:py-9">
               <div className="pointer-events-none absolute -right-16 -top-28 h-80 w-80 rounded-full bg-violet-500/30 blur-3xl" />
@@ -541,8 +549,8 @@ function EduStudentPage() {
           </>}
 
           {section === "tutor" && (
-            <section className="grid gap-5 xl:grid-cols-[.8fr_1.2fr]">
-              <div className="rounded-3xl bg-[#17152c] p-6 text-white">
+            <section className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[.8fr_1.2fr] sm:gap-5">
+              <div className="w-full min-w-0 rounded-3xl bg-[#17152c] p-4 text-white sm:p-6">
                 <span className="text-[10px] font-bold uppercase tracking-[.18em] text-violet-200">SHAXSIY YORDAMCHI</span>
                 <div className="mt-7 flex h-16 w-16 items-center justify-center rounded-[22px] bg-gradient-to-br from-violet-300 to-cyan-200 text-[#211b3d]"><Icon name="spark" className="h-8 w-8" /></div>
                 <h1 className="mt-5 text-2xl font-black">Salom! Men sening AI Ustozingman.</h1>
@@ -560,13 +568,13 @@ function EduStudentPage() {
                 )}
               </div>
 
-              <div className="flex min-h-[620px] flex-col rounded-3xl border border-[#eceaf5] bg-white p-5">
+              <div className="flex min-h-0 w-full min-w-0 flex-col rounded-3xl border border-[#eceaf5] bg-white p-3 sm:min-h-[620px] sm:p-5">
                 <div className="border-b border-slate-100 pb-4">
                   <h2 className="text-lg font-black">Ustoz bilan suhbat</h2>
                   <p className="mt-1 text-xs text-slate-400">Savolingni yoz, rasm yubor yoki javobni ovozda tingla.</p>
                 </div>
 
-                <div className="flex-1 space-y-3 overflow-y-auto py-5" aria-live="polite">
+                <div className="min-h-0 min-w-0 flex-1 space-y-3 overflow-y-auto py-4 sm:py-5" aria-live="polite">
                   {messages.length === 0 ? (
                     <div className="flex h-full min-h-[260px] flex-col items-center justify-center text-center">
                       <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-50 text-violet-600"><Icon name="spark" className="h-7 w-7" /></div>
@@ -578,17 +586,17 @@ function EduStudentPage() {
                   {isSending && <div className="mr-auto rounded-2xl bg-slate-100 px-4 py-3 text-xs text-slate-500">Ustoz javob tayyorlayapti…</div>}
                 </div>
 
-                <section className="mb-4 overflow-hidden rounded-2xl border border-[#e7e2fa] bg-[#fcfbff] shadow-inner">
+                <section className="mb-4 w-full min-w-0 overflow-hidden rounded-2xl border border-[#e7e2fa] bg-[#fcfbff] shadow-inner">
                   <div className="flex items-center justify-between border-b border-violet-100 bg-white px-4 py-3">
                     <div className="flex items-center gap-2 text-xs font-extrabold text-slate-700"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-100 text-violet-700"><Icon name="bookText" className="h-4 w-4" /></span> INTERAKTIV DOSKA</div>
                     <span className="text-[9px] font-bold uppercase tracking-wider text-violet-500">{drawingBoard ? "CHIZMA TAYYOR" : lessonBoard ? "DARS TAYYOR" : boardVisual ? "SXEMA TAYYOR" : boardText ? "TAYYOR" : "MAVZU KUTILMOQDA"}</span>
                   </div>
-                  <div className="relative min-h-[150px] overflow-hidden bg-[#fffefb] p-4 sm:p-5" style={{backgroundImage:"linear-gradient(rgba(139,120,190,.09) 1px, transparent 1px)",backgroundSize:"100% 32px"}}>
+                  <div className="relative min-h-[150px] w-full min-w-0 max-w-full overflow-hidden bg-[#fffefb] p-3 sm:p-5" style={{backgroundImage:"linear-gradient(rgba(139,120,190,.09) 1px, transparent 1px)",backgroundSize:"100% 32px"}}>
                     {drawingBoard ? <EduTutorDrawingBoard drawing={drawingBoard} /> : lessonBoard ? <EduTutorLessonBoard board={lessonBoard} visual={boardVisual} /> : boardVisual ? <EduTutorChemistryVisual visual={boardVisual} /> : boardText ? <pre className="whitespace-pre-wrap break-words font-mono text-[12px] leading-8 text-[#292344] sm:text-sm">{boardText}</pre> : <div className="flex min-h-[110px] flex-col items-center justify-center gap-2 py-7 text-center text-xs text-slate-400"><Icon name="spark" className="h-6 w-6 text-violet-300" /><p>Ustoz savolingga mos dars rejasini shu yerda ko‘rsatadi.</p><p className="text-[10px]">Mavzu, bosqichlar, misol va sxema.</p></div>}
                   </div>
                 </section>
 
-                <div className="rounded-2xl border border-slate-200 p-2">
+                <div className="w-full min-w-0 rounded-2xl border border-slate-200 p-2">
                   {tutorImageDataUrl && <div className="mb-3 flex items-center gap-3 rounded-xl bg-cyan-50 p-2.5"><img src={tutorImageDataUrl} alt="Yuklanadigan rasm" className="h-16 w-16 rounded-lg border border-cyan-100 bg-white object-contain" /><div className="min-w-0 flex-1"><p className="truncate text-[11px] font-bold text-slate-700">{tutorImageName}</p><p className="text-[10px] text-slate-500">AI Ustoz rasmni ko‘rib chiqadi</p></div><button type="button" onClick={()=>{setTutorImageDataUrl("");setTutorImageName("");if(tutorImageInputRef.current)tutorImageInputRef.current.value="";}} className="rounded-lg px-2 py-1 text-xs font-bold text-rose-600 hover:bg-white">✕</button></div>}
                   <textarea value={question} onChange={(e)=>setQuestion(e.target.value)} onKeyDown={(e)=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendQuestion();}}} rows={2} placeholder="Savolingni yoz yoki rasm yuklab, tushuntirishni so‘ra..." className="w-full resize-none bg-transparent px-2 py-1 text-xs outline-none placeholder:text-slate-400" />
                   <div className="flex flex-wrap items-center justify-between gap-2 px-1 pt-2">

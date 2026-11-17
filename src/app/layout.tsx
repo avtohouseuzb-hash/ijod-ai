@@ -44,9 +44,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="uz"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full w-full max-w-full overflow-x-clip antialiased`}
     >
-      <body className="min-h-full flex flex-col"><LanguageRuntime />{children}<RoutePreferencesDock /></body>
+      <body className="min-h-full w-full min-w-0 max-w-full flex flex-col overflow-x-clip"><LanguageRuntime />{children}<RoutePreferencesDock /></body>
     </html>
   );
 }

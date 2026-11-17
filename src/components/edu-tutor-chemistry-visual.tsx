@@ -9,7 +9,7 @@ export type ChemistryVisual =
 
 export default function EduTutorChemistryVisual({ visual }: { visual: ChemistryVisual }) {
   return (
-    <section className="mt-3 overflow-hidden rounded-2xl border border-cyan-100 bg-white shadow-sm">
+    <section className="mt-3 w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-cyan-100 bg-white shadow-sm">
       <div className="flex items-center justify-between gap-3 border-b border-cyan-50 bg-gradient-to-r from-cyan-50 to-violet-50 px-4 py-3">
         <div>
           <p className="text-[9px] font-black uppercase tracking-[.16em] text-cyan-700">KO‘RGAZMALI KIMYO</p>
@@ -19,7 +19,7 @@ export default function EduTutorChemistryVisual({ visual }: { visual: ChemistryV
       </div>
 
       {visual.kind === "atom" && (
-        <div className="grid gap-4 p-4 md:grid-cols-[1.1fr_.9fr] md:items-center">
+        <div className="grid min-w-0 grid-cols-1 gap-4 p-3 sm:p-4 md:grid-cols-[1.1fr_.9fr] md:items-center">
           <div className="rounded-xl bg-[#f8fbff] p-2">
             <svg viewBox="0 0 320 220" role="img" aria-label="Proton, neytron va elektronlarning atomdagi joylashuvi" className="mx-auto block w-full max-w-[420px]">
               <ellipse cx="160" cy="110" rx="122" ry="58" fill="none" stroke="#9cc8f5" strokeWidth="2.5" transform="rotate(-25 160 110)" />
@@ -54,7 +54,7 @@ export default function EduTutorChemistryVisual({ visual }: { visual: ChemistryV
       )}
 
       {visual.kind === "orbital" && (
-        <div className="grid gap-3 p-4 lg:grid-cols-2">
+        <div className="grid min-w-0 grid-cols-1 gap-3 p-3 sm:p-4 lg:grid-cols-2">
           <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
             <div className="mb-2 flex items-center justify-between">
               <p className="text-xs font-extrabold text-slate-800">1. ORBITA</p>
@@ -104,7 +104,7 @@ export default function EduTutorChemistryVisual({ visual }: { visual: ChemistryV
       )}
 
       {visual.kind === "molecule" && (
-        <div className="p-4">
+        <div className="min-w-0 p-3 sm:p-4">
           <p className="text-center text-3xl font-black tracking-widest text-violet-700">{visual.formula}</p>
           <div className="my-4 flex flex-wrap items-center justify-center gap-2">
             {visual.atoms.map((atom, index) => (
