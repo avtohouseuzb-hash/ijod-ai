@@ -439,7 +439,7 @@ function EduStudentPage() {
               {profileInitials || "O"}
             </button>
           </div>
-        </header>header>
+        </header>
 
         {profileModalOpen && (
           <div
