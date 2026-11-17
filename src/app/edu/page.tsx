@@ -419,15 +419,15 @@ function EduStudentPage() {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
-            <div className="hidden items-center gap-3 sm:flex">
+            <div className="hidden items-center gap-3 lg:flex">
               <ThemeToggle />
               <LanguageSelect className="w-[76px] md:w-[142px]" />
             </div>
             <button type="button" onClick={() => setSection("planner")} aria-label="O‘quv rejasi" className={"inline-flex h-9 w-9 items-center justify-center gap-2 rounded-xl border px-2 text-xs font-semibold transition sm:h-auto sm:w-auto sm:px-3 sm:py-2 " + (section === "planner" ? "border-violet-200 bg-violet-50 text-violet-700" : "border-slate-200 bg-white text-slate-500 hover:border-violet-200 hover:text-violet-700")}>
               <Icon name="calendar" className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline">O‘quv rejasi</span>
+              <span className="hidden lg:inline">O‘quv rejasi</span>
             </button>
-            <select aria-label="Sinfni tanlash" value={grade} onChange={(e) => changeGrade(e.target.value)} className="h-9 min-w-0 max-w-[82px] rounded-xl border border-violet-100 bg-violet-50 px-2 text-[11px] font-bold text-violet-700 outline-none focus:ring-2 focus:ring-violet-200 sm:h-auto sm:max-w-none sm:px-3 sm:py-2.5 sm:text-xs">{Array.from({ length: 11 }, (_, i) => <option key={i + 1} value={i + 1 + "-sinf"}>{i + 1}-sinf</option>)}</select>
+            <select aria-label="Sinfni tanlash" value={grade} onChange={(e) => changeGrade(e.target.value)} className="h-9 min-w-0 max-w-[82px] rounded-xl border border-violet-100 bg-violet-50 px-2 text-[11px] font-bold text-violet-700 outline-none focus:ring-2 focus:ring-violet-200 sm:h-auto sm:px-3 sm:py-2.5 sm:text-xs lg:max-w-none">{Array.from({ length: 11 }, (_, i) => <option key={i + 1} value={i + 1 + "-sinf"}>{i + 1}-sinf</option>)}</select>
             <button
               type="button"
               onClick={() => { setProfileError(""); setProfileModalOpen(true); }}
