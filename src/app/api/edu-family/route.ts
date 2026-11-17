@@ -47,6 +47,54 @@ export async function POST(request: Request) {
   try { body = await request.json(); } catch { return NextResponse.json({ error: "So‘rov noto‘g‘ri." }, { status: 400 }); }
   const { service } = ctx;
 
+  if (body.action === "switch-role") {
+    if (!["student", "parent"].includes(body.role || "") || typeof body.displayName !== "string" || body.displayName.trim().length < 2 || body.displayName.trim().length > 100) {
+      return NextResponse.json({ error: "Rol va ismni to‘g‘ri kiriting." }, { status: 400 });
+    }
+
+    const grade = body.role === "student" ? Number(body.grade) : null;
+    if (body.role === "student" && (!Number.isInteger(grade) || grade! < 1 || grade! > 11)) {
+      return NextResponse.json({ error: "Sinfni 1–11 oralig‘ida tanlang." }, { status: 400 });
+    }
+
+    const { data: existing, error: roleError } = await service
+      .from("edu_user_roles")
+      .select("user_id,role")
+      .eq("user_id", ctx.user.id)
+      .maybeSingle();
+
+    if (roleError || !existing) {
+      return NextResponse.json({ error: "EDU profil topilmadi. Sahifani yangilab ko‘ring." }, { status: 404 });
+    }
+
+    if (existing.role !== body.role) {
+      const [parentLinks, studentLinks] = await Promise.all([
+        service.from("edu_parent_student_links").select("id").eq("parent_user_id", ctx.user.id).limit(1),
+        service.from("edu_parent_student_links").select("id").eq("student_user_id", ctx.user.id).limit(1),
+      ]);
+
+      if (parentLinks.error || studentLinks.error) {
+        return NextResponse.json({ error: "Oila bog‘lanishlarini tekshirib bo‘lmadi. Qayta urinib ko‘ring." }, { status: 500 });
+      }
+
+      if ((parentLinks.data?.length ?? 0) > 0 || (studentLinks.data?.length ?? 0) > 0) {
+        return NextResponse.json({
+          error: "Bu akkauntda ota-ona va farzand bog‘lanishi mavjud. Bog‘lanishlarni saqlash uchun rolni hozir almashtirib bo‘lmaydi.",
+        }, { status: 409 });
+      }
+    }
+
+    const { data, error } = await service
+      .from("edu_user_roles")
+      .update({ role: body.role, display_name: body.displayName.trim(), grade })
+      .eq("user_id", ctx.user.id)
+      .select("*")
+      .single();
+
+    if (error) return NextResponse.json({ error: "Rolni almashtirib bo‘lmadi. Qayta urinib ko‘ring." }, { status: 500 });
+    return NextResponse.json({ role: data });
+  }
+
   if (body.action === "set-role") {
     if (!["student", "parent"].includes(body.role || "") || typeof body.displayName !== "string" || body.displayName.trim().length < 2 || body.displayName.trim().length > 100) return NextResponse.json({ error: "Rol va ismni to‘g‘ri kiriting." }, { status: 400 });
     const grade = body.role === "student" ? Number(body.grade) : null;
