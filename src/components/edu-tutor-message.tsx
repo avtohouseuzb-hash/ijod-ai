@@ -70,8 +70,6 @@ export default function EduTutorMessage({ message }: { message: EduTutorMessageD
     return (
       <div className="ml-auto max-w-[92%] rounded-2xl bg-violet-600 px-4 py-3 text-xs leading-5 text-white">
         <p className="whitespace-pre-wrap break-words">{message.text}</p>
-      {message.whiteboard && <EduLiveWhiteboard payload={message.whiteboard} />}
-      {!message.whiteboard && message.board && <EduTutorLessonBoard board={message.board} visual={message.visual} />}
         {message.imageDataUrl && <img src={message.imageDataUrl} alt="O‘quvchi yuborgan rasm" className="mt-3 max-h-56 max-w-full rounded-xl border border-white/30 object-contain" />}
       </div>
     );
@@ -86,6 +84,8 @@ export default function EduTutorMessage({ message }: { message: EduTutorMessageD
         </button>
       </div>
       <p className="whitespace-pre-wrap break-words">{message.text}</p>
+      {message.whiteboard && <EduLiveWhiteboard payload={message.whiteboard} />}
+      {!message.whiteboard && message.board && <EduTutorLessonBoard board={message.board} visual={message.visual} />}
       {audioUrl && <audio controls autoPlay src={audioUrl} className="mt-3 h-9 w-full" />}
       {audioError && <p role="alert" className="mt-2 text-[10px] text-rose-600">{audioError}</p>}
       {message.videos && message.videos.length > 0 && (() => {
