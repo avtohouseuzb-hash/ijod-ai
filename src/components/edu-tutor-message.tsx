@@ -3,8 +3,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { EduTutorBoardPlan } from "@/components/edu-tutor-lesson-board";
+import EduTutorLessonBoard from "@/components/edu-tutor-lesson-board";
 import type { ChemistryVisual } from "@/components/edu-tutor-chemistry-visual";
 import type { TutorDrawing } from "@/components/edu-tutor-drawing-board";
+import EduLiveWhiteboard from "@/components/edu-live-whiteboard";
+import type { EduLiveWhiteboardPayload } from "@/lib/edu-live/types";
 
 export type EduTutorVideo = {
   id: string;
@@ -22,6 +25,7 @@ export type EduTutorMessageData = {
   videos?: EduTutorVideo[];
   videoNotice?: string;
   board?: EduTutorBoardPlan;
+  whiteboard?: EduLiveWhiteboardPayload;
   visual?: ChemistryVisual;
   drawing?: TutorDrawing;
 };
@@ -81,6 +85,8 @@ export default function EduTutorMessage({ message }: { message: EduTutorMessageD
         </button>
       </div>
       <p className="whitespace-pre-wrap break-words">{message.text}</p>
+      {message.whiteboard && <EduLiveWhiteboard payload={message.whiteboard} />}
+      {!message.whiteboard && message.board && <EduTutorLessonBoard board={message.board} visual={message.visual} />}
       {audioUrl && <audio controls autoPlay src={audioUrl} className="mt-3 h-9 w-full" />}
       {audioError && <p role="alert" className="mt-2 text-[10px] text-rose-600">{audioError}</p>}
       {message.videos && message.videos.length > 0 && (() => {

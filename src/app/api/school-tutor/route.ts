@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { recordAiUsage } from "@/lib/ai-usage";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { buildEduLiveWhiteboard, validateEduLiveWhiteboard } from "@/lib/edu-live/lesson-whiteboard";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -316,8 +317,10 @@ Salomlashuvga oddiy salom qaytar va doska uchun dars materiali yaratma. Tushunar
     }
     const text = typeof lesson.answer === "string" ? lesson.answer.trim() : "";
     const board = lesson.board;
+    const whiteboard = buildEduLiveWhiteboard(board);
     if (!text || !board || typeof board.title !== "string" || !Array.isArray(board.steps) || !board.diagram) {
       throw new Error("AI dars javobida chat yoki doska ma’lumoti yetishmayapti.");
+    if (!validateEduLiveWhiteboard(whiteboard)) throw new Error("Doska chizmasi xavfsiz formatdan o‘tmadi.");
     }
     reserved = false;
     const visual = subject.toLocaleLowerCase("uz-UZ").includes("kimyo")
@@ -329,6 +332,7 @@ Salomlashuvga oddiy salom qaytar va doska uchun dars materiali yaratma. Tushunar
     return NextResponse.json({
       text,
       board,
+      whiteboard,
       kind: "lesson",
       ...(visual ? { visual } : {}),
       ...(youtubeQuery ? { youtubeQuery } : {}),
