@@ -174,3 +174,59 @@ create policy "Students upload own live assets" on storage.objects for insert to
 drop policy if exists "Students delete own live assets" on storage.objects;
 create policy "Students delete own live assets" on storage.objects for delete to authenticated
   using (bucket_id='edu-live-assets' and (storage.foldername(name))[1]=(select auth.uid())::text);
+
+-- Append a paired student/tutor exchange and its whiteboard timeline atomically.
+create or replace function public.save_edu_live_exchange(
+  p_session_id uuid, p_user_id uuid, p_student_content text, p_tutor_content text,
+  p_modality text, p_lesson_payload jsonb, p_board_commands jsonb default '[]'::jsonb
+)
+returns table(student_turn_id uuid, tutor_turn_id uuid, board_event_count integer)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_session public.edu_live_sessions%rowtype;
+  v_student public.edu_live_turns%rowtype;
+  v_tutor public.edu_live_turns%rowtype;
+  v_sequence integer;
+  v_command jsonb;
+  v_board_count integer := 0;
+begin
+  if p_session_id is null or p_user_id is null then raise exception 'Live session and user are required'; end if;
+  if p_modality not in ('text','audio','image','multimodal') then raise exception 'Invalid modality'; end if;
+  if char_length(coalesce(p_student_content,'')) not between 1 and 12000
+     or char_length(coalesce(p_tutor_content,'')) not between 1 and 12000 then raise exception 'Turn content out of range'; end if;
+  if jsonb_typeof(coalesce(p_lesson_payload,'{}'::jsonb)) <> 'object'
+     or jsonb_typeof(coalesce(p_board_commands,'[]'::jsonb)) <> 'array'
+     or jsonb_array_length(coalesce(p_board_commands,'[]'::jsonb)) > 150 then raise exception 'Invalid lesson payload'; end if;
+
+  select * into v_session from public.edu_live_sessions
+  where id=p_session_id and user_id=p_user_id for update;
+  if not found then raise exception 'Live session not found'; end if;
+  if v_session.status <> 'active' then raise exception 'Live session is not active'; end if;
+
+  select coalesce(max(sequence),0)+1 into v_sequence
+  from public.edu_live_turns where session_id=p_session_id;
+
+  insert into public.edu_live_turns(session_id,user_id,sequence,role,modality,content,lesson_payload)
+  values(p_session_id,p_user_id,v_sequence,'student',p_modality,p_student_content,'{}'::jsonb)
+  returning * into v_student;
+
+  insert into public.edu_live_turns(session_id,user_id,sequence,role,modality,content,lesson_payload)
+  values(p_session_id,p_user_id,v_sequence+1,'tutor',p_modality,p_tutor_content,p_lesson_payload)
+  returning * into v_tutor;
+
+  for v_command in select value from jsonb_array_elements(coalesce(p_board_commands,'[]'::jsonb))
+  loop
+    insert into public.edu_live_whiteboard_events(session_id,user_id,turn_id,command,playback_ms)
+    values(p_session_id,p_user_id,v_tutor.id,v_command,greatest(0,least(8000,coalesce((v_command->>'delayMs')::integer,0))));
+    v_board_count := v_board_count+1;
+  end loop;
+
+  update public.edu_live_sessions set updated_at=now() where id=p_session_id and user_id=p_user_id;
+  return query select v_student.id,v_tutor.id,v_board_count;
+end;
+$$;
+revoke all on function public.save_edu_live_exchange(uuid,uuid,text,text,text,jsonb,jsonb) from public,anon,authenticated;
+grant execute on function public.save_edu_live_exchange(uuid,uuid,text,text,text,jsonb,jsonb) to service_role;
