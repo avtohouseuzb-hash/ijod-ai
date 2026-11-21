@@ -200,7 +200,7 @@ function EduStudentPage() {
     else setStudyPlans((items) => items.filter((item) => item.id !== id));
   }
 
-  const title = navItems.find((item) => item.id === section)?.label ?? "Umumiy ko‘rinish";
+  const title = section === "tutor" ? "AI Ustoz" : navItems.find((item) => item.id === section)?.label ?? "Umumiy ko‘rinish";
   async function handleProfileSignOut() {
     setProfileSignOutBusy(true);
     setProfileError("");
@@ -392,7 +392,25 @@ function EduStudentPage() {
       <main className="min-h-screen min-w-0 max-w-full overflow-x-clip lg:ml-[248px]">
         <header className="sticky top-0 z-20 flex min-h-[60px] w-full min-w-0 items-center justify-between gap-2 border-b border-[#eceaf5] bg-white/95 px-3 py-2 backdrop-blur-xl sm:h-[68px] sm:px-7 sm:py-0">
           <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-            <Link href="/" aria-label="IJOD EDU bosh sahifasi" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-sm font-black text-violet-700 lg:hidden">i</Link>
+            <span aria-label="IJOD EDU" role="img" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-200/60 lg:hidden">
+              <svg aria-hidden="true" viewBox="0 0 48 48" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m24 6 17 7-17 7-17-7 17-7Z" />
+                <path d="M14 17.1v5.2M34 17.1v5.2" />
+                <path d="M7 22c6-2.5 11.8-1.6 17 2.1 5.2-3.7 11-4.6 17-2.1v15c-6-2.5-11.8-1.6-17 2.1-5.2-3.7-11-4.6-17-2.1V22Z" />
+                <path d="M24 24.1v15" />
+              </svg>
+            </span>
+            {section !== "home" && (
+              <button
+                type="button"
+                onClick={() => setSection("home")}
+                aria-label="Umumiy ko‘rinishga qaytish"
+                className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg px-2 text-xs font-bold text-slate-600 transition hover:bg-violet-50 hover:text-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 sm:px-2.5"
+              >
+                <Icon name="arrowLeft" className="h-4 w-4" />
+                <span className="hidden min-[380px]:inline">Orqaga</span>
+              </button>
+            )}
             <div className="min-w-0">
               <p className="hidden truncate text-[10px] font-bold uppercase tracking-[.16em] text-slate-400 sm:block">IJOD EDU <span className="mx-1 text-slate-300">/</span> MAKTAB</p>
               <p className="truncate text-xs font-bold text-slate-800 sm:text-sm">{title}</p>
@@ -529,57 +547,103 @@ function EduStudentPage() {
           </>}
 
           {section === "tutor" && (
-            <section className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[.8fr_1.2fr] sm:gap-5">
-              <div className="w-full min-w-0 rounded-3xl bg-[#17152c] p-4 text-white sm:p-6">
-                <span className="text-[10px] font-bold uppercase tracking-[.18em] text-violet-200">SHAXSIY YORDAMCHI</span>
-                <div className="mt-7 flex h-16 w-16 items-center justify-center rounded-[22px] bg-gradient-to-br from-violet-300 to-cyan-200 text-[#211b3d]"><Icon name="spark" className="h-8 w-8" /></div>
-                <h1 className="mt-5 text-2xl font-black">Salom! Men sening AI Ustozingman.</h1>
-                <p className="mt-3 text-sm leading-6 text-slate-300">Qaysi mavzu qiyin bo‘lyapti? Birgalikda, bosqichma-bosqich o‘rganamiz.</p>
-                <div className="mt-6 rounded-2xl border border-white/10 bg-white/[.06] p-4">
-                  <label htmlFor="tutor-subject" className="text-[10px] font-bold uppercase tracking-widest text-violet-200">FANNI TANLANG</label>
-                  <select id="tutor-subject" value={selectedSubject} onChange={(e) => changeTutorSubject(e.target.value)} className="mt-2 w-full rounded-xl border border-white/15 bg-[#27243d] px-3 py-3 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-violet-300">{subjects.map((subject) => <option key={subject.name} value={subject.name}>{subject.name}</option>)}</select>
-                  <p className="mt-2 text-xs text-slate-400">{grade} darajasi uchun · {subjects.length} ta fan</p>
-                </div>
-                {selectedSubject.toLocaleLowerCase("uz-UZ").includes("kimyo") && (
-                  <div className="mt-4 rounded-2xl border border-cyan-200/15 bg-cyan-100/5 p-4">
-                    <p className="text-xs font-extrabold text-cyan-100">KIMYONI KO‘RIB, TINGLAB O‘RGAN</p>
-                    <p className="mt-2 text-[11px] leading-5 text-slate-300">Atom va molekula sxemalari doskada chiqadi. Javobni ovozda tingla yoki topshiriq rasmini yubor.</p>
+            <section className="mx-auto flex w-full min-w-0 max-w-4xl flex-col">
+              <header className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 py-3 sm:py-4">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-100 to-cyan-100 text-violet-700">
+                    <Icon name="spark" className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <h1 className="truncate text-base font-extrabold text-slate-900 sm:text-lg">AI Ustoz</h1>
+                    <p className="truncate text-[10px] text-slate-500 sm:text-xs">{grade} · {selectedSubject}</p>
                   </div>
-                )}
-              </div>
-
-              <div className="flex min-h-0 w-full min-w-0 flex-col rounded-3xl border border-[#eceaf5] bg-white p-3 sm:min-h-[620px] sm:p-5">
-                <div className="border-b border-slate-100 pb-4">
-                  <h2 className="text-lg font-black">Ustoz bilan suhbat</h2>
-                  <p className="mt-1 text-xs text-slate-400">Savolingni yoz, rasm yubor yoki javobni ovozda tingla.</p>
                 </div>
+                <label className="flex min-w-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                  <span className="shrink-0 text-[10px] font-semibold text-slate-500">Fan</span>
+                  <select
+                    id="tutor-subject"
+                    value={selectedSubject}
+                    onChange={(e) => changeTutorSubject(e.target.value)}
+                    className="min-w-0 max-w-[180px] bg-transparent text-xs font-bold text-slate-800 outline-none sm:max-w-[220px]"
+                  >
+                    {subjects.map((subject) => <option key={subject.name} value={subject.name}>{subject.name}</option>)}
+                  </select>
+                </label>
+              </header>
 
-                <div className="min-h-0 min-w-0 flex-1 space-y-3 overflow-y-auto py-4 sm:py-5" aria-live="polite">
+              <div className="flex min-h-[min(72vh,760px)] min-w-0 flex-col">
+                <div className="min-h-[360px] min-w-0 flex-1 space-y-5 overflow-y-auto py-5 sm:py-7" aria-live="polite">
                   {messages.length === 0 ? (
-                    <div className="flex h-full min-h-[260px] flex-col items-center justify-center text-center">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-50 text-violet-600"><Icon name="spark" className="h-7 w-7" /></div>
-                      <p className="mt-4 text-sm font-bold">Bugun nimani o‘rganamiz?</p>
-                      <p className="mt-1 max-w-xs text-xs leading-5 text-slate-400">Savolingni yoz, tajribani ko‘r, rasm yubor yoki ustoz izohini tingla.</p>
-                      <div className="mt-5 flex flex-wrap justify-center gap-2">{["Atom qanday tuzilgan?", "Suv molekulasini chiz", "Proton va elektron farqi nima?"].map((v)=><button key={v} onClick={()=>setQuestion(v)} className="rounded-full border border-violet-100 bg-violet-50/60 px-3 py-2 text-[10px] font-semibold text-violet-700 hover:bg-violet-100">{v}</button>)}</div>
+                    <div className="flex min-w-0 items-start gap-3">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
+                        <Icon name="spark" className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0 max-w-[92%]">
+                        <p className="text-sm font-bold text-slate-900">Salom! Men sening AI Ustozingman.</p>
+                        <p className="mt-1 text-xs leading-5 text-slate-500">Bugun {selectedSubject.toLocaleLowerCase("uz-UZ")} fanidan nimani o‘rganamiz? Savolingni yoz, birgalikda bosqichma-bosqich tushunamiz.</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {["Mavzuni sodda tushuntir", "Misol bilan ko‘rsat", "Menga savol berib tekshir"].map((value) => (
+                            <button
+                              key={value}
+                              type="button"
+                              onClick={() => setQuestion(value)}
+                              className="rounded-full border border-violet-100 bg-white px-3 py-2 text-[10px] font-semibold text-violet-700 transition hover:border-violet-300 hover:bg-violet-50"
+                            >
+                              {value}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   ) : messages.map((message) => <EduTutorMessage key={message.id} message={message} />)}
-                  {isSending && <div className="mr-auto rounded-2xl bg-slate-100 px-4 py-3 text-xs text-slate-500">Ustoz javob tayyorlayapti…</div>}
+                  {isSending && (
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                      <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-100 text-violet-600"><Icon name="spark" className="h-4 w-4" /></span>
+                      Ustoz javob tayyorlayapti…
+                    </div>
+                  )}
                 </div>
 
-                <div className="w-full min-w-0 rounded-2xl border border-slate-200 p-2">
-                  {tutorImageDataUrl && <div className="mb-3 flex items-center gap-3 rounded-xl bg-cyan-50 p-2.5"><img src={tutorImageDataUrl} alt="Yuklanadigan rasm" className="h-16 w-16 rounded-lg border border-cyan-100 bg-white object-contain" /><div className="min-w-0 flex-1"><p className="truncate text-[11px] font-bold text-slate-700">{tutorImageName}</p><p className="text-[10px] text-slate-500">AI Ustoz rasmni ko‘rib chiqadi</p></div><button type="button" onClick={()=>{setTutorImageDataUrl("");setTutorImageName("");if(tutorImageInputRef.current)tutorImageInputRef.current.value="";}} className="rounded-lg px-2 py-1 text-xs font-bold text-rose-600 hover:bg-white">✕</button></div>}
-                  <textarea value={question} onChange={(e)=>setQuestion(e.target.value)} onKeyDown={(e)=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendQuestion();}}} rows={2} placeholder="Savolingni yoz yoki rasm yuklab, tushuntirishni so‘ra..." className="w-full resize-none bg-transparent px-2 py-1 text-xs outline-none placeholder:text-slate-400" />
-                  <div className="flex flex-wrap items-center justify-between gap-2 px-1 pt-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-cyan-100 bg-cyan-50 px-3 py-2 text-[10px] font-bold text-cyan-800 hover:bg-cyan-100">📷 Rasm yuklash<input ref={tutorImageInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event)=>handleTutorImageFile(event.target.files?.[0])} /></label>
-                      <span className="text-[9px] text-slate-400">JPG · PNG · WEBP · 3 MB gacha</span>
+                <div className="sticky bottom-2 z-10 w-full min-w-0 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_8px_30px_rgba(30,25,60,.08)] sm:p-3">
+                  {tutorImageDataUrl && (
+                    <div className="mb-3 flex min-w-0 items-center gap-3 rounded-xl bg-cyan-50 p-2.5">
+                      <img src={tutorImageDataUrl} alt="Yuklanadigan rasm" className="h-14 w-14 shrink-0 rounded-lg border border-cyan-100 bg-white object-contain" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[11px] font-bold text-slate-700">{tutorImageName}</p>
+                        <p className="text-[10px] text-slate-500">AI Ustoz rasmni ko‘rib chiqadi</p>
+                      </div>
+                      <button type="button" onClick={() => { setTutorImageDataUrl(""); setTutorImageName(""); if (tutorImageInputRef.current) tutorImageInputRef.current.value = ""; }} aria-label="Rasmni olib tashlash" className="rounded-lg px-2 py-1 text-xs font-bold text-rose-600 hover:bg-white">✕</button>
                     </div>
-                    <button onClick={sendQuestion} disabled={(!question.trim()&&!tutorImageDataUrl)||isSending} className="rounded-xl bg-violet-600 px-4 py-2 text-[10px] font-bold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40">{isSending ? "Kutilmoqda…" : "Yuborish"} <Icon name="arrowUpRight" className="ml-1 inline h-3.5 w-3.5" /></button>
+                  )}
+                  <textarea
+                    value={question}
+                    onChange={(e) => setQuestion(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendQuestion(); } }}
+                    rows={2}
+                    placeholder="Xabar yozing..."
+                    className="w-full resize-none bg-transparent px-2 py-2 text-sm leading-6 text-slate-800 outline-none placeholder:text-slate-400"
+                  />
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-1 pt-2">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-slate-100 px-3 py-2 text-[10px] font-bold text-slate-700 transition hover:bg-violet-50 hover:text-violet-700">
+                        <Icon name="image" className="h-4 w-4" /> Rasm
+                        <input ref={tutorImageInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => handleTutorImageFile(event.target.files?.[0])} />
+                      </label>
+                      <span className="hidden text-[9px] text-slate-400 sm:inline">JPG · PNG · WEBP · 3 MB</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={sendQuestion}
+                      disabled={(!question.trim() && !tutorImageDataUrl) || isSending}
+                      className="inline-flex items-center gap-2 rounded-full bg-violet-600 px-4 py-2.5 text-[11px] font-bold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {isSending ? "Yuborilmoqda…" : "Yuborish"} <Icon name="arrowUpRight" className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
                 {tutorImageError && <p role="alert" className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700">{tutorImageError}</p>}
                 {tutorError && <p role="alert" className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700">{tutorError}</p>}
-                <p className="mt-2 text-center text-[9px] text-slate-400">AI Ustoz javoblari tanlangan fan va sinf darajasiga moslashtiriladi.</p>
+                <p className="py-3 text-center text-[9px] text-slate-400">AI Ustoz javoblari tanlangan fan va sinf darajasiga moslashtiriladi.</p>
               </div>
             </section>
           )}
