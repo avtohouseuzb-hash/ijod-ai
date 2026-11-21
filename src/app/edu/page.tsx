@@ -7,10 +7,7 @@ import Link from "next/link";
 import { LanguageSelect, ThemeToggle } from "@/components/site-preferences";
 import { getEduSubjects } from "@/lib/edu-subjects";
 import EduFamilyAccess, { EduStudentGradeContext, EduStudentProfileContext } from "@/components/edu-family-access";
-import EduTutorDrawingBoard, { type TutorDrawing } from "@/components/edu-tutor-drawing-board";
-import EduTutorChemistryVisual, { type ChemistryVisual } from "@/components/edu-tutor-chemistry-visual";
 import EduTutorMessage, { type EduTutorMessageData } from "@/components/edu-tutor-message";
-import EduTutorLessonBoard, { type EduTutorBoardPlan } from "@/components/edu-tutor-lesson-board";
 
 type Section = "home" | "tutor" | "homework" | "library" | "progress" | "planner";
 
@@ -113,10 +110,6 @@ function EduStudentPage() {
   const [messages, setMessages] = useState<EduTutorMessageData[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [tutorError, setTutorError] = useState("");
-  const [boardText, setBoardText] = useState("");
-  const [drawingBoard, setDrawingBoard] = useState<TutorDrawing | null>(null);
-  const [boardVisual, setBoardVisual] = useState<ChemistryVisual | null>(null);
-  const [lessonBoard, setLessonBoard] = useState<EduTutorBoardPlan | null>(null);
   const [tutorImageDataUrl, setTutorImageDataUrl] = useState("");
   const [tutorImageName, setTutorImageName] = useState("");
   const [tutorImageError, setTutorImageError] = useState("");
@@ -224,10 +217,6 @@ function EduStudentPage() {
     setMessages([]);
     setQuestion("");
     setTutorError("");
-    setBoardText("");
-    setDrawingBoard(null);
-    setBoardVisual(null);
-    setLessonBoard(null);
     setTutorImageDataUrl("");
     setTutorImageName("");
     setTutorImageError("");
@@ -322,25 +311,16 @@ function EduStudentPage() {
       if (requestVersion !== tutorRequestVersion.current) return;
       if (!response.ok || typeof data.text !== "string") throw new Error(data.error || "Javob olishda xatolik yuz berdi.");
       const assistantMessageId = crypto.randomUUID();
-      const chemistryVisual = data.visual && typeof data.visual === "object" ? data.visual as ChemistryVisual : undefined;
-      setMessages((current) => [...current, { id: assistantMessageId, role: "system", text: data.text }]);
-
-      if (data.kind === "greeting") {
-        setBoardText("");
-        setDrawingBoard(null);
-        setBoardVisual(null);
-        setLessonBoard(null);
-      } else if (data.drawing && typeof data.drawing.title === "string" && Array.isArray(data.drawing.strokes)) {
-        setBoardText("");
-        setDrawingBoard(data.drawing as TutorDrawing);
-        setBoardVisual(null);
-        setLessonBoard(null);
-      } else {
-        setBoardText("");
-        setDrawingBoard(null);
-        setBoardVisual(chemistryVisual ?? null);
-        setLessonBoard(data.board && typeof data.board.title === "string" ? data.board as EduTutorBoardPlan : null);
-      }
+      const chemistryVisual = data.visual && typeof data.visual === "object" ? data.visual : undefined;
+      const lessonMessage: EduTutorMessageData = {
+        id: assistantMessageId,
+        role: "system",
+        text: data.text,
+        ...(data.board && typeof data.board.title === "string" ? { board: data.board } : {}),
+        ...(chemistryVisual ? { visual: chemistryVisual } : {}),
+        ...(data.drawing && typeof data.drawing.title === "string" && Array.isArray(data.drawing.strokes) ? { drawing: data.drawing } : {}),
+      };
+      setMessages((current) => [...current, lessonMessage]);
 
       if (requestSubject.toLocaleLowerCase("uz-UZ").includes("kimyo")) {
         const videoQuery = typeof data.youtubeQuery === "string"
@@ -585,16 +565,6 @@ function EduStudentPage() {
                   ) : messages.map((message) => <EduTutorMessage key={message.id} message={message} />)}
                   {isSending && <div className="mr-auto rounded-2xl bg-slate-100 px-4 py-3 text-xs text-slate-500">Ustoz javob tayyorlayapti…</div>}
                 </div>
-
-                <section className="mb-4 w-full min-w-0 overflow-hidden rounded-2xl border border-[#e7e2fa] bg-[#fcfbff] shadow-inner">
-                  <div className="flex items-center justify-between border-b border-violet-100 bg-white px-4 py-3">
-                    <div className="flex items-center gap-2 text-xs font-extrabold text-slate-700"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-100 text-violet-700"><Icon name="bookText" className="h-4 w-4" /></span> INTERAKTIV DOSKA</div>
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-violet-500">{drawingBoard ? "CHIZMA TAYYOR" : lessonBoard ? "DARS TAYYOR" : boardVisual ? "SXEMA TAYYOR" : boardText ? "TAYYOR" : "MAVZU KUTILMOQDA"}</span>
-                  </div>
-                  <div className="relative min-h-[150px] w-full min-w-0 max-w-full overflow-hidden bg-[#fffefb] p-3 sm:p-5" style={{backgroundImage:"linear-gradient(rgba(139,120,190,.09) 1px, transparent 1px)",backgroundSize:"100% 32px"}}>
-                    {drawingBoard ? <EduTutorDrawingBoard drawing={drawingBoard} /> : lessonBoard ? <EduTutorLessonBoard board={lessonBoard} visual={boardVisual} /> : boardVisual ? <EduTutorChemistryVisual visual={boardVisual} /> : boardText ? <pre className="whitespace-pre-wrap break-words font-mono text-[12px] leading-8 text-[#292344] sm:text-sm">{boardText}</pre> : <div className="flex min-h-[110px] flex-col items-center justify-center gap-2 py-7 text-center text-xs text-slate-400"><Icon name="spark" className="h-6 w-6 text-violet-300" /><p>Ustoz savolingga mos dars rejasini shu yerda ko‘rsatadi.</p><p className="text-[10px]">Mavzu, bosqichlar, misol va sxema.</p></div>}
-                  </div>
-                </section>
 
                 <div className="w-full min-w-0 rounded-2xl border border-slate-200 p-2">
                   {tutorImageDataUrl && <div className="mb-3 flex items-center gap-3 rounded-xl bg-cyan-50 p-2.5"><img src={tutorImageDataUrl} alt="Yuklanadigan rasm" className="h-16 w-16 rounded-lg border border-cyan-100 bg-white object-contain" /><div className="min-w-0 flex-1"><p className="truncate text-[11px] font-bold text-slate-700">{tutorImageName}</p><p className="text-[10px] text-slate-500">AI Ustoz rasmni ko‘rib chiqadi</p></div><button type="button" onClick={()=>{setTutorImageDataUrl("");setTutorImageName("");if(tutorImageInputRef.current)tutorImageInputRef.current.value="";}} className="rounded-lg px-2 py-1 text-xs font-bold text-rose-600 hover:bg-white">✕</button></div>}
