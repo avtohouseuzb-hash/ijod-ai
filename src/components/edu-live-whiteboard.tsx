@@ -1,9 +1,9 @@
 "use client";
 import {useEffect,useMemo,useRef,useState} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
-import type {EduLiveBoardCommand,EduLiveWhiteboardPayload} from "@/lib/edu-live/types";
+import type {EduLiveWhiteboardCommand,EduLiveWhiteboardPayload} from "@/lib/edu-live/types";
 type Point={x:number;y:number};type Stroke={id:number;path:string};
-function DrawCommand({command}:{command:EduLiveBoardCommand}){switch(command.type){
+function DrawCommand({command}:{command:EduLiveWhiteboardCommand}){switch(command.type){
 case"title":return <text x="50" y="72" fontSize="36" fontWeight="800" fill={command.color??"#6d28d9"}>{command.text}</text>;
 case"text":return <text x={command.x} y={command.y} fontSize={command.fontSize??22} fill={command.color??"#243047"}>{command.text}</text>;
 case"formula":return <text x={command.x} y={command.y} fontSize="25" fontWeight="800" fill={command.color??"#6d28d9"}>{command.expression}</text>;
@@ -13,7 +13,7 @@ export default function EduLiveWhiteboard({payload}:{payload:EduLiveWhiteboardPa
 const[revealed,setRevealed]=useState(0),[playing,setPlaying]=useState(true),[drawing,setDrawing]=useState(false),[strokes,setStrokes]=useState<Stroke[]>([]),[activePath,setActivePath]=useState("");const points=useRef<Point[]>([]),nextId=useRef(0);
 useEffect(()=>{setRevealed(0);setPlaying(true);setStrokes([]);setActivePath("");points.current=[];},[payload]);
 useEffect(()=>{if(!playing||revealed>=payload.commands.length){if(revealed>=payload.commands.length)setPlaying(false);return;}const c=payload.commands[revealed];const timer=window.setTimeout(()=>setRevealed(v=>Math.min(v+1,payload.commands.length)),c.delayMs??400);return()=>window.clearTimeout(timer);},[payload,playing,revealed]);
-const visible=useMemo(()=>{const out:EduLiveBoardCommand[]=[];for(const c of payload.commands.slice(0,revealed)){if(c.type==="clear")out.length=0;else if(["title","text","formula","rect","arrow"].includes(c.type))out.push(c);}return out;},[payload,revealed]);
+const visible=useMemo(()=>{const out:EduLiveWhiteboardCommand[]=[];for(const c of payload.commands.slice(0,revealed)){if(c.type==="clear")out.length=0;else if(["title","text","formula","rect","arrow"].includes(c.type))out.push(c);}return out;},[payload,revealed]);
 const progress=payload.commands.length?Math.round(revealed/payload.commands.length*100):0;const title=[...visible].reverse().find(c=>c.type==="title");
 function getPoint(e:ReactPointerEvent<SVGSVGElement>){const r=e.currentTarget.getBoundingClientRect();return{x:Math.max(0,Math.min(1000,(e.clientX-r.left)/r.width*1000)),y:Math.max(0,Math.min(760,(e.clientY-r.top)/r.height*760))};}
 function start(e:ReactPointerEvent<SVGSVGElement>){if(!drawing)return;e.preventDefault();e.currentTarget.setPointerCapture(e.pointerId);const p=getPoint(e);points.current=[p];setActivePath(`M ${p.x} ${p.y}`);}

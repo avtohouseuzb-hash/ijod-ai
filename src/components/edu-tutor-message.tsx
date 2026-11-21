@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { EduTutorBoardPlan } from "@/components/edu-tutor-lesson-board";
+import EduTutorLessonBoard from "@/components/edu-tutor-lesson-board";
 import type { ChemistryVisual } from "@/components/edu-tutor-chemistry-visual";
 import type { TutorDrawing } from "@/components/edu-tutor-drawing-board";
 import EduLiveWhiteboard from "@/components/edu-live-whiteboard";
