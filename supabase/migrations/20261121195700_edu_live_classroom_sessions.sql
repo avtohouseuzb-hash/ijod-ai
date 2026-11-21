@@ -16,14 +16,12 @@ create table if not exists public.edu_live_sessions (
   ended_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  metadata jsonb not null default '{}'::jsonb,
   constraint edu_live_sessions_end_after_start
     check (ended_at is null or ended_at >= started_at),
   constraint edu_live_sessions_metadata_is_object
     check (jsonb_typeof(metadata) = 'object')
 );
-
-alter table public.edu_live_sessions
-  add column if not exists metadata jsonb not null default '{}'::jsonb;
 
 create index if not exists edu_live_sessions_user_started_idx
   on public.edu_live_sessions (user_id, started_at desc);
