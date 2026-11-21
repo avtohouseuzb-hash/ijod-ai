@@ -8,9 +8,6 @@ import { ThemeToggle } from "@/components/site-preferences";
 import { getEduSubjects } from "@/lib/edu-subjects";
 import EduFamilyAccess, { EduStudentGradeContext, EduStudentProfileContext, EduStudentLinksContext, StudentLinks } from "@/components/edu-family-access";
 import EduTutorMessage, { type EduTutorMessageData } from "@/components/edu-tutor-message";
-import EduTutorLessonBoard from "@/components/edu-tutor-lesson-board";
-import EduTutorChemistryVisual from "@/components/edu-tutor-chemistry-visual";
-import EduTutorDrawingBoard from "@/components/edu-tutor-drawing-board";
 
 type Section = "home" | "tutor" | "homework" | "library" | "progress" | "planner";
 
@@ -205,7 +202,6 @@ function EduStudentPage() {
   }
 
   const title = "IJOD EDU";
-  const latestTutorReply = [...messages].reverse().find((message) => message.role === "system");
   async function handleProfileSignOut() {
     setProfileSignOutBusy(true);
     setProfileError("");
@@ -322,6 +318,7 @@ function EduStudentPage() {
         role: "system",
         text: data.text,
         ...(data.board && typeof data.board.title === "string" ? { board: data.board } : {}),
+        ...(data.whiteboard && data.whiteboard.version === 1 && Array.isArray(data.whiteboard.commands) ? { whiteboard: data.whiteboard } : {}),
         ...(chemistryVisual ? { visual: chemistryVisual } : {}),
         ...(data.drawing && typeof data.drawing.title === "string" && Array.isArray(data.drawing.strokes) ? { drawing: data.drawing } : {}),
       };
@@ -609,31 +606,7 @@ function EduStudentPage() {
                   )}
                 </div>
 
-                                <section className="my-3 w-full min-w-0 overflow-hidden rounded-2xl border border-violet-200 bg-white shadow-sm" aria-label="Interaktiv doska">
-                  <div className="flex items-center justify-between gap-2 border-b border-violet-100 bg-violet-50/70 px-3 py-3 sm:px-4">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-700"><Icon name="bookText" className="h-4 w-4" /></span>
-                      <span className="text-[11px] font-extrabold tracking-wide text-slate-800 sm:text-xs">INTERAKTIV DOSKA</span>
-                    </div>
-                    <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider text-violet-600">
-                      {latestTutorReply?.board || latestTutorReply?.visual || latestTutorReply?.drawing ? "MAVZU TAYYOR" : "MAVZU KUTILMOQDA"}
-                    </span>
-                  </div>
-                  <div className="min-w-0 p-3 sm:p-4">
-                    {latestTutorReply?.board ? (
-                      <EduTutorLessonBoard board={latestTutorReply.board} visual={latestTutorReply.visual} />
-                    ) : latestTutorReply?.visual ? (
-                      <EduTutorChemistryVisual visual={latestTutorReply.visual} />
-                    ) : latestTutorReply?.drawing ? (
-                      <EduTutorDrawingBoard drawing={latestTutorReply.drawing} />
-                    ) : (
-                      <div className="flex min-h-[100px] flex-col items-center justify-center gap-2 py-5 text-center text-xs text-slate-400">
-                        <Icon name="spark" className="h-6 w-6 text-violet-300" />
-                        <p>Ustoz mavzuga mos tushuntirish, misol va chizmani shu yerda ko‘rsatadi.</p>
-                      </div>
-                    )}
-                  </div>
-                </section>
+                                
 
 <div className="sticky bottom-2 z-10 w-full min-w-0 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_8px_30px_rgba(30,25,60,.08)] sm:p-3">
                   {tutorImageDataUrl && (

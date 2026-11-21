@@ -5,6 +5,8 @@ import { supabase } from "@/lib/supabase";
 import type { EduTutorBoardPlan } from "@/components/edu-tutor-lesson-board";
 import type { ChemistryVisual } from "@/components/edu-tutor-chemistry-visual";
 import type { TutorDrawing } from "@/components/edu-tutor-drawing-board";
+import EduLiveWhiteboard from "@/components/edu-live-whiteboard";
+import type { EduLiveWhiteboardPayload } from "@/lib/edu-live/types";
 
 export type EduTutorVideo = {
   id: string;
@@ -22,6 +24,7 @@ export type EduTutorMessageData = {
   videos?: EduTutorVideo[];
   videoNotice?: string;
   board?: EduTutorBoardPlan;
+  whiteboard?: EduLiveWhiteboardPayload;
   visual?: ChemistryVisual;
   drawing?: TutorDrawing;
 };
@@ -67,6 +70,8 @@ export default function EduTutorMessage({ message }: { message: EduTutorMessageD
     return (
       <div className="ml-auto max-w-[92%] rounded-2xl bg-violet-600 px-4 py-3 text-xs leading-5 text-white">
         <p className="whitespace-pre-wrap break-words">{message.text}</p>
+      {message.whiteboard && <EduLiveWhiteboard payload={message.whiteboard} />}
+      {!message.whiteboard && message.board && <EduTutorLessonBoard board={message.board} visual={message.visual} />}
         {message.imageDataUrl && <img src={message.imageDataUrl} alt="O‘quvchi yuborgan rasm" className="mt-3 max-h-56 max-w-full rounded-xl border border-white/30 object-contain" />}
       </div>
     );
