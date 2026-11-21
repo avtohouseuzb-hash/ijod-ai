@@ -204,7 +204,7 @@ function EduStudentPage() {
     else setStudyPlans((items) => items.filter((item) => item.id !== id));
   }
 
-  const title = section === "tutor" ? "AI Ustoz" : navItems.find((item) => item.id === section)?.label ?? "Umumiy ko‘rinish";
+  const title = "IJOD EDU";
   const latestTutorReply = [...messages].reverse().find((message) => message.role === "system");
   async function handleProfileSignOut() {
     setProfileSignOutBusy(true);
@@ -395,7 +395,20 @@ function EduStudentPage() {
       <main className="min-h-screen min-w-0 max-w-full overflow-x-clip lg:ml-[248px]">
         <header className="sticky top-0 z-20 flex min-h-[60px] w-full min-w-0 items-center justify-between gap-2 border-b border-[#eceaf5] bg-white/95 px-3 py-2 backdrop-blur-xl sm:h-[68px] sm:px-7 sm:py-0">
           <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-            <span aria-label="IJOD EDU" role="img" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-200/60 lg:hidden">
+            <button
+              type="button"
+              onClick={() => {
+                if (section !== "home") setSection("home");
+                else if (window.history.length > 1) window.history.back();
+                else window.location.assign("/");
+              }}
+              aria-label="Orqaga qaytish"
+              className="inline-flex h-9 shrink-0 items-center gap-1 rounded-xl px-1.5 text-xs font-bold text-slate-600 transition hover:bg-violet-50 hover:text-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 sm:gap-2 sm:px-2.5"
+            >
+              <Icon name="arrowLeft" className="h-5 w-5" />
+              <span className="hidden min-[390px]:inline">Orqaga</span>
+            </button>
+            <span aria-label="IJOD EDU" role="img" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-200/60">
               <svg aria-hidden="true" viewBox="0 0 48 48" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                 <path d="m24 6 17 7-17 7-17-7 17-7Z" />
                 <path d="M14 17.1v5.2M34 17.1v5.2" />
@@ -404,8 +417,8 @@ function EduStudentPage() {
               </svg>
             </span>
             <div className="min-w-0">
-              <p className="hidden truncate text-[10px] font-bold uppercase tracking-[.16em] text-slate-400 sm:block">IJOD EDU <span className="mx-1 text-slate-300">/</span> MAKTAB</p>
-              <p className="truncate text-xs font-bold text-slate-800 sm:text-sm">{title}</p>
+              <p className="truncate text-sm font-extrabold tracking-tight text-slate-900 sm:text-base">IJOD EDU</p>
+              <p className="hidden text-[9px] font-semibold uppercase tracking-[.14em] text-slate-400 sm:block">MAKTAB TA’LIMI</p>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
