@@ -4,10 +4,13 @@ import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { LanguageSelect, ThemeToggle } from "@/components/site-preferences";
+import { ThemeToggle } from "@/components/site-preferences";
 import { getEduSubjects } from "@/lib/edu-subjects";
-import EduFamilyAccess, { EduStudentGradeContext, EduStudentProfileContext } from "@/components/edu-family-access";
+import EduFamilyAccess, { EduStudentGradeContext, EduStudentProfileContext, EduStudentLinksContext, StudentLinks } from "@/components/edu-family-access";
 import EduTutorMessage, { type EduTutorMessageData } from "@/components/edu-tutor-message";
+import EduTutorLessonBoard from "@/components/edu-tutor-lesson-board";
+import EduTutorChemistryVisual from "@/components/edu-tutor-chemistry-visual";
+import EduTutorDrawingBoard from "@/components/edu-tutor-drawing-board";
 
 type Section = "home" | "tutor" | "homework" | "library" | "progress" | "planner";
 
@@ -57,6 +60,7 @@ export default function EduPage() { return <EduFamilyAccess><EduStudentPage /></
 function EduStudentPage() {
   const savedStudentGrade = useContext(EduStudentGradeContext);
   const savedStudentProfile = useContext(EduStudentProfileContext);
+  const { links: familyLinks, refresh: refreshFamilyLinks } = useContext(EduStudentLinksContext);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [profileSignOutBusy, setProfileSignOutBusy] = useState(false);
   const [profileError, setProfileError] = useState("");
@@ -201,6 +205,7 @@ function EduStudentPage() {
   }
 
   const title = section === "tutor" ? "AI Ustoz" : navItems.find((item) => item.id === section)?.label ?? "Umumiy ko‘rinish";
+  const latestTutorReply = [...messages].reverse().find((message) => message.role === "system");
   async function handleProfileSignOut() {
     setProfileSignOutBusy(true);
     setProfileError("");
@@ -384,9 +389,7 @@ function EduStudentPage() {
           <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full w-[62%] rounded-full bg-gradient-to-r from-violet-400 to-cyan-300" /></div>
           <p className="mt-2 text-[10px] text-violet-200/70">Haftalik maqsad · 62%</p>
         </div>
-        <div className="mt-auto border-t border-slate-100 pt-4">
-          <Link href="/" className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50 hover:text-violet-700"><Icon name="arrowLeft" className="h-4 w-4" /> IJOD AI ga qaytish</Link>
-        </div>
+        <div className="mt-auto" />
       </aside>
 
       <main className="min-h-screen min-w-0 max-w-full overflow-x-clip lg:ml-[248px]">
@@ -400,17 +403,6 @@ function EduStudentPage() {
                 <path d="M24 24.1v15" />
               </svg>
             </span>
-            {section !== "home" && (
-              <button
-                type="button"
-                onClick={() => setSection("home")}
-                aria-label="Umumiy ko‘rinishga qaytish"
-                className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg px-2 text-xs font-bold text-slate-600 transition hover:bg-violet-50 hover:text-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 sm:px-2.5"
-              >
-                <Icon name="arrowLeft" className="h-4 w-4" />
-                <span className="hidden min-[380px]:inline">Orqaga</span>
-              </button>
-            )}
             <div className="min-w-0">
               <p className="hidden truncate text-[10px] font-bold uppercase tracking-[.16em] text-slate-400 sm:block">IJOD EDU <span className="mx-1 text-slate-300">/</span> MAKTAB</p>
               <p className="truncate text-xs font-bold text-slate-800 sm:text-sm">{title}</p>
@@ -419,7 +411,6 @@ function EduStudentPage() {
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
             <div className="hidden items-center gap-3 lg:flex">
               <ThemeToggle />
-              <LanguageSelect className="w-[76px] md:w-[142px]" />
             </div>
             <button type="button" onClick={() => setSection("planner")} aria-label="O‘quv rejasi" className={"inline-flex h-9 w-9 items-center justify-center gap-2 rounded-xl border px-2 text-xs font-semibold transition sm:h-auto sm:w-auto sm:px-3 sm:py-2 " + (section === "planner" ? "border-violet-200 bg-violet-50 text-violet-700" : "border-slate-200 bg-white text-slate-500 hover:border-violet-200 hover:text-violet-700")}>
               <Icon name="calendar" className="h-4 w-4 shrink-0" />
@@ -544,6 +535,7 @@ function EduStudentPage() {
               <div className="rounded-2xl border border-[#eceaf5] bg-white p-5"><div className="flex items-center justify-between"><div><p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-violet-600">BUGUNGI REJA</p><h2 className="mt-1 text-lg font-black">Kichik qadamlar, katta natija</h2></div><button onClick={()=>setSection("homework")} className="text-[11px] font-bold text-violet-700 hover:underline">Barchasi →</button></div><div className="mt-4 space-y-2">{tasks.length === 0 ? <p className="rounded-xl bg-slate-50 p-4 text-xs text-slate-500">Hozircha sizga vazifa biriktirilmagan. Darslik yoki AI Ustoz orqali o‘rganishni boshlang.</p> : tasks.map((task)=><div key={task.id} className="flex w-full items-center gap-3 rounded-xl border border-slate-100 p-3 text-left"><span className={"flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs " + (completed.includes(task.id)?"border-emerald-500 bg-emerald-500 text-white":"border-slate-300 text-transparent")}>✓</span><span className="min-w-0 flex-1"><span className={"block text-xs font-bold "+(completed.includes(task.id)?"text-slate-400 line-through":"text-slate-800")}>{task.title}</span><span className="mt-1 block text-[10px] text-slate-400">{task.subject} · {task.meta}</span></span><span className="text-[10px] font-semibold text-slate-400">{completed.includes(task.id)?"AI tasdiqladi":"Tekshirilmagan"}</span></div>)}</div></div>
               <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#e9e4ff] via-[#f3efff] to-[#e3f7f8] p-5"><div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/70 blur-2xl" /><div className="relative"><span className="inline-flex rounded-lg bg-white/70 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-violet-700">AI USTOZ TAVSIYASI</span><div className="mt-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-violet-600 shadow-sm"><Icon name="spark" className="h-6 w-6" /></div><h3 className="mt-4 max-w-xs text-lg font-black leading-snug">Tushunmagan joyingni so‘rashdan qo‘rqma.</h3><p className="mt-2 max-w-xs text-xs leading-5 text-slate-600">AI Ustoz mavzuni senga mos tezlikda, sodda misollar bilan tushuntirishga yordam beradi.</p><button onClick={()=>setSection("tutor")} className="mt-5 inline-flex items-center rounded-xl bg-[#25203f] px-4 py-3 text-[11px] font-bold text-white transition hover:bg-violet-700">Ustoz bilan suhbatlashish <Icon name="arrowUpRight" className="ml-2 h-4 w-4" /></button></div></div>
             </section>
+            <StudentLinks links={familyLinks} refresh={refreshFamilyLinks} />
           </>}
 
           {section === "tutor" && (
@@ -604,7 +596,33 @@ function EduStudentPage() {
                   )}
                 </div>
 
-                <div className="sticky bottom-2 z-10 w-full min-w-0 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_8px_30px_rgba(30,25,60,.08)] sm:p-3">
+                                <section className="my-3 w-full min-w-0 overflow-hidden rounded-2xl border border-violet-200 bg-white shadow-sm" aria-label="Interaktiv doska">
+                  <div className="flex items-center justify-between gap-2 border-b border-violet-100 bg-violet-50/70 px-3 py-3 sm:px-4">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-700"><Icon name="bookText" className="h-4 w-4" /></span>
+                      <span className="text-[11px] font-extrabold tracking-wide text-slate-800 sm:text-xs">INTERAKTIV DOSKA</span>
+                    </div>
+                    <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider text-violet-600">
+                      {latestTutorReply?.board || latestTutorReply?.visual || latestTutorReply?.drawing ? "MAVZU TAYYOR" : "MAVZU KUTILMOQDA"}
+                    </span>
+                  </div>
+                  <div className="min-w-0 p-3 sm:p-4">
+                    {latestTutorReply?.board ? (
+                      <EduTutorLessonBoard board={latestTutorReply.board} visual={latestTutorReply.visual} />
+                    ) : latestTutorReply?.visual ? (
+                      <EduTutorChemistryVisual visual={latestTutorReply.visual} />
+                    ) : latestTutorReply?.drawing ? (
+                      <EduTutorDrawingBoard drawing={latestTutorReply.drawing} />
+                    ) : (
+                      <div className="flex min-h-[100px] flex-col items-center justify-center gap-2 py-5 text-center text-xs text-slate-400">
+                        <Icon name="spark" className="h-6 w-6 text-violet-300" />
+                        <p>Ustoz mavzuga mos tushuntirish, misol va chizmani shu yerda ko‘rsatadi.</p>
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+<div className="sticky bottom-2 z-10 w-full min-w-0 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_8px_30px_rgba(30,25,60,.08)] sm:p-3">
                   {tutorImageDataUrl && (
                     <div className="mb-3 flex min-w-0 items-center gap-3 rounded-xl bg-cyan-50 p-2.5">
                       <img src={tutorImageDataUrl} alt="Yuklanadigan rasm" className="h-14 w-14 shrink-0 rounded-lg border border-cyan-100 bg-white object-contain" />
@@ -670,7 +688,7 @@ function EduStudentPage() {
 
           {section === "progress" && <section className="rounded-3xl border border-[#eceaf5] bg-white p-6 sm:p-8"><p className="text-[10px] font-extrabold uppercase tracking-[.18em] text-violet-600">SHAXSIY O‘SISH</p><h1 className="mt-2 text-2xl font-black">Mening natijalarim</h1><p className="mt-2 text-sm text-slate-500">O‘quv jarayoning va fanlar bo‘yicha o‘zlashtirish holati.</p><div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{subjects.map(s=><div key={s.name} className="rounded-2xl bg-slate-50 p-4"><p className="text-xs font-bold">{s.name}</p><p className="mt-3 text-2xl font-black text-violet-700">0%</p><div className="mt-3 h-1.5 rounded-full bg-slate-200"><div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-cyan-400" style={{width:"0%"}} /></div></div>)}</div><p className="mt-5 rounded-xl bg-slate-50 p-4 text-xs leading-5 text-slate-600">Hozircha saqlangan o‘quv natijalari yo‘q. Darslar va topshiriqlar bajarilgach, shaxsiy natijalaringiz shu yerda ko‘rsatiladi.</p></section>}
 
-          <footer className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 py-6 text-[10px] text-slate-400"><span>© 2026 IJOD EDU · IJOD AI ekotizimi</span><div className="flex flex-wrap items-center gap-4"><span>O‘rganish — bu sayohat.</span><LanguageSelect className="sm:hidden" /><Link href="/" className="inline-flex items-center gap-2 rounded-xl px-2 py-2 text-xs font-semibold text-slate-600 transition hover:bg-violet-50 hover:text-violet-700 lg:hidden"><Icon name="arrowLeft" className="h-4 w-4" /> IJOD AI ga qaytish</Link></div></footer>
+          <footer className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 py-6 text-[10px] text-slate-400"><span>© 2026 IJOD EDU · IJOD AI ekotizimi</span><div><span>O‘rganish — bu sayohat.</span></div></footer>
         </div>
       </main>
     </div>

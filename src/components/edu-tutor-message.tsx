@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import EduTutorLessonBoard, { type EduTutorBoardPlan } from "@/components/edu-tutor-lesson-board";
+import type { EduTutorBoardPlan } from "@/components/edu-tutor-lesson-board";
 import type { ChemistryVisual } from "@/components/edu-tutor-chemistry-visual";
-import EduTutorChemistryVisual from "@/components/edu-tutor-chemistry-visual";
-import EduTutorDrawingBoard, { type TutorDrawing } from "@/components/edu-tutor-drawing-board";
+import type { TutorDrawing } from "@/components/edu-tutor-drawing-board";
 
 export type EduTutorVideo = {
   id: string;
@@ -68,9 +67,6 @@ export default function EduTutorMessage({ message }: { message: EduTutorMessageD
     return (
       <div className="ml-auto max-w-[92%] rounded-2xl bg-violet-600 px-4 py-3 text-xs leading-5 text-white">
         <p className="whitespace-pre-wrap break-words">{message.text}</p>
-      {message.board && <EduTutorLessonBoard board={message.board} visual={message.visual} />}
-      {!message.board && message.visual && <EduTutorChemistryVisual visual={message.visual} />}
-      {message.drawing && <EduTutorDrawingBoard drawing={message.drawing} />}
         {message.imageDataUrl && <img src={message.imageDataUrl} alt="O‘quvchi yuborgan rasm" className="mt-3 max-h-56 max-w-full rounded-xl border border-white/30 object-contain" />}
       </div>
     );
