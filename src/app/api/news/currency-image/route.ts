@@ -5,7 +5,7 @@ export const runtime = "edge";
 
 type Rate = { code: string; rate: number; nominal: number; diff: number | null; flag: string };
 
-function formatRate(value: number) {
+function flagEmoji(code: string) {\n  if (code === "EU") return "🇪🇺";\n  return code.length === 2 ? String.fromCodePoint(...code.toUpperCase().split("").map(char => 127397 + char.charCodeAt(0))) : code;\n}\n\nfunction formatRate(value: number) {
   return new Intl.NumberFormat("uz-UZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 }
 
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     key: item.code,
     style: { display:"flex", alignItems:"center", height:index===0?112:104, padding:"0 42px", borderBottom:index===rates.length-1?"none":"2px dashed #d4d4d4", background:"#ffffff" }
   },
-    h("div", { style:{ width:62,height:62,borderRadius:40,background:"#f0f2f5",color:"#1d3557",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:800} }, item.flag),
+    h("div", { style:{ width:62,height:62,borderRadius:40,background:"#f0f2f5",color:"#1d3557",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:800} }, flagEmoji(item.flag)),
     h("div",{style:{marginLeft:24,width:500,display:"flex",alignItems:"center",fontSize:35,color:"#252a31"}},
       h("span",{style:{fontWeight:800}},item.nominal>1?String(item.nominal)+" "+item.code:item.code),
       h("span",{style:{marginLeft:14,fontWeight:400}},"= "+formatRate(item.rate))
