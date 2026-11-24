@@ -1,11 +1,14 @@
 import { ImageResponse } from "next/og";
 import { createElement as h } from "react";
 
-export const runtime = "edge";
-
 type Rate = { code: string; rate: number; nominal: number; diff: number | null; flag: string };
 
-function flagEmoji(code: string) {\n  if (code === "EU") return "🇪🇺";\n  return code.length === 2 ? String.fromCodePoint(...code.toUpperCase().split("").map(char => 127397 + char.charCodeAt(0))) : code;\n}\n\nfunction formatRate(value: number) {
+function flagEmoji(code: string) {
+  if (code === "EU") return "🇪🇺";
+  return code.length === 2 ? String.fromCodePoint(...code.toUpperCase().split("").map(char => 127397 + char.charCodeAt(0))) : code;
+}
+
+function formatRate(value: number) {
   return new Intl.NumberFormat("uz-UZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 }
 
