@@ -1,7 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-import { ImageResponse } from "next/og";
-import { createElement as h } from "react";
 import { isNewsCronAuthorized, isNewsCronOrAdminAuthorized } from "@/lib/news-cron-auth";
 
 export const maxDuration = 60;
@@ -90,30 +88,6 @@ async function sendTelegramPhoto(token: string, chatId: string, photo: Buffer, c
 function formatRate(value: number) {
   return new Intl.NumberFormat("uz-UZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 }
-function currencyImage(date: string, rates: Array<{code:string;rate:number;nominal:number;diff:number|null;flag:string}>) {
-  const rows = rates.map((item, index) => h("div", {
-    key: item.code,
-    style: { display:"flex", alignItems:"center", height: index===0?112:104, padding:"0 42px", borderBottom:index===rates.length-1?"none":"2px dashed #d4d4d4", background:"#ffffff" }
-  },
-    h("div", { style:{ width:62,height:62,borderRadius:40,background:item.flag==="US"?"#1d4e89":item.flag==="EU"?"#174ea6":item.flag==="RU"?"#e8edf3":item.flag==="GB"?"#243b70":item.flag==="JP"?"#f1f1f1":item.flag==="CH"?"#d7193f":item.flag==="CN"?"#c91c32":item.flag==="KZ"?"#39a9a1":"#d8a72c",color:"#ffffff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:19,fontWeight:800} }, item.flag),
-    h("div",{style:{marginLeft:24,width:500,display:"flex",alignItems:"center",fontSize:35,color:"#252a31"}},
-      h("span",{style:{fontWeight:800}},item.nominal>1?String(item.nominal)+" "+item.code:item.code),
-      h("span",{style:{marginLeft:14,fontWeight:400}},"= "+formatRate(item.rate))
-    ),
-    h("div",{style:{marginLeft:"auto",width:190,textAlign:"right",fontSize:30,color:item.diff===null?"#777":item.diff>0?"#218653":item.diff<0?"#c65c60":"#777"}},
-      item.diff===null?"—":(item.diff>0?"+":"")+formatRate(item.diff)
-    ),
-    h("div",{style:{width:76,textAlign:"right",fontSize:44,fontWeight:700,color:item.diff===null?"#999":item.diff>0?"#218653":item.diff<0?"#c65c60":"#999"}},item.diff===null?"·":item.diff>0?"↗":item.diff<0?"↘":"→")
-  ));
-  const tree = h("div",{style:{width:"100%",height:"100%",display:"flex",flexDirection:"column",background:"#f7f6ed",fontFamily:"Arial",padding:"30px 34px"}},
-    h("div",{style:{height:142,display:"flex",alignItems:"center",justifyContent:"center",fontSize:46,fontWeight:800,color:"#252a31",letterSpacing:1}},"IJOD AI  ·  VALYUTA KURSLARI"),
-    h("div",{style:{height:70,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,color:"#646b72"}},"O‘ZBEKISTON MARKAZIY BANKI  ·  "+date),
-    h("div",{style:{display:"flex",flexDirection:"column",borderRadius:22,overflow:"hidden",border:"1px solid #e4e4e4",background:"#fff"}},...rows),
-    h("div",{style:{marginTop:22,display:"flex",justifyContent:"space-between",fontSize:20,color:"#6b7077",padding:"0 12px"}},"Kurslar so‘mda ko‘rsatilgan","Manba: cbu.uz")
-  );
-  return new ImageResponse(tree,{width:1080,height:1350});
-}
-
 async function run(request: Request, adminAuthorized = false) {
   if (!adminAuthorized && !await isNewsCronAuthorized(request)) return NextResponse.json({error:"Unauthorized"},{status:401});
   const url=process.env.NEXT_PUBLIC_SUPABASE_URL, key=process.env.SUPABASE_SECRET_KEY, token=process.env.TELEGRAM_BOT_TOKEN;
@@ -257,7 +231,11 @@ async function run(request: Request, adminAuthorized = false) {
         const diff=previous!==undefined&&Number.isFinite(previous)?Number((value-previous).toFixed(2)):item.Diff!==undefined?Number(item.Diff):null;
         return {code:item.Ccy,rate:value,nominal:Number(item.Nominal)||1,diff,flag:flags[item.Ccy]||item.Ccy.slice(0,2)};
       });
-      const imageResponse=currencyImage(current[0].Date,imageRates);
+      const imageUrl=new URL("/api/news/currency-image",request.url);
+      imageUrl.searchParams.set("date",current[0].Date);
+      imageUrl.searchParams.set("rates",JSON.stringify(imageRates));
+      const imageResponse=await fetch(imageUrl,{cache:"no-store",signal:AbortSignal.timeout(20000)});
+      if(!imageResponse.ok) throw new Error("Valyuta infografikasi yaratilmadi: "+imageResponse.status);
       const imageBuffer=Buffer.from(await imageResponse.arrayBuffer());
       const usd=current.find(item=>item.Ccy==="USD");
       let sent=0,errors:string[]=[];
