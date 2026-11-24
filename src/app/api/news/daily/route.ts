@@ -73,6 +73,21 @@ async function sendTelegram(token: string, chatId: string, text: string, parseMo
   const result = await response.json().catch(()=>({}));
   if (!response.ok || !result.ok) throw new Error(String(result.description || "Telegram send failed"));
 }
+
+async function sendTelegramPhoto(token: string, chatId: string, photo: Buffer, caption: string) {
+  const form = new FormData();
+  form.append("chat_id", chatId);
+  form.append("caption", caption.slice(0, 1000));
+  form.append("photo", new Blob([new Uint8Array(photo)], { type: "image/png" }), "ijod-currency-rates.png");
+  const response = await fetch("https://api.telegram.org/bot" + token + "/sendPhoto", {
+    method: "POST", body: form, signal: AbortSignal.timeout(20000)
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result.ok) throw new Error(String(result.description || "Telegram sendPhoto failed"));
+}
+function formatRate(value: number) {
+  return new Intl.NumberFormat("uz-UZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+}
 async function run(request: Request, adminAuthorized = false) {
   if (!adminAuthorized && !await isNewsCronAuthorized(request)) return NextResponse.json({error:"Unauthorized"},{status:401});
   const url=process.env.NEXT_PUBLIC_SUPABASE_URL, key=process.env.SUPABASE_SECRET_KEY, token=process.env.TELEGRAM_BOT_TOKEN;
@@ -192,24 +207,48 @@ async function run(request: Request, adminAuthorized = false) {
       await db.from("news_daily_posts").update({status:errors.length?(sent?"partial":"failed"):"sent",recipients_sent:sent,payload:{...payload,errors},sent_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("id",postId);
       return NextResponse.json({ok:!errors.length,type,slot,sent,city,weather:current,aiImageGenerated:Boolean(weatherImage),errors});
     }
+
     if(type==="currency"){
       const response=await fetch("https://cbu.uz/uz/arkhiv-kursov-valyut/json/",{cache:"no-store",signal:AbortSignal.timeout(10000)});
       if(!response.ok) throw new Error("Markaziy bank kurslari olinmadi: "+response.status);
-      const rates=await response.json() as Array<{Ccy:string;Rate:string;Nominal:string;Date:string;CcyNm_UZ?:string}>;
-      const usd=rates.find(r=>r.Ccy==="USD");
-      if(!usd) throw new Error("USD kursi Markaziy bank javobida topilmadi.");
-      const order=["EUR","RUB","GBP","CNY","KZT","TRY"];
-      const lines=order.map(code=>rates.find(r=>r.Ccy===code)).filter(Boolean).map(r=>r!.Ccy+" — "+Number(r!.Rate).toLocaleString("uz-UZ")+" so‘m");
+      const rates=await response.json() as Array<{Ccy:string;Rate:string;Nominal:string;Date:string;CcyNm_UZ?:string;Diff?:string}>;
+      const order=["USD","EUR","RUB","GBP","JPY","CHF","CNY","KZT","TRY"];
+      const current=order.map(code=>rates.find(r=>r.Ccy===code)).filter(Boolean) as Array<{Ccy:string;Rate:string;Nominal:string;Date:string;Diff?:string}>;
+      if(current.length<7) throw new Error("Valyuta kurslari to‘liq kelmadi.");
+      const previousDate=new Date(now.getTime()-86400000);
+      const previousDateText=previousDate.getFullYear()+"-"+String(previousDate.getMonth()+1).padStart(2,"0")+"-"+String(previousDate.getDate()).padStart(2,"0");
+      let previousMap=new Map<string,number>();
+      try {
+        const previousResponse=await fetch("https://cbu.uz/uz/arkhiv-kursov-valyut/json/all/"+previousDateText+"/",{cache:"no-store",signal:AbortSignal.timeout(8000)});
+        if(previousResponse.ok){
+          const previous=await previousResponse.json() as Array<{Ccy:string;Rate:string}>;
+          previousMap=new Map(previous.map(item=>[item.Ccy,Number(item.Rate)]));
+        }
+      } catch(error) { console.warn("Previous currency rates unavailable",error); }
+      const flags:Record<string,string>={USD:"US",EUR:"EU",RUB:"RU",GBP:"GB",JPY:"JP",CHF:"CH",CNY:"CN",KZT:"KZ",TRY:"TR"};
+      const imageRates=current.map(item=>{
+        const value=Number(item.Rate), previous=previousMap.get(item.Ccy);
+        const diff=previous!==undefined&&Number.isFinite(previous)?Number((value-previous).toFixed(2)):item.Diff!==undefined?Number(item.Diff):null;
+        return {code:item.Ccy,rate:value,nominal:Number(item.Nominal)||1,diff,flag:flags[item.Ccy]||item.Ccy.slice(0,2)};
+      });
+      const imageUrl=new URL("/api/news/currency-image",request.url);
+      imageUrl.searchParams.set("date",current[0].Date);
+      imageUrl.searchParams.set("rates",JSON.stringify(imageRates));
+      const imageResponse=await fetch(imageUrl,{cache:"no-store",signal:AbortSignal.timeout(20000)});
+      if(!imageResponse.ok) throw new Error("Valyuta infografikasi yaratilmadi: "+imageResponse.status);
+      const imageBuffer=Buffer.from(await imageResponse.arrayBuffer());
+      const usd=current.find(item=>item.Ccy==="USD");
       let sent=0,errors:string[]=[];
       for(const r of recipients){
-        const text=r.language==="ru"
-          ?"<b>💱 КУРС ВАЛЮТ ЦБ Узбекистана</b>\n\n<b>🇺🇸 1 USD = "+Number(usd.Rate).toLocaleString("ru-RU")+" сум</b>\n\n"+lines.join("\n")+"\n\nДата курса: "+usd.Date
-          :localized("<b>💱 O‘ZBEKISTONDA VALYUTA KURSLARI</b>\n\n<b>🇺🇸 1 AQSh dollari (USD)\n"+Number(usd.Rate).toLocaleString("uz-UZ")+" SO‘M</b>\n\n"+lines.join("\n")+"\n\nManba: O‘zbekiston Markaziy banki · "+usd.Date,r.language);
-        try{await sendTelegram(token,r.chatId,text,"HTML");sent++;}catch(e){errors.push(r.chatId+": "+(e instanceof Error?e.message:"send failed"));}
+        const caption=r.language==="ru"
+          ?"💱 Курсы валют Центрального банка Узбекистана · "+current[0].Date
+          :localized("💱 O‘zbekiston Markaziy banki valyuta kurslari · "+current[0].Date,r.language);
+        try{await sendTelegramPhoto(token,r.chatId,imageBuffer,caption);sent++;}
+        catch(e){errors.push(r.chatId+": "+(e instanceof Error?e.message:"send failed"));}
       }
-      payload={kind:type,usd,otherRates:lines};
+      payload={kind:type,usd,rateDate:current[0].Date,rates:imageRates,imageFormat:"png"};
       await db.from("news_daily_posts").update({status:errors.length?(sent?"partial":"failed"):"sent",recipients_sent:sent,payload:{...payload,errors},sent_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("id",postId);
-      return NextResponse.json({ok:!errors.length,type,slot,sent,usd:usd.Rate,errors});
+      return NextResponse.json({ok:!errors.length,type,slot,sent,rateDate:current[0].Date,rateCount:imageRates.length,errors});
     }
     // The independent 10-minute pipeline owns RSS collection. A scheduled
     // Telegram slot only processes the current queue; collecting again here
